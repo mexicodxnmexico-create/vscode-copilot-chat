@@ -322,16 +322,19 @@ export class StartDebuggingPrompt extends PromptElement<StartDebuggingPromptProp
 	}
 
 	private getAllDebuggerTypes(): string[] {
-		return this.extensionsService.allAcrossExtensionHosts.filter(e => !!e.packageJSON?.contributes?.debuggers).map(e => {
-			const result: string[] = [];
-			for (const d of e.packageJSON?.contributes?.debuggers) {
-				if (d.type === '*' || d.deprecated) {
-					continue;
+		const result: string[] = [];
+		for (const e of this.extensionsService.allAcrossExtensionHosts) {
+			const debuggers = e.packageJSON?.contributes?.debuggers;
+			if (debuggers) {
+				for (const d of debuggers) {
+					if (d.type === '*' || d.deprecated) {
+						continue;
+					}
+					result.push(`- ${d.type}: ${d.label} (${e.id})`);
 				}
-				result.push(`- ${d.type}: ${d.label} (${e.id})`);
 			}
-			return result;
-		}).flat();
+		}
+		return result;
 	}
 
 	override render(state: StartDebuggingPromptState, sizing: PromptSizing): PromptPiece | undefined {
