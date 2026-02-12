@@ -40,24 +40,34 @@ function* splitTerms(input: string): Iterable<string> {
 	const normalize = (word: string) => word.toLowerCase();
 
 	// Only match on words that are at least 3 characters long and start with a letter
-	for (const [word] of input.matchAll(/(?<![\p{Alphabetic}\p{Number}_$])[\p{Letter}_$][\p{Alphabetic}\p{Number}_$]{2,}(?![\p{Alphabetic}\p{Number}_$])/gu)) {
+	for (const [word] of input.matchAll(/[\p{Alphabetic}\p{Number}_$]+/gu)) {
+		if (word.length < 3 || !/^[\p{Letter}_$]/u.test(word)) {
+			continue;
+		}
+
 		const parts = new Set<string>();
 		parts.add(normalize(word));
 
 		const subParts: string[] = [];
-		const camelParts = word.split(/(?<=[a-z$])(?=[A-Z])/g);
-		if (camelParts.length > 1) {
-			subParts.push(...camelParts);
+		if (/[a-z$][A-Z]/.test(word)) {
+			const camelParts = word.split(/(?<=[a-z$])(?=[A-Z])/g);
+			if (camelParts.length > 1) {
+				subParts.push(...camelParts);
+			}
 		}
 
-		const snakeParts = word.split('_');
-		if (snakeParts.length > 1) {
-			subParts.push(...snakeParts);
+		if (word.includes('_')) {
+			const snakeParts = word.split('_');
+			if (snakeParts.length > 1) {
+				subParts.push(...snakeParts);
+			}
 		}
 
-		const nonDigitPrefixMatch = word.match(/^([\D]+)\p{Number}+$/u);
-		if (nonDigitPrefixMatch) {
-			subParts.push(nonDigitPrefixMatch[1]);
+		if (/\p{Number}$/u.test(word)) {
+			const nonDigitPrefixMatch = word.match(/^([\D]+)\p{Number}+$/u);
+			if (nonDigitPrefixMatch) {
+				subParts.push(nonDigitPrefixMatch[1]);
+			}
 		}
 
 		for (const part of subParts) {
