@@ -137,7 +137,7 @@ class LoggedRequestInfo implements ILoggedRequestInfo {
 			return {
 				...baseInfo,
 				startTime: new Date(this.entry.startTimeMs).toISOString(),
-				content: this.entry.markdownContent
+				content: typeof this.entry.markdownContent === 'function' ? this.entry.markdownContent() : this.entry.markdownContent
 			};
 		}
 
@@ -565,7 +565,7 @@ export class RequestLogger extends AbstractRequestLogger {
 
 	private _renderRequestToMarkdown(id: string, entry: LoggedRequest): string {
 		if (entry.type === LoggedRequestKind.MarkdownContentRequest) {
-			return entry.markdownContent;
+			return typeof entry.markdownContent === 'function' ? entry.markdownContent() : entry.markdownContent;
 		}
 
 		const result: string[] = [];

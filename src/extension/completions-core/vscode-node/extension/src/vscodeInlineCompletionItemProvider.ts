@@ -26,6 +26,7 @@ import { TextEdit, TextReplacement } from '../../../../../util/vs/editor/common/
 import { Range } from '../../../../../util/vs/editor/common/core/range';
 import { LineBasedText } from '../../../../../util/vs/editor/common/core/text/abstractText';
 import { IInstantiationService, ServicesAccessor } from '../../../../../util/vs/platform/instantiation/common/instantiation';
+import { RootedLineEdit } from '../../../../inlineEdits/common/dataTypes/rootedLineEdit';
 import { NextEditProviderTelemetryBuilder, TelemetrySender } from '../../../../inlineEdits/node/nextEditProviderTelemetry';
 import { InlineEditLogger } from '../../../../inlineEdits/vscode-node/parts/inlineEditLogger';
 import { GhostTextLogContext } from '../../../common/ghostTextContext';
@@ -259,9 +260,7 @@ export class CopilotInlineCompletionItemProvider extends Disposable implements I
 			text
 		);
 
-		const patch = lineEdit.humanReadablePatch(text.getLines());
-
-		logContext.setResult(patch);
+		logContext.setResult(new RootedLineEdit(text, lineEdit));
 	}
 
 	private createTelemetryBuilder() {

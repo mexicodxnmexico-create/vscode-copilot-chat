@@ -26,7 +26,7 @@ export class InlineEditLogger extends Disposable {
 			debugName: request.getDebugName(),
 			icon: request.getIcon(),
 			startTimeMs: request.time,
-			markdownContent: request.toLogDocument(),
+			markdownContent: () => request.toLogDocument(),
 		});
 		this._requests.push(request);
 
