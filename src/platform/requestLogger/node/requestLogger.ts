@@ -216,7 +216,7 @@ export interface IMarkdownContentRequest {
 	startTimeMs: number;
 	icon: ThemeIcon | undefined;
 	debugName: string;
-	markdownContent: string;
+	markdownContent: string | (() => string);
 	isConversationRequest?: boolean;
 }
 
