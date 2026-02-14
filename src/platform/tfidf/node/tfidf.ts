@@ -40,7 +40,30 @@ function* splitTerms(input: string): Iterable<string> {
 	const normalize = (word: string) => word.toLowerCase();
 
 	// Only match on words that are at least 3 characters long and start with a letter
-	for (const [word] of input.matchAll(/(?<![\p{Alphabetic}\p{Number}_$])[\p{Letter}_$][\p{Alphabetic}\p{Number}_$]{2,}(?![\p{Alphabetic}\p{Number}_$])/gu)) {
+	const tokenRegex = /[\p{Alphabetic}\p{Number}_$]+/gu;
+	let match;
+	while ((match = tokenRegex.exec(input)) !== null) {
+		const word = match[0];
+
+		if (word.length < 3) {
+			continue;
+		}
+
+		// Optimize start char check
+		const firstChar = word.charCodeAt(0);
+
+		// Fast path for ASCII digits (0-9 are 48-57)
+		if (firstChar >= 48 && firstChar <= 57) {
+			continue;
+		}
+
+		if (firstChar >= 128) {
+			// Unicode. Fallback to regex check to be safe.
+			if (!/^[\p{Letter}_$]/u.test(word)) {
+				continue;
+			}
+		}
+
 		const parts = new Set<string>();
 		parts.add(normalize(word));
 
