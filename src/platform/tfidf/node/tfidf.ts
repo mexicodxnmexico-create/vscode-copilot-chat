@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import fs from 'fs';
-import sql from 'node:sqlite';
+import sql, { type StatementSync } from 'node:sqlite';
 import path from 'path';
 import { GlobIncludeOptions, shouldInclude } from '../../../util/common/glob';
 import { Limiter } from '../../../util/vs/base/common/async';
@@ -150,6 +150,25 @@ export class PersistentTfIdf {
 
 	private readonly db!: sql.DatabaseSync;
 
+	/**
+	 * Cache prepared statements to avoid re-parsing SQL queries on every call.
+	 * This significantly improves performance for frequent operations like search and indexing.
+	 */
+	private readonly _statements: {
+		getChunkOccurrences: StatementSync;
+		getChunkCount: StatementSync;
+		fileCount: StatementSync;
+		getDocIdAndContentVersionId: StatementSync;
+		getDocContentVersionId: StatementSync;
+		getDocChunks: StatementSync;
+		insertDoc: StatementSync;
+		insertChunk: StatementSync;
+		insertOccurrence: StatementSync;
+		deleteDoc: StatementSync;
+		decrementOccurrence: StatementSync;
+		deleteEmptyOccurrence: StatementSync;
+	} = {} as any;
+
 	constructor(dbPath: URI | ':memory:') {
 		const syncOptions: sql.DatabaseSyncOptions = {
 			open: true,
@@ -205,6 +224,30 @@ export class PersistentTfIdf {
 
 			CREATE INDEX IF NOT EXISTS idx_documents_uri ON Documents(uri);
 			CREATE INDEX IF NOT EXISTS idx_chunks_documentId ON Chunks(documentId);
+		`);
+
+		this._statements.getChunkOccurrences = this.db.prepare('SELECT chunkCount FROM ChunkOccurrences WHERE term = ?');
+		this._statements.getChunkCount = this.db.prepare('SELECT COUNT(*) as count FROM Chunks');
+		this._statements.fileCount = this.db.prepare('SELECT COUNT(*) as count FROM Documents');
+		this._statements.getDocIdAndContentVersionId = this.db.prepare('SELECT id, contentVersionId FROM Documents WHERE uri = ?');
+		this._statements.getDocContentVersionId = this.db.prepare('SELECT contentVersionId FROM Documents WHERE uri = ?');
+		this._statements.getDocChunks = this.db.prepare('SELECT text, startLineNumber, startColumn, endLineNumber, endColumn, isFullFile, json(termFrequencies) as termFrequencies FROM Chunks WHERE documentId = ?');
+		this._statements.insertDoc = this.db.prepare('INSERT OR REPLACE INTO Documents (uri, contentVersionId) VALUES (?, ?)');
+		this._statements.insertChunk = this.db.prepare('INSERT INTO Chunks (documentId, text, startLineNumber, startColumn, endLineNumber, endColumn, isFullFile, termFrequencies) VALUES (?, ?, ?, ?, ?, ?, ?, jsonb(?))');
+		this._statements.insertOccurrence = this.db.prepare(`
+			INSERT INTO ChunkOccurrences (term, chunkCount)
+			VALUES (?, ?)
+			ON CONFLICT(term) DO UPDATE SET chunkCount = chunkCount + ?;
+		`);
+		this._statements.deleteDoc = this.db.prepare('DELETE FROM Documents WHERE uri = ?');
+		this._statements.decrementOccurrence = this.db.prepare(`
+			UPDATE ChunkOccurrences
+			SET chunkCount = chunkCount - ?
+			WHERE term = ?;
+		`);
+		this._statements.deleteEmptyOccurrence = this.db.prepare(`
+			DELETE FROM ChunkOccurrences
+			WHERE chunkCount < 1;
 		`);
 	}
 
@@ -263,10 +306,8 @@ export class PersistentTfIdf {
 	}
 
 	private getDocContentVersionId(uri: URI): string | undefined {
-		const result = this.db.prepare(
-			'SELECT contentVersionId FROM Documents WHERE uri = ?'
-		).get(uri.toString());
-		return result?.contentVersionId as string | undefined;
+		const result = this._statements.getDocContentVersionId.get(uri.toString());
+		return (result as any)?.contentVersionId as string | undefined;
 	}
 
 	public async addOrUpdate(documents: readonly TfIdfDoc[]): Promise<void> {
@@ -312,34 +353,23 @@ export class PersistentTfIdf {
 				continue;
 			}
 
-			this.db.prepare(`
-				DELETE FROM Documents WHERE uri = ?
-			`).run(uri.toString());
+			this._statements.deleteDoc.run(uri.toString());
 
 			this._cachedChunkCount = undefined;
 
 			const allOccurrences = countRecordFrom(doc.chunks.flatMap(chunk => Object.keys(chunk.tf)));
 
 			for (const [term, count] of Object.entries(allOccurrences)) {
-				this.db.prepare(`
-					UPDATE ChunkOccurrences
-					SET chunkCount = chunkCount - ?
-					WHERE term = ?;
-				`).run(count, term);
+				this._statements.decrementOccurrence.run(count, term);
 			}
 		}
 		this.db.exec('COMMIT');
 
-		this.db.prepare(`
-			DELETE FROM ChunkOccurrences
-			WHERE chunkCount < 1;
-		`).run();
+		this._statements.deleteEmptyOccurrence.run();
 	}
 
 	public get fileCount(): number {
-		return this.db.prepare(
-			`SELECT COUNT(*) as count FROM Documents`
-		).get()!.count as number | undefined ?? 0;
+		return (this._statements.fileCount.get() as any)!.count as number | undefined ?? 0;
 	}
 
 	/**
@@ -425,17 +455,13 @@ export class PersistentTfIdf {
 			return this._cachedChunkCount;
 		}
 
-		const result = this.db.prepare(
-			'SELECT COUNT(*) as count FROM Chunks'
-		).get();
-		return result?.count as number | undefined ?? 0;
+		const result = this._statements.getChunkCount.get();
+		return (result as any)?.count as number | undefined ?? 0;
 	}
 
 	private getChunkOccurrences(term: string): number {
-		const result = this.db.prepare(
-			'SELECT chunkCount FROM ChunkOccurrences WHERE term = ?'
-		).get(term);
-		return result?.chunkCount as number | undefined ?? 0;
+		const result = this._statements.getChunkOccurrences.get(term);
+		return (result as any)?.chunkCount as number | undefined ?? 0;
 	}
 
 	private async addOrUpdateDocs(docs: Iterable<{ uri: URI; getDoc(): Promise<TfIdfDocData> }>): Promise<void> {
@@ -453,19 +479,10 @@ export class PersistentTfIdf {
 			try {
 				for (const { uri, doc } of docs) {
 					// Add new the document
-					const docId = this.db.prepare(
-						'INSERT OR REPLACE INTO Documents (uri, contentVersionId) VALUES (?, ?)'
-					)
-						.run(uri.toString(), doc.contentVersionId)
-						.lastInsertRowid;
-
-					// Insert new chunks
-					const insertChunkOp = this.db.prepare(
-						'INSERT INTO Chunks (documentId, text, startLineNumber, startColumn, endLineNumber, endColumn, isFullFile, termFrequencies) VALUES (?, ?, ?, ?, ?, ?, ?, jsonb(?))'
-					);
+					const docId = this._statements.insertDoc!.run(uri.toString(), doc.contentVersionId).lastInsertRowid;
 
 					for (const chunk of doc.chunks) {
-						insertChunkOp.run(
+						this._statements.insertChunk!.run(
 							docId,
 							chunk.chunk.text,
 							chunk.chunk.range.startLineNumber,
@@ -503,32 +520,22 @@ export class PersistentTfIdf {
 		processBatch(batch);
 
 		// Update occurrences list
-		const insertOccurrencesOp = this.db.prepare(`
-			INSERT INTO ChunkOccurrences (term, chunkCount)
-			VALUES (?, ?)
-			ON CONFLICT(term) DO UPDATE SET chunkCount = chunkCount + ?;
-		`);
-
 		this.db.exec('BEGIN TRANSACTION');
 		for (const [term, count] of Object.entries(allChunkOccurrences)) {
-			insertOccurrencesOp.run(term, count, count);
+			this._statements.insertOccurrence.run(term, count, count);
 		}
 		this.db.exec('COMMIT');
 	}
 
 	private getDoc(uri: URI): TfIdfDocData | undefined {
-		const doc = this.db.prepare(
-			'SELECT id, contentVersionId FROM Documents WHERE uri = ?'
-		).get(uri.toString());
+		const doc = this._statements.getDocIdAndContentVersionId.get(uri.toString());
 		if (!doc) {
 			return undefined;
 		}
 
-		const chunks = this.db.prepare(
-			'SELECT text, startLineNumber, startColumn, endLineNumber, endColumn, isFullFile, json(termFrequencies) as termFrequencies FROM Chunks WHERE documentId = ?'
-		).all(doc.id);
+		const chunks = this._statements.getDocChunks.all((doc as any).id);
 		return {
-			contentVersionId: doc.contentVersionId as string,
+			contentVersionId: (doc as any).contentVersionId as string,
 			chunks: chunks.map(row => {
 				return this.reviveDocumentChunkEntry({ ...row, uri: uri.toString() });
 			})
