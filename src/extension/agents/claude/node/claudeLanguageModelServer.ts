@@ -6,6 +6,7 @@
 import { MessageParam } from '@anthropic-ai/sdk/resources';
 import { RequestMetadata, RequestType } from '@vscode/copilot-api';
 import { Raw } from '@vscode/prompt-tsx';
+import * as crypto from 'crypto';
 import * as http from 'http';
 import { IChatMLFetcher, Source } from '../../../../platform/chat/common/chatMLFetcher';
 import { ChatLocation, ChatResponse } from '../../../../platform/chat/common/commonTypes';
@@ -126,7 +127,7 @@ export class ClaudeLanguageModelServer extends Disposable {
 	private async isAuthTokenValid(req: http.IncomingMessage): Promise<boolean> {
 		// Check x-api-key header (used by SDK)
 		const apiKeyHeader = req.headers['x-api-key'];
-		if (apiKeyHeader === this.config.nonce) {
+		if (typeof apiKeyHeader === 'string' && this.safeCompare(apiKeyHeader, this.config.nonce)) {
 			return true;
 		}
 
@@ -134,10 +135,21 @@ export class ClaudeLanguageModelServer extends Disposable {
 		const authHeader = req.headers['authorization'];
 		if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
 			const token = authHeader.slice(7); // Remove "Bearer " prefix
-			return token === this.config.nonce;
+			return this.safeCompare(token, this.config.nonce);
 		}
 
 		return false;
+	}
+
+	private safeCompare(a: string, b: string): boolean {
+		if (a.length !== b.length) {
+			return false;
+		}
+		try {
+			return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+		} catch {
+			return false;
+		}
 	}
 
 	private async readRequestBody(req: http.IncomingMessage): Promise<string> {
