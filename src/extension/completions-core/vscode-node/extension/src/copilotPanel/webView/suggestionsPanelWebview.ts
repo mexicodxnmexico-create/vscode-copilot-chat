@@ -57,7 +57,7 @@ function handleSolutionUpdate(message: Message) {
 					? `<p>
 						<span style="vertical-align: text-bottom" aria-hidden="true">Warning</span>
 						${DOMPurify.sanitize(solution.citation.message)}
-						<a href="${DOMPurify.sanitize(solution.citation.url)}" target="_blank">Inspect source code</a>
+						<a href="${DOMPurify.sanitize(solution.citation.url)}" target="_blank" rel="noopener noreferrer">Inspect source code</a>
 					  </p>`
 					: '';
 				const sanitizedSnippet = DOMPurify.sanitize(solution.htmlSnippet);
@@ -65,7 +65,7 @@ function handleSolutionUpdate(message: Message) {
 				return `<h3 class='solutionHeading' id="solution-${index + 1}-heading">Suggestion ${index + 1}</h3>
 				<div class='snippetContainer' aria-labelledby="solution-${index + 1}-heading" role="group" data-solution-index="${index}">${sanitizedSnippet
 					}</div>
-				${DOMPurify.sanitize(renderedCitation)}
+				${DOMPurify.sanitize(renderedCitation, { ADD_ATTR: ['target'] })}
 				<vscode-button role="button" class="acceptButton" id="acceptButton${index}" appearance="secondary" data-solution-index="${index}">Accept suggestion ${index + 1
 					}</vscode-button>`;
 			})
