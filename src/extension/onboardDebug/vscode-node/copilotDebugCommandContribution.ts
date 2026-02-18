@@ -33,7 +33,6 @@ import { IStartOptions, StartResultKind } from '../node/copilotDebugWorker/share
 import { CopilotDebugCommandHandle } from './copilotDebugCommandHandle';
 import { handleDebugSession } from './copilotDebugCommandSession';
 
-//@ts-ignore
 import powershellScript from '../node/copilotDebugWorker/copilotDebugWorker.ps1';
 
 // When enabled, holds the storage location of binaries for the PATH:

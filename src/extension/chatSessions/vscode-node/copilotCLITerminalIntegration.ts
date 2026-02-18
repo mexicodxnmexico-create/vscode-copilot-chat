@@ -17,7 +17,6 @@ import { Disposable, DisposableStore } from '../../../util/vs/base/common/lifecy
 import * as path from '../../../util/vs/base/common/path';
 import { PythonTerminalService } from './copilotCLIPythonTerminalService';
 
-//@ts-ignore
 import powershellScript from './copilotCLIShim.ps1';
 
 const COPILOT_CLI_SHIM_JS = 'copilotCLIShim.js';
