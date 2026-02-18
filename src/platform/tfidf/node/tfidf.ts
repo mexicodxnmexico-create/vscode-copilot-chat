@@ -34,8 +34,6 @@ function termFrequencies(input: string): TermFrequencies {
 }
 
 const StartPattern = /^[\p{Letter}_$]/u;
-const CamelSplitPattern = /(?<=[a-z$])(?=[A-Z])/g;
-const CamelCasePattern = /[a-z$][A-Z]/;
 const SubPartPattern = /[\p{Alphabetic}_$]{3,}/u;
 const NumberEndPattern = /\p{Number}$/u;
 const DigitPrefixPattern = /^([\D]+)\p{Number}+$/u;
@@ -61,11 +59,31 @@ function* splitTerms(input: string): Iterable<string> {
 		parts.add(normalize(word));
 
 		const subParts: string[] = [];
-		if (CamelCasePattern.test(word)) {
-			const camelParts = word.split(CamelSplitPattern);
-			if (camelParts.length > 1) {
-				subParts.push(...camelParts);
+
+		// Optimized CamelCase splitting without regex lookahead
+		let start = 0;
+		let i = 1;
+		const len = word.length;
+		let hasCamel = false;
+
+		if (len > 1) {
+			let prevCharCode = word.charCodeAt(0);
+			for (; i < len; i++) {
+				const charCode = word.charCodeAt(i);
+				const isUpper = charCode >= 65 && charCode <= 90;
+				const isPrevLower = (prevCharCode >= 97 && prevCharCode <= 122) || prevCharCode === 36;
+
+				if (isUpper && isPrevLower) {
+					hasCamel = true;
+					subParts.push(word.substring(start, i));
+					start = i;
+				}
+				prevCharCode = charCode;
 			}
+		}
+
+		if (hasCamel) {
+			subParts.push(word.substring(start));
 		}
 
 		if (word.includes('_')) {
