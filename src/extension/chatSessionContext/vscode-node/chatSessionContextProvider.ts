@@ -13,7 +13,7 @@ import { IExperimentationService } from '../../../platform/telemetry/common/null
 import { CancellationToken } from '../../../util/vs/base/common/cancellation';
 import { Disposable, DisposableStore, IDisposable } from '../../../util/vs/base/common/lifecycle';
 import { autorun, IObservable } from '../../../util/vs/base/common/observableInternal';
-import { LanguageModelChatMessage, LanguageModelTextPart } from '../../../vscodeTypes';
+import { LanguageModelChatMessage, LanguageModelChatMessageRole, LanguageModelTextPart } from '../../../vscodeTypes';
 import { IConversationStore } from '../../conversationStore/node/conversationStore';
 import { Conversation } from '../../prompt/common/conversation';
 
@@ -109,7 +109,7 @@ export class ChatSessionContextContribution extends Disposable {
 	}
 }
 
-class ContextResolver implements Copilot.ContextResolver<Copilot.SupportedContextItem> {
+export class ContextResolver implements Copilot.ContextResolver<Copilot.SupportedContextItem> {
 
 	constructor(
 		private readonly logService: ILogService,
@@ -201,7 +201,8 @@ class ContextResolver implements Copilot.ContextResolver<Copilot.SupportedContex
 			const systemPrompt = `You are a helpful assistant that summarizes conversations. Given a chat conversation between a user and an AI assistant, describe what the user is trying to accomplish in 5 sentences or less. Focus on the user's intent and goals.`;
 
 			const messages = [
-				LanguageModelChatMessage.User(`${systemPrompt}\n\nConversation:\n${conversationContent}\n\nSummarize what the user is trying to do in 5 sentences or less:`)
+				new LanguageModelChatMessage(LanguageModelChatMessageRole.System, systemPrompt),
+				LanguageModelChatMessage.User(`Conversation:\n<conversation>\n${conversationContent}\n</conversation>\n\nSummarize what the user is trying to do in 5 sentences or less:`)
 			];
 
 			// Note: We intentionally don't pass a cancellation token to avoid cancelling
