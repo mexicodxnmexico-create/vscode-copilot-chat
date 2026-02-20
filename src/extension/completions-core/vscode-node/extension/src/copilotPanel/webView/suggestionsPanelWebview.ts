@@ -57,7 +57,7 @@ function handleSolutionUpdate(message: Message) {
 					? `<p>
 						<span style="vertical-align: text-bottom" aria-hidden="true">Warning</span>
 						${DOMPurify.sanitize(solution.citation.message)}
-						<a href="${DOMPurify.sanitize(solution.citation.url)}" target="_blank">Inspect source code</a>
+						<a href="${DOMPurify.sanitize(solution.citation.url)}" target="_blank" rel="noopener noreferrer" aria-label="Inspect source code (opens in a new window)">Inspect source code</a>
 					  </p>`
 					: '';
 				const sanitizedSnippet = DOMPurify.sanitize(solution.htmlSnippet);
@@ -99,6 +99,9 @@ function updateLoadingContainer(message: Message) {
 	}
 	if (message.percentage >= 100) {
 		loadingContainer.innerHTML = `${message.solutions.length} Suggestions`;
+		if (solutionsContainer) {
+			solutionsContainer.setAttribute('aria-busy', 'false');
+		}
 	} else {
 		const loadingLabelElement = loadingContainer.querySelector('label') as HTMLLabelElement;
 		if (loadingLabelElement.textContent !== 'Loading suggestions:\u00A0') {
