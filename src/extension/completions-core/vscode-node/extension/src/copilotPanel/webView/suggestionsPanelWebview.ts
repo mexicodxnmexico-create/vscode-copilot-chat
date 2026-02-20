@@ -5,6 +5,7 @@
 
 import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit';
 import DOMPurify from 'dompurify';
+import { renderCitation } from './sanitization';
 
 const solutionsContainer = document.getElementById('solutionsContainer');
 const vscode = acquireVsCodeApi();
@@ -54,18 +55,14 @@ function handleSolutionUpdate(message: Message) {
 		solutionsContainer.innerHTML = message.solutions
 			.map((solution, index) => {
 				const renderedCitation = solution.citation
-					? `<p>
-						<span style="vertical-align: text-bottom" aria-hidden="true">Warning</span>
-						${DOMPurify.sanitize(solution.citation.message)}
-						<a href="${DOMPurify.sanitize(solution.citation.url)}" target="_blank">Inspect source code</a>
-					  </p>`
+					? renderCitation(solution.citation)
 					: '';
 				const sanitizedSnippet = DOMPurify.sanitize(solution.htmlSnippet);
 
 				return `<h3 class='solutionHeading' id="solution-${index + 1}-heading">Suggestion ${index + 1}</h3>
 				<div class='snippetContainer' aria-labelledby="solution-${index + 1}-heading" role="group" data-solution-index="${index}">${sanitizedSnippet
 					}</div>
-				${DOMPurify.sanitize(renderedCitation)}
+				${renderedCitation}
 				<vscode-button role="button" class="acceptButton" id="acceptButton${index}" appearance="secondary" data-solution-index="${index}">Accept suggestion ${index + 1
 					}</vscode-button>`;
 			})
