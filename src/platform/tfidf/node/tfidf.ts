@@ -171,6 +171,8 @@ interface TfIdfDocData {
 export class PersistentTfIdf {
 
 	private readonly db!: sql.DatabaseSync;
+	private _getDocStmt: sql.Statement | undefined;
+	private _getChunksStmt: sql.Statement | undefined;
 
 	constructor(dbPath: URI | ':memory:') {
 		const syncOptions: sql.DatabaseSyncOptions = {
@@ -328,28 +330,39 @@ export class PersistentTfIdf {
 
 	public delete(uris: Iterable<URI>): void {
 		this.db.exec('BEGIN TRANSACTION');
+
+		const deleteDocStmt = this.db.prepare(
+			'DELETE FROM Documents WHERE uri = ?'
+		);
+		const updateChunkOccurrencesStmt = this.db.prepare(`
+			UPDATE ChunkOccurrences
+			SET chunkCount = chunkCount - ?
+			WHERE term = ?;
+		`);
+
+		const totalOccurrencesToRemove: Record<string, number> = Object.create(null);
+
 		for (const uri of uris) {
 			const doc = this.getDoc(uri);
 			if (!doc) {
 				continue;
 			}
 
-			this.db.prepare(`
-				DELETE FROM Documents WHERE uri = ?
-			`).run(uri.toString());
+			deleteDocStmt.run(uri.toString());
 
 			this._cachedChunkCount = undefined;
 
 			const allOccurrences = countRecordFrom(doc.chunks.flatMap(chunk => Object.keys(chunk.tf)));
 
 			for (const [term, count] of Object.entries(allOccurrences)) {
-				this.db.prepare(`
-					UPDATE ChunkOccurrences
-					SET chunkCount = chunkCount - ?
-					WHERE term = ?;
-				`).run(count, term);
+				totalOccurrencesToRemove[term] = (totalOccurrencesToRemove[term] ?? 0) + count;
 			}
 		}
+
+		for (const [term, count] of Object.entries(totalOccurrencesToRemove)) {
+			updateChunkOccurrencesStmt.run(count, term);
+		}
+
 		this.db.exec('COMMIT');
 
 		this.db.prepare(`
@@ -466,6 +479,13 @@ export class PersistentTfIdf {
 		// Track this for the entire set of documents so we can do a single update
 		const allChunkOccurrences: Record<string, number> = Object.create(null);
 
+		const insertDocStmt = this.db.prepare(
+			'INSERT OR REPLACE INTO Documents (uri, contentVersionId) VALUES (?, ?)'
+		);
+		const insertChunkStmt = this.db.prepare(
+			'INSERT INTO Chunks (documentId, text, startLineNumber, startColumn, endLineNumber, endColumn, isFullFile, termFrequencies) VALUES (?, ?, ?, ?, ?, ?, ?, jsonb(?))'
+		);
+
 		const processBatch = (docs: ReadonlyArray<{ uri: URI; doc: TfIdfDocData }>) => {
 			// Delete existing documents
 			// This should also clear the chunks and terms due to the foreign key constraints
@@ -475,19 +495,10 @@ export class PersistentTfIdf {
 			try {
 				for (const { uri, doc } of docs) {
 					// Add new the document
-					const docId = this.db.prepare(
-						'INSERT OR REPLACE INTO Documents (uri, contentVersionId) VALUES (?, ?)'
-					)
-						.run(uri.toString(), doc.contentVersionId)
-						.lastInsertRowid;
-
-					// Insert new chunks
-					const insertChunkOp = this.db.prepare(
-						'INSERT INTO Chunks (documentId, text, startLineNumber, startColumn, endLineNumber, endColumn, isFullFile, termFrequencies) VALUES (?, ?, ?, ?, ?, ?, ?, jsonb(?))'
-					);
+					const docId = insertDocStmt.run(uri.toString(), doc.contentVersionId).lastInsertRowid;
 
 					for (const chunk of doc.chunks) {
-						insertChunkOp.run(
+						insertChunkStmt.run(
 							docId,
 							chunk.chunk.text,
 							chunk.chunk.range.startLineNumber,
@@ -539,16 +550,22 @@ export class PersistentTfIdf {
 	}
 
 	private getDoc(uri: URI): TfIdfDocData | undefined {
-		const doc = this.db.prepare(
-			'SELECT id, contentVersionId FROM Documents WHERE uri = ?'
-		).get(uri.toString());
+		if (!this._getDocStmt) {
+			this._getDocStmt = this.db.prepare(
+				'SELECT id, contentVersionId FROM Documents WHERE uri = ?'
+			);
+		}
+		const doc = this._getDocStmt.get(uri.toString()) as any;
 		if (!doc) {
 			return undefined;
 		}
 
-		const chunks = this.db.prepare(
-			'SELECT text, startLineNumber, startColumn, endLineNumber, endColumn, isFullFile, json(termFrequencies) as termFrequencies FROM Chunks WHERE documentId = ?'
-		).all(doc.id);
+		if (!this._getChunksStmt) {
+			this._getChunksStmt = this.db.prepare(
+				'SELECT text, startLineNumber, startColumn, endLineNumber, endColumn, isFullFile, json(termFrequencies) as termFrequencies FROM Chunks WHERE documentId = ?'
+			);
+		}
+		const chunks = this._getChunksStmt.all(doc.id);
 		return {
 			contentVersionId: doc.contentVersionId as string,
 			chunks: chunks.map(row => {
