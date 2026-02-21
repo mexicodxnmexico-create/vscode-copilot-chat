@@ -55,9 +55,9 @@ function handleSolutionUpdate(message: Message) {
 			.map((solution, index) => {
 				const renderedCitation = solution.citation
 					? `<p>
-						<span style="vertical-align: text-bottom" aria-hidden="true">Warning</span>
+						<span style="vertical-align: text-bottom"><strong>&#9888; Warning:</strong></span>
 						${DOMPurify.sanitize(solution.citation.message)}
-						<a href="${DOMPurify.sanitize(solution.citation.url)}" target="_blank">Inspect source code</a>
+						<a href="${DOMPurify.sanitize(solution.citation.url)}" target="_blank" rel="noopener noreferrer">Inspect source code</a>
 					  </p>`
 					: '';
 				const sanitizedSnippet = DOMPurify.sanitize(solution.htmlSnippet);
