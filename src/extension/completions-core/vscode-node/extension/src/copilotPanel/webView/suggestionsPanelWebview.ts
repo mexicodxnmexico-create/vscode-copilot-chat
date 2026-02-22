@@ -55,9 +55,9 @@ function handleSolutionUpdate(message: Message) {
 			.map((solution, index) => {
 				const renderedCitation = solution.citation
 					? `<p>
-						<span style="vertical-align: text-bottom" aria-hidden="true">Warning</span>
+						<span style="vertical-align: text-bottom">Warning: </span>
 						${DOMPurify.sanitize(solution.citation.message)}
-						<a href="${DOMPurify.sanitize(solution.citation.url)}" target="_blank">Inspect source code</a>
+						<a href="${DOMPurify.sanitize(solution.citation.url)}" target="_blank" rel="noopener noreferrer" aria-label="Inspect source code (opens in a new window)">Inspect source code</a>
 					  </p>`
 					: '';
 				const sanitizedSnippet = DOMPurify.sanitize(solution.htmlSnippet);
@@ -66,7 +66,7 @@ function handleSolutionUpdate(message: Message) {
 				<div class='snippetContainer' aria-labelledby="solution-${index + 1}-heading" role="group" data-solution-index="${index}">${sanitizedSnippet
 					}</div>
 				${DOMPurify.sanitize(renderedCitation)}
-				<vscode-button role="button" class="acceptButton" id="acceptButton${index}" appearance="secondary" data-solution-index="${index}">Accept suggestion ${index + 1
+				<vscode-button class="acceptButton" id="acceptButton${index}" appearance="secondary" data-solution-index="${index}">Accept suggestion ${index + 1
 					}</vscode-button>`;
 			})
 			.join('');
@@ -99,7 +99,13 @@ function updateLoadingContainer(message: Message) {
 	}
 	if (message.percentage >= 100) {
 		loadingContainer.innerHTML = `${message.solutions.length} Suggestions`;
+		if (solutionsContainer) {
+			solutionsContainer.setAttribute('aria-busy', 'false');
+		}
 	} else {
+		if (solutionsContainer) {
+			solutionsContainer.setAttribute('aria-busy', 'true');
+		}
 		const loadingLabelElement = loadingContainer.querySelector('label') as HTMLLabelElement;
 		if (loadingLabelElement.textContent !== 'Loading suggestions:\u00A0') {
 			loadingLabelElement.textContent = 'Loading suggestions:\u00A0';
