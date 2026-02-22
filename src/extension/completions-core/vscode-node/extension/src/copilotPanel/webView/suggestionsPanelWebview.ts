@@ -51,6 +51,12 @@ function handleSolutionUpdate(message: Message) {
 	updateLoadingContainer(message);
 
 	if (solutionsContainer) {
+		if (message.percentage >= 100) {
+			solutionsContainer.setAttribute('aria-busy', 'false');
+		} else {
+			solutionsContainer.setAttribute('aria-busy', 'true');
+		}
+
 		solutionsContainer.innerHTML = message.solutions
 			.map((solution, index) => {
 				const renderedCitation = solution.citation
@@ -70,6 +76,11 @@ function handleSolutionUpdate(message: Message) {
 					}</vscode-button>`;
 			})
 			.join('');
+
+		const snippets = solutionsContainer.querySelectorAll('pre');
+		snippets.forEach(snippet => {
+			snippet.setAttribute('tabindex', '0');
+		});
 	}
 }
 
