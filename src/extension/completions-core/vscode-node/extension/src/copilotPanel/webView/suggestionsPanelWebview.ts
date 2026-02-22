@@ -55,7 +55,7 @@ function handleSolutionUpdate(message: Message) {
 			.map((solution, index) => {
 				const renderedCitation = solution.citation
 					? `<p>
-						<span style="vertical-align: text-bottom" aria-hidden="true">Warning</span>
+						<span style="vertical-align: text-bottom">Warning:</span>
 						${DOMPurify.sanitize(solution.citation.message)}
 						<a href="${DOMPurify.sanitize(solution.citation.url)}" target="_blank">Inspect source code</a>
 					  </p>`
@@ -99,6 +99,10 @@ function updateLoadingContainer(message: Message) {
 	}
 	if (message.percentage >= 100) {
 		loadingContainer.innerHTML = `${message.solutions.length} Suggestions`;
+		if (solutionsContainer) {
+			solutionsContainer.setAttribute('aria-busy', 'false');
+			solutionsContainer.removeAttribute('aria-describedby');
+		}
 	} else {
 		const loadingLabelElement = loadingContainer.querySelector('label') as HTMLLabelElement;
 		if (loadingLabelElement.textContent !== 'Loading suggestions:\u00A0') {
