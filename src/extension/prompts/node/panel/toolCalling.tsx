@@ -11,6 +11,7 @@ import { IChatHookService, IPreToolUseHookResult } from '../../../../platform/ch
 import { ISessionTranscriptService } from '../../../../platform/chat/common/sessionTranscriptService';
 import { ConfigKey, IConfigurationService } from '../../../../platform/configuration/common/configurationService';
 import { modelCanUseMcpResultImageURL } from '../../../../platform/endpoint/common/chatModelCapabilities';
+import { CompactionDataContainer } from '../../../../platform/endpoint/common/compactionDataContainer';
 import { IEndpointProvider } from '../../../../platform/endpoint/common/endpointProvider';
 import { CacheType } from '../../../../platform/endpoint/common/endpointTypes';
 import { PhaseDataContainer } from '../../../../platform/endpoint/common/phaseDataContainer';
@@ -117,11 +118,13 @@ export class ChatToolCalls extends PromptElement<ChatToolCallsProps, void> {
 		const statefulMarker = round.statefulMarker && <StatefulMarkerContainer statefulMarker={{ modelId: this.promptEndpoint.model, marker: round.statefulMarker }} />;
 		const thinking = (!this.props.isHistorical) && round.thinking && <ThinkingDataContainer thinking={round.thinking} />;
 		const phase = (round.phase && round.phaseModelId === this.promptEndpoint.model) ? <PhaseDataContainer phase={round.phase} /> : undefined;
+		const compaction = round.compaction && <CompactionDataContainer compaction={round.compaction} />;
 		children.push(
 			<AssistantMessage toolCalls={assistantToolCalls}>
 				{statefulMarker}
 				{thinking}
 				{phase}
+				{compaction}
 				{round.response}
 			</AssistantMessage>);
 
@@ -239,7 +242,8 @@ function buildToolResultElement(accessor: ServicesAccessor, props: ToolResultOpt
 					const hookResult = await chatHookService.executePreToolUseHook(
 						props.toolCall.name, inputObj, props.toolCall.id,
 						promptContext.request?.hooks, promptContext.conversation?.sessionId,
-						CancellationToken.None
+						CancellationToken.None,
+						promptContext.stream
 					);
 
 					// Apply updatedInput from hook (input modification takes effect before invocation)
@@ -248,14 +252,12 @@ function buildToolResultElement(accessor: ServicesAccessor, props: ToolResultOpt
 					}
 
 					const subAgentInvocationId = promptContext.request?.subAgentInvocationId;
-					const subAgentName = promptContext.request?.subAgentName;
 					const invocationOptions: LanguageModelToolInvocationOptions<unknown> = {
 						input: inputObj,
 						toolInvocationToken: props.toolInvocationToken,
 						tokenizationOptions,
 						chatRequestId: props.requestId,
 						subAgentInvocationId,
-						subAgentName,
 						// Split on `__vscode` so it's the chat stream id
 						// TODO @lramos15 - This is a gross hack
 						chatStreamToolCallId: props.toolCall.id.split('__vscode')[0],
@@ -305,7 +307,7 @@ function buildToolResultElement(accessor: ServicesAccessor, props: ToolResultOpt
 	}
 
 	let call: IToolResultElementActualProps['call'];
-	if (tool?.source instanceof LanguageModelToolMCPSource || tool?.name === 'runSubagent') {
+	if (tool?.source instanceof LanguageModelToolMCPSource || tool?.name && toolsCalledInParallel.has(tool.name as ToolName)) {
 		const promise = getToolResult({ tokenBudget: 1, countTokens: () => 1, endpoint: { modelMaxPromptTokens: 1 } });
 		call = () => promise;
 	} else {
@@ -322,6 +324,20 @@ function buildToolResultElement(accessor: ServicesAccessor, props: ToolResultOpt
 	/>;
 }
 
+const toolsCalledInParallel = new Set<ToolName>([
+	ToolName.CoreRunSubagent,
+	ToolName.ReadFile,
+	ToolName.FindFiles,
+	ToolName.FindTextInFiles,
+	ToolName.ListDirectory,
+	ToolName.Codebase,
+	ToolName.GetErrors,
+	ToolName.GetScmChanges,
+	ToolName.GetNotebookSummary,
+	ToolName.ReadCellOutput,
+	ToolName.InstallExtension,
+	ToolName.FetchWebPage,
+]);
 
 async function sendToolCallTelemetry(props: ToolResultOpts, promptContext: IBuildPromptContext, invokeOutcome: ToolInvocationOutcome, validateOutcome: ToolValidationOutcome, endpointProvider: IEndpointProvider, telemetryService: ITelemetryService) {
 	const model = promptContext.request?.model && (await endpointProvider.getChatEndpoint(promptContext.request?.model)).model;
@@ -473,7 +489,8 @@ async function appendHookContext(
 		props.toolCall.name, toolInput,
 		toolResultToText(toolResult),
 		props.toolCall.id, promptContext.request?.hooks,
-		promptContext.conversation?.sessionId, CancellationToken.None
+		promptContext.conversation?.sessionId, CancellationToken.None,
+		promptContext.stream
 	);
 	if (postHookResult?.decision === 'block') {
 		const blockReason = postHookResult.reason ?? 'Hook blocked tool result';
