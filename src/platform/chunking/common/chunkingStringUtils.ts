@@ -40,10 +40,78 @@ export function truncateToMaxUtf8Length(str: string, maxBytes: number): string {
  */
 
 export function stripChunkTextMetadata(text: string): string {
-	const lines = splitLines(text);
-	if (lines.length >= 3 && lines[0].startsWith('File: ') && lines[1].startsWith('```') && lines.at(-1)?.startsWith('```')) {
-		return lines.slice(2, -1).join('\n');
+	if (!text.startsWith('File: ')) {
+		return text;
 	}
-	return text;
-}
 
+	const re = /\r\n|\r|\n/g;
+	const match1 = re.exec(text);
+	if (!match1) {
+		return text;
+	}
+
+	const secondLineStart = match1.index + match1[0].length;
+	// Check if we have a second line at all
+	const match2 = re.exec(text);
+	if (!match2) {
+		return text;
+	}
+
+	// Check if second line starts with ```
+	// We check substring from secondLineStart to match2.index
+	// Actually we just need to check startsWith at the offset
+	if (!text.startsWith('```', secondLineStart)) {
+		return text;
+	}
+
+	// Find the last line start
+	let lastSepIndex = -1;
+	let lastSepLength = 0;
+
+	// Scan backwards for the last separator
+	for (let i = text.length - 1; i >= secondLineStart; i--) {
+		const c = text.charCodeAt(i);
+		if (c === 10) { // \n
+			if (i > 0 && text.charCodeAt(i - 1) === 13) { // \r
+				lastSepIndex = i - 1;
+				lastSepLength = 2;
+			} else {
+				lastSepIndex = i;
+				lastSepLength = 1;
+			}
+			break;
+		} else if (c === 13) { // \r
+			lastSepIndex = i;
+			lastSepLength = 1;
+			break;
+		}
+	}
+
+	// Calculate where the last line starts
+	// If no separator found after match2 (or lastSepIndex IS match2),
+	// then the last line starts after match2.
+	let lastLineStart: number;
+	if (lastSepIndex > match2.index) {
+		lastLineStart = lastSepIndex + lastSepLength;
+	} else {
+		// Only 2 separators found, so last line starts after the second one
+		lastLineStart = match2.index + match2[0].length;
+		// Update lastSepIndex to match2 for contentEnd calculation
+		lastSepIndex = match2.index;
+	}
+
+	// Check if last line starts with ```
+	if (!text.startsWith('```', lastLineStart)) {
+		return text;
+	}
+
+	const contentStart = match2.index + match2[0].length;
+	const contentEnd = lastSepIndex;
+
+	if (contentEnd <= contentStart) {
+		return '';
+	}
+
+	// Extract and normalize newlines to \n
+	return text.substring(contentStart, contentEnd).replace(/\r\n|\r/g, '\n');
+}
