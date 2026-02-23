@@ -5,11 +5,10 @@
 
 import type * as vscode from 'vscode';
 import { filterMap } from '../../../util/common/arrays';
-import { TaskQueue } from '../../../util/common/async';
 import * as errors from '../../../util/common/errors';
 import { pushMany } from '../../../util/vs/base/common/arrays';
 import { assertNever, softAssert } from '../../../util/vs/base/common/assert';
-import { Emitter, Event } from '../../../util/vs/base/common/event';
+import { Event } from '../../../util/vs/base/common/event';
 import { Disposable } from '../../../util/vs/base/common/lifecycle';
 import { derived, IObservable, observableFromEvent } from '../../../util/vs/base/common/observable';
 import { CopilotToken } from '../../authentication/common/copilotToken';
@@ -21,7 +20,7 @@ import { IProxyModelsService } from '../../proxyModels/common/proxyModelsService
 import { IExperimentationService } from '../../telemetry/common/nullExperimentationService';
 import { ITelemetryService } from '../../telemetry/common/telemetry';
 import { WireTypes } from '../common/dataTypes/inlineEditsModelsTypes';
-import { isPromptingStrategy, LintOptions, MODEL_CONFIGURATION_VALIDATOR, ModelConfiguration, PromptingStrategy } from '../common/dataTypes/xtabPromptOptions';
+import { isPromptingStrategy, LintOptions, ModelConfiguration, PromptingStrategy } from '../common/dataTypes/xtabPromptOptions';
 import { IInlineEditsModelService, IUndesiredModelsManager } from '../common/inlineEditsModelService';
 
 const enum ModelSource {
@@ -82,8 +81,6 @@ export class InlineEditsModelService extends Disposable implements IInlineEditsM
 	private _localModelConfigObs = this._configService.getConfigObservable(ConfigKey.TeamInternal.InlineEditsXtabProviderModelConfiguration);
 	private _expBasedModelConfigObs = this._configService.getExperimentBasedConfigObservable(ConfigKey.TeamInternal.InlineEditsXtabProviderModelConfigurationString, this._expService);
 	private _defaultModelConfigObs = this._configService.getExperimentBasedConfigObservable(ConfigKey.TeamInternal.InlineEditsXtabProviderDefaultModelConfigurationString, this._expService);
-	private _useSlashModelsObs = this._configService.getExperimentBasedConfigObservable(ConfigKey.TeamInternal.InlineEditsUseSlashModels, this._expService);
-	private _undesiredModelsObs = observableFromEvent(this, this._undesiredModelsManager.onDidChange, () => this._undesiredModelsManager);
 
 	private _modelsObs: IObservable<Model[]>;
 	private _currentModelObs: IObservable<Model>;
@@ -91,7 +88,6 @@ export class InlineEditsModelService extends Disposable implements IInlineEditsM
 
 	public readonly onModelListUpdated: Event<void>;
 
-	private readonly _setModelQueue = new TaskQueue();
 	private _logger: ILogger;
 
 	constructor(
@@ -117,17 +113,14 @@ export class InlineEditsModelService extends Disposable implements IInlineEditsM
 				localModelConfig: this._localModelConfigObs.read(reader),
 				modelConfigString: this._expBasedModelConfigObs.read(reader),
 				defaultModelConfigString: this._defaultModelConfigObs.read(reader),
-				useSlashModels: this._useSlashModelsObs.read(reader),
 			});
 		}).recomputeInitiallyAndOnChange(this._store);
 
 		this._currentModelObs = derived<Model, void>((reader) => {
 			logger.trace('computing current model');
-			const undesiredModelsManager = this._undesiredModelsObs.read(reader);
 			return this._pickModel({
 				preferredModelName: this._preferredModelNameObs.read(reader),
 				models: this._modelsObs.read(reader),
-				undesiredModelsManager,
 			});
 		}).recomputeInitiallyAndOnChange(this._store);
 
@@ -157,11 +150,8 @@ export class InlineEditsModelService extends Disposable implements IInlineEditsM
 	}
 
 
-	setCurrentModelId(newPreferredModelId: string): Promise<void> {
-		return this._setModelQueue.schedule(() => this._setCurrentModelIdCore(newPreferredModelId));
-	}
-
-	private async _setCurrentModelIdCore(newPreferredModelId: string): Promise<void> {
+	// FIXME@ulugbekna: don't do async risking race condition; use a TaskQueue to serialize updates?
+	async setCurrentModelId(newPreferredModelId: string): Promise<void> {
 		const currentPreferredModelId = this._configService.getExperimentBasedConfig(ConfigKey.Advanced.InlineEditsPreferredModel, this._expService);
 
 		const isSameModel = currentPreferredModelId === newPreferredModelId;
@@ -191,7 +181,7 @@ export class InlineEditsModelService extends Disposable implements IInlineEditsM
 
 		// if user picks same as the default model, we should reset the user setting
 		// otherwise, update the model
-		const expectedDefaultModel = this._pickModel({ preferredModelName: 'none', models, undesiredModelsManager: this._undesiredModelsManager });
+		const expectedDefaultModel = this._pickModel({ preferredModelName: 'none', models });
 		if (newPreferredModel.source === ModelSource.ExpConfig || // because exp-configured model already takes highest priority
 			(newPreferredModelId === expectedDefaultModel.modelName && !models.some(m => m.source === ModelSource.ExpConfig))
 		) {
@@ -210,14 +200,12 @@ export class InlineEditsModelService extends Disposable implements IInlineEditsM
 			localModelConfig,
 			modelConfigString,
 			defaultModelConfigString,
-			useSlashModels,
 		}: {
 			copilotToken: CopilotToken | undefined;
 			fetchedNesModels: WireTypes.Model.t[] | undefined;
 			localModelConfig: ModelConfiguration | undefined;
 			modelConfigString: string | undefined;
 			defaultModelConfigString: string | undefined;
-			useSlashModels: boolean;
 		},
 	): Model[] {
 		const logger = this._logger.createSubLogger('aggregateModels');
@@ -240,7 +228,7 @@ export class InlineEditsModelService extends Disposable implements IInlineEditsM
 
 		if (modelConfigString) {
 			logger.trace('Parsing modelConfigurationString...');
-			const parsedConfig = this.parseModelConfigString(modelConfigString, ConfigKey.TeamInternal.InlineEditsXtabProviderModelConfigurationString);
+			const parsedConfig = this.parseModelConfigStringSetting(ConfigKey.TeamInternal.InlineEditsXtabProviderModelConfigurationString);
 			if (parsedConfig && !models.some(m => m.modelName === parsedConfig.modelName)) {
 				logger.trace(`Adding model from modelConfigurationString: ${parsedConfig.modelName}`);
 				models.push({ ...parsedConfig, source: ModelSource.ExpConfig });
@@ -249,6 +237,7 @@ export class InlineEditsModelService extends Disposable implements IInlineEditsM
 			}
 		}
 
+		const useSlashModels = this._configService.getExperimentBasedConfig(ConfigKey.TeamInternal.InlineEditsUseSlashModels, this._expService);
 		if (useSlashModels && fetchedNesModels && fetchedNesModels.length > 0) {
 			logger.trace(`Processing ${fetchedNesModels.length} fetched models...`);
 			const filteredFetchedModels = filterMap(fetchedNesModels, (m) => {
@@ -288,13 +277,19 @@ export class InlineEditsModelService extends Disposable implements IInlineEditsM
 	}
 
 	public selectedModelConfiguration(): ModelConfiguration {
+		const logger = this._logger.createSubLogger('selectedModelConfiguration');
 		const model = this._currentModelObs.get();
-		return {
-			modelName: model.modelName,
-			promptingStrategy: model.promptingStrategy,
-			includeTagsInCurrentFile: model.includeTagsInCurrentFile,
-			lintOptions: model.lintOptions,
-		};
+		if (model) {
+			logger.trace(`Selected model found: ${model.modelName}`);
+			return {
+				modelName: model.modelName,
+				promptingStrategy: model.promptingStrategy,
+				includeTagsInCurrentFile: model.includeTagsInCurrentFile,
+				lintOptions: model.lintOptions,
+			};
+		}
+		logger.trace('No selected model found, using default model.');
+		return this.determineDefaultModel(this._copilotTokenObs.get(), this._defaultModelConfigObs.get());
 	}
 
 	public defaultModelConfiguration(): ModelConfiguration {
@@ -325,7 +320,7 @@ export class InlineEditsModelService extends Disposable implements IInlineEditsM
 	private determineDefaultModel(copilotToken: CopilotToken | undefined, defaultModelConfigString: string | undefined): Model {
 		// if a default model config string is specified, use that
 		if (defaultModelConfigString) {
-			const parsedConfig = this.parseModelConfigString(defaultModelConfigString, ConfigKey.TeamInternal.InlineEditsXtabProviderDefaultModelConfigurationString);
+			const parsedConfig = this.parseModelConfigStringSetting(ConfigKey.TeamInternal.InlineEditsXtabProviderDefaultModelConfigurationString);
 			if (parsedConfig) {
 				return { ...parsedConfig, source: ModelSource.ExpDefaultConfig };
 			}
@@ -343,12 +338,10 @@ export class InlineEditsModelService extends Disposable implements IInlineEditsM
 
 	private _pickModel({
 		preferredModelName,
-		models,
-		undesiredModelsManager,
+		models
 	}: {
 		preferredModelName: string;
 		models: Model[];
-		undesiredModelsManager: IUndesiredModelsManager;
 	}): Model {
 		// priority of picking a model:
 		// 0. model from modelConfigurationString setting from ExP, unless marked as undesired
@@ -357,7 +350,7 @@ export class InlineEditsModelService extends Disposable implements IInlineEditsM
 
 		const expConfiguredModel = models.find(m => m.source === ModelSource.ExpConfig);
 		if (expConfiguredModel) {
-			const isUndesiredModelId = undesiredModelsManager.isUndesiredModelId(expConfiguredModel.modelName);
+			const isUndesiredModelId = this._undesiredModelsManager.isUndesiredModelId(expConfiguredModel.modelName);
 			if (isUndesiredModelId) {
 				this._logger.trace(`Exp-configured model ${expConfiguredModel.modelName} is marked as undesired by the user. Skipping.`);
 			} else {
@@ -384,30 +377,30 @@ export class InlineEditsModelService extends Disposable implements IInlineEditsM
 		return this.determineDefaultModel(this._copilotTokenObs.get(), this._defaultModelConfigObs.get());
 	}
 
-	private parseModelConfigString(configString: string, configKey: ExperimentBasedConfig<string | undefined>): ModelConfiguration | undefined {
-		let errorMessage: string;
-		try {
-			const parsed: unknown = JSON.parse(configString);
-			const result = MODEL_CONFIGURATION_VALIDATOR.validate(parsed);
-			if (!result.error) {
-				return result.content;
-			}
-			errorMessage = result.error.message;
-		} catch (e: unknown) {
-			errorMessage = errors.toString(errors.fromUnknown(e));
+	private parseModelConfigStringSetting(configKey: ExperimentBasedConfig<string | undefined>): ModelConfiguration | undefined {
+		const configString = this._configService.getExperimentBasedConfig(configKey, this._expService);
+		if (configString === undefined) {
+			return undefined;
 		}
 
-		/* __GDPR__
-			"incorrectNesModelConfig" : {
-				"owner": "ulugbekna",
-				"comment": "Capture if model configuration string is invalid or malformed.",
-				"configName": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "Name of the configuration that failed to parse." },
-				"errorMessage": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "Error message from parsing or validation." },
-				"configValue": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The invalid config string." }
-			}
-		*/
-		this._telemetryService.sendMSFTTelemetryEvent('incorrectNesModelConfig', { configName: configKey.id, errorMessage, configValue: configString });
-		return undefined;
+		let parsedConfig: ModelConfiguration | undefined;
+		try {
+			parsedConfig = JSON.parse(configString);
+			// FIXME@ulugbekna: validate parsedConfig structure
+		} catch (e: unknown) {
+			/* __GDPR__
+				"incorrectNesModelConfig" : {
+					"owner": "ulugbekna",
+					"comment": "Capture if model configuration string is invalid JSON.",
+					"configName": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "Name of the configuration that failed to parse." },
+					"errorMessage": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "Error message from JSON.parse." },
+					"configValue": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The invalid JSON string." }
+				}
+			*/
+			this._telemetryService.sendMSFTTelemetryEvent('incorrectNesModelConfig', { configName: configKey.id, errorMessage: errors.toString(errors.fromUnknown(e)), configValue: configString });
+		}
+
+		return parsedConfig;
 	}
 }
 
@@ -416,18 +409,12 @@ export namespace UndesiredModels {
 	const UNDESIRED_MODELS_KEY = 'copilot.chat.nextEdits.undesiredModelIds';
 	type UndesiredModelsValue = string[];
 
-	export class Manager extends Disposable implements IUndesiredModelsManager {
+	export class Manager implements IUndesiredModelsManager {
 		declare _serviceBrand: undefined;
-
-		private readonly _onDidChange = this._register(new Emitter<void>());
-		readonly onDidChange = this._onDidChange.event;
-
-		private readonly _queue = new TaskQueue();
 
 		constructor(
 			@IVSCodeExtensionContext private readonly _vscodeExtensionContext: IVSCodeExtensionContext,
 		) {
-			super();
 		}
 
 		isUndesiredModelId(modelId: string) {
@@ -436,26 +423,22 @@ export namespace UndesiredModels {
 		}
 
 		addUndesiredModelId(modelId: string): Promise<void> {
-			return this._queue.schedule(async () => {
-				const models = this._getModels();
-				if (!models.includes(modelId)) {
-					models.push(modelId);
-					await this._setModels(models);
-					this._onDidChange.fire();
-				}
-			});
+			const models = this._getModels();
+			if (!models.includes(modelId)) {
+				models.push(modelId);
+				return this._setModels(models);
+			}
+			return Promise.resolve();
 		}
 
 		removeUndesiredModelId(modelId: string): Promise<void> {
-			return this._queue.schedule(async () => {
-				const models = this._getModels();
-				const index = models.indexOf(modelId);
-				if (index !== -1) {
-					models.splice(index, 1);
-					await this._setModels(models);
-					this._onDidChange.fire();
-				}
-			});
+			const models = this._getModels();
+			const index = models.indexOf(modelId);
+			if (index !== -1) {
+				models.splice(index, 1);
+				return this._setModels(models);
+			}
+			return Promise.resolve();
 		}
 
 		private _getModels(): string[] {

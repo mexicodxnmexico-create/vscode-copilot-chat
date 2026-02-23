@@ -6,10 +6,8 @@
 import { spawn } from 'child_process';
 import { homedir } from 'os';
 import type { CancellationToken, ChatHookCommand, Uri } from 'vscode';
-import { removeAnsiEscapeCodes } from '../../../util/vs/base/common/strings';
 import { ILogService } from '../../log/common/logService';
 import { HookCommandResultKind, IHookCommandResult, IHookExecutor } from '../common/hookExecutor';
-import { IHooksOutputChannel } from '../common/hooksOutputChannel';
 
 const SIGKILL_DELAY_MS = 5000;
 const DEFAULT_TIMEOUT_SEC = 30;
@@ -18,8 +16,7 @@ export class NodeHookExecutor implements IHookExecutor {
 	declare readonly _serviceBrand: undefined;
 
 	constructor(
-		@ILogService private readonly _logService: ILogService,
-		@IHooksOutputChannel private readonly _outputChannel: IHooksOutputChannel,
+		@ILogService private readonly _logService: ILogService
 	) { }
 
 	async executeCommand(
@@ -33,13 +30,9 @@ export class NodeHookExecutor implements IHookExecutor {
 			return await this._spawn(hookCommand, input, token);
 		} catch (err) {
 			// Spawn failures (e.g. command not found) are non-blocking warnings
-			const errMessage = err instanceof Error ? err.message : String(err);
-			const message = `Hook command failed to start: ${hookCommand.command}: ${errMessage}`;
-			this._logService.warn(`[HookExecutor] ${message}`);
-			this._outputChannel.appendLine(`[HookExecutor] ${message}`);
 			return {
 				kind: HookCommandResultKind.NonBlockingError,
-				result: errMessage
+				result: err instanceof Error ? err.message : String(err)
 			};
 		}
 	}
@@ -62,13 +55,11 @@ export class NodeHookExecutor implements IHookExecutor {
 
 			let sigkillTimer: ReturnType<typeof setTimeout> | undefined;
 			let tokenListener: { dispose(): void } | undefined;
-			let killReason: 'timeout' | 'cancelled' | undefined;
 
-			const killWithEscalation = (reason: 'timeout' | 'cancelled') => {
+			const killWithEscalation = () => {
 				if (exited) {
 					return;
 				}
-				killReason = reason;
 				child.kill('SIGTERM');
 				sigkillTimer = setTimeout(() => {
 					if (!exited) {
@@ -91,11 +82,11 @@ export class NodeHookExecutor implements IHookExecutor {
 			child.stderr.on('data', data => stderr.push(data.toString()));
 
 			// Set up timeout
-			const timeoutTimer = setTimeout(() => killWithEscalation('timeout'), (hook.timeout ?? DEFAULT_TIMEOUT_SEC) * 1000);
+			const timeoutTimer = setTimeout(killWithEscalation, (hook.timeoutSec ?? DEFAULT_TIMEOUT_SEC) * 1000);
 
 			// Set up cancellation
 			if (token) {
-				tokenListener = token.onCancellationRequested(() => killWithEscalation('cancelled'));
+				tokenListener = token.onCancellationRequested(killWithEscalation);
 			}
 
 			// Write input to stdin
@@ -120,29 +111,16 @@ export class NodeHookExecutor implements IHookExecutor {
 			// Resolve on close (after streams flush)
 			child.on('close', () => {
 				cleanup();
-
-				if (killReason === 'timeout') {
-					const message = `Hook command timed out after ${hook.timeout ?? DEFAULT_TIMEOUT_SEC}s: ${hook.command}`;
-					this._logService.warn(`[HookExecutor] ${message}`);
-					this._outputChannel.appendLine(`[HookExecutor] ${message}`);
-				} else if (killReason === 'cancelled') {
-					this._outputChannel.appendLine(`[HookExecutor] Hook command was cancelled: ${hook.command}`);
-				}
-
 				const code = exitCode ?? 1;
 				const stdoutStr = stdout.join('');
-				const stderrStr = removeAnsiEscapeCodes(stderr.join(''));
+				const stderrStr = stderr.join('');
 
 				if (code === 0) {
 					let result: string | object = stdoutStr;
-					if (stdoutStr) {
-						try {
-							result = JSON.parse(stdoutStr);
-						} catch {
-							const message = `Hook command returned non-JSON output: ${hook.command}`;
-							this._logService.warn(`[HookExecutor] ${message}`);
-							this._outputChannel.appendLine(`[HookExecutor] ${message}`);
-						}
+					try {
+						result = JSON.parse(stdoutStr);
+					} catch {
+						// Keep as string if not valid JSON
 					}
 					resolve({ kind: HookCommandResultKind.Success, result });
 				} else if (code === 2) {

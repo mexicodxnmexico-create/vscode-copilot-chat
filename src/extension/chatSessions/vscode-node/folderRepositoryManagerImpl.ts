@@ -6,7 +6,6 @@
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { LanguageModelTextPart } from 'vscode';
-import { IFileSystemService } from '../../../platform/filesystem/common/fileSystemService';
 import { IGitService } from '../../../platform/git/common/gitService';
 import { ILogService } from '../../../platform/log/common/logService';
 import { IWorkspaceService } from '../../../platform/workspace/common/workspaceService';
@@ -24,8 +23,7 @@ import {
 	FolderRepositoryInfo,
 	FolderRepositoryMRUEntry,
 	GetFolderRepositoryOptions,
-	IFolderRepositoryManager,
-	InitializeFolderRepositoryOptions
+	IFolderRepositoryManager
 } from '../common/folderRepositoryManager';
 import { isUntitledSessionId } from '../common/utils';
 
@@ -113,20 +111,6 @@ export abstract class FolderRepositoryManager extends Disposable implements IFol
 		options: GetFolderRepositoryOptions | undefined,
 		token: vscode.CancellationToken
 	): Promise<FolderRepositoryInfo>;
-
-	/**
-	 * @inheritdoc
-	 */
-	async getRepositoryInfo(
-		folder: vscode.Uri,
-		_token: vscode.CancellationToken
-	): Promise<{ repository: vscode.Uri | undefined; headBranchName: string | undefined }> {
-		const repoContext = await this.gitService.getRepository(folder, true);
-		return {
-			repository: repoContext?.rootUri,
-			headBranchName: repoContext?.headBranchName
-		};
-	}
 
 	protected async getFolderRepositoryForNewSession(sessionId: string | undefined, stream: vscode.ChatResponseStream, token: vscode.CancellationToken): Promise<FolderRepositoryInfo> {
 		// Get the selected folder
@@ -245,10 +229,10 @@ export abstract class FolderRepositoryManager extends Disposable implements IFol
 	 */
 	async initializeFolderRepository(
 		sessionId: string | undefined,
-		options: InitializeFolderRepositoryOptions,
+		options: { stream: vscode.ChatResponseStream; toolInvocationToken: vscode.ChatParticipantToolToken },
 		token: vscode.CancellationToken
 	): Promise<FolderRepositoryInfo> {
-		const { stream, toolInvocationToken, branch, isolation } = options;
+		const { stream, toolInvocationToken } = options;
 
 		let { folder, repository, trusted, worktree, worktreeProperties } = await this.getFolderRepositoryForNewSession(sessionId, stream, token);
 		if (trusted === false) {
@@ -257,18 +241,6 @@ export abstract class FolderRepositoryManager extends Disposable implements IFol
 		if (!repository) {
 			// No git repository found, proceed without isolation
 			return { folder, repository, worktree, worktreeProperties, trusted: true };
-		}
-
-		// If user explicitly chose workspace mode, skip worktree creation
-		if (isolation === 'workspace') {
-			this.logService.info(`[FolderRepositoryManager] Workspace isolation mode selected for session ${sessionId}, skipping worktree creation`);
-			return {
-				folder: folder ?? repository,
-				repository: undefined,
-				worktree: undefined,
-				worktreeProperties: undefined,
-				trusted: true
-			};
 		}
 
 		// Check for uncommitted changes and prompt user before creating worktree
@@ -283,7 +255,7 @@ export abstract class FolderRepositoryManager extends Disposable implements IFol
 		}
 
 		// Create worktree for the git repository
-		worktreeProperties = worktreeProperties ?? await this.worktreeService.createWorktree(repository, stream, branch);
+		worktreeProperties = worktreeProperties ?? await this.worktreeService.createWorktree(repository, stream);
 
 		if (!worktreeProperties) {
 			stream.warning(l10n.t('Failed to create worktree. Proceeding without isolation.'));
@@ -572,8 +544,7 @@ export class CopilotCLIFolderRepositoryManager extends FolderRepositoryManager {
 		@IGitService gitService: IGitService,
 		@IWorkspaceService workspaceService: IWorkspaceService,
 		@ILogService logService: ILogService,
-		@IToolsService toolsService: IToolsService,
-		@IFileSystemService private readonly fileSystem: IFileSystemService
+		@IToolsService toolsService: IToolsService
 	) {
 		super(worktreeService, workspaceFolderService, gitService, workspaceService, logService, toolsService);
 	}
@@ -637,8 +608,8 @@ export class CopilotCLIFolderRepositoryManager extends FolderRepositoryManager {
 		}
 
 		// Fall back to CLI session working directory
-		const cwd = this.sessionService.getSessionWorkingDirectory(sessionId);
-		if (cwd && (await checkPathExists(cwd, this.fileSystem))) {
+		const cwd = await this.sessionService.getSessionWorkingDirectory(sessionId, token);
+		if (cwd) {
 			let trusted: boolean | undefined;
 			if (options) {
 				trusted = await this.verifyTrust(cwd, options.stream);
@@ -654,15 +625,6 @@ export class CopilotCLIFolderRepositoryManager extends FolderRepositoryManager {
 		}
 
 		return { folder: undefined, repository: undefined, worktree: undefined, trusted: undefined, worktreeProperties: undefined };
-	}
-}
-
-async function checkPathExists(filePath: vscode.Uri, fileSystem: IFileSystemService): Promise<boolean> {
-	try {
-		await fileSystem.stat(filePath);
-		return true;
-	} catch (error) {
-		return false;
 	}
 }
 

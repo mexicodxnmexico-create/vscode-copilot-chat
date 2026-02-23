@@ -26,6 +26,11 @@ import { InlineEditRequestLogContext } from './inlineEditLogContext';
 import { stringifyChatMessages } from './utils/stringifyChatMessages';
 import { IXtabHistoryEntry } from './workspaceEditTracker/nesXtabHistoryTracker';
 
+export const enum ShowNextEditPreference {
+	Always = 'always',
+	AroundEdit = 'aroundEdit',
+}
+
 export type EditStreaming = AsyncGenerator<StreamedEdit, NoNextEditReason, void>
 
 export class WithStatelessProviderTelemetry<T> {
@@ -55,6 +60,7 @@ export type PushEdit = (edit: Result<StreamedEdit, NoNextEditReason>) => void;
 
 export interface IStatelessNextEditProvider {
 	readonly ID: string;
+	readonly showNextEditPreference?: ShowNextEditPreference;
 	provideNextEdit(request: StatelessNextEditRequest, logger: ILogger, logContext: InlineEditRequestLogContext, cancellationToken: CancellationToken): EditStreamingWithTelemetry;
 	handleAcceptance?(): void;
 	handleRejection?(): void;
@@ -77,7 +83,7 @@ export class StatelessNextEditRequest<TFirstEdit = any> {
 	}
 
 	constructor(
-		public readonly headerRequestId: string,
+		public readonly id: string,
 		public readonly opportunityId: string,
 		public readonly documentBeforeEdits: StringText,
 		public readonly documents: readonly StatelessNextEditDocument[],
@@ -112,7 +118,7 @@ export class StatelessNextEditRequest<TFirstEdit = any> {
 
 	serialize(): ISerializedNextEditRequest {
 		return {
-			id: this.headerRequestId,
+			id: this.id,
 			documents: this.documents.map(d => d.serialize()),
 			activeDocumentIdx: this.activeDocumentIdx,
 			recording: this.recording,
@@ -231,7 +237,7 @@ export namespace NoNextEditReason {
 	}
 	export class GotCancelled extends NoNextEditReason {
 		public readonly kind = 'gotCancelled';
-		constructor(public readonly message: string | 'afterDebounce' | 'afterGettingEndpoint' | 'afterLanguageContextAwait' | 'afterPromptConstruction' | 'afterFetchCall' | 'duringStreaming' | 'afterResponse' | 'afterFailedRebase' | 'beforeExecutingNewRequest' | 'afterArtificialDelay' | 'afterNextCursorPredictionFetch') {
+		constructor(public readonly message: 'afterDebounce' | 'afterGettingEndpoint' | 'afterLanguageContextAwait' | 'afterPromptConstruction' | 'afterFetchCall' | 'duringStreaming' | 'afterResponse' | 'afterFailedRebase' | 'beforeExecutingNewRequest' | 'afterArtificialDelay' | 'afterNextCursorPredictionFetch') {
 			super();
 		}
 
@@ -404,9 +410,9 @@ export class StatelessNextEditTelemetryBuilder {
 	/**
 	 * It takes a request to automatically capture some properties from the request.
 	 */
-	constructor(headerRequestId: string) {
+	constructor(request: StatelessNextEditRequest) {
 		this.startTime = Date.now();
-		this.requestUuid = headerRequestId;
+		this.requestUuid = request.id;
 	}
 
 	public build(result: Result<void, NoNextEditReason>): IStatelessNextEditTelemetry {

@@ -19,7 +19,7 @@ import { IExperimentationService } from '../../../platform/telemetry/common/null
 import { ITelemetryService } from '../../../platform/telemetry/common/telemetry';
 import { DeferredPromise, retry, RunOnceScheduler } from '../../../util/vs/base/common/async';
 import { Event } from '../../../util/vs/base/common/event';
-import { Disposable, DisposableStore, toDisposable } from '../../../util/vs/base/common/lifecycle';
+import { Disposable, toDisposable } from '../../../util/vs/base/common/lifecycle';
 import { ResourceMap } from '../../../util/vs/base/common/map';
 import { IInstantiationService } from '../../../util/vs/platform/instantiation/common/instantiation';
 import { IChatDelegationSummaryService } from '../../agents/copilotcli/common/delegationSummaryService';
@@ -289,94 +289,42 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 	}
 
 	private registerCommands() {
-		const executePullRequestActionWithExtensionInstall = async (
-			sessionItemOrResource: vscode.ChatSessionItem | vscode.Uri | number | undefined,
-			options: {
-				actionLabel: string;
-				noRepoErrorMessage: string;
-				installPromptMessage: string;
-				executeAction: (repoId: { org: string; repo: string }, pullRequestNumber: number) => Promise<void>;
-			}
-		): Promise<void> => {
-			let pullRequestNumber: number | undefined;
-			if (typeof sessionItemOrResource === 'number') {
-				pullRequestNumber = sessionItemOrResource;
-			} else {
-				const resource = sessionItemOrResource instanceof vscode.Uri
-					? sessionItemOrResource
-					: sessionItemOrResource?.resource;
-				if (!resource) {
-					return;
-				}
-				pullRequestNumber = SessionIdForPr.parsePullRequestNumber(resource);
+		const checkoutPullRequestReroute = async (sessionItemOrResource?: vscode.ChatSessionItem | vscode.Uri) => {
+			const resource = sessionItemOrResource instanceof vscode.Uri
+				? sessionItemOrResource
+				: sessionItemOrResource?.resource;
+
+			if (!resource) {
+				return;
 			}
 
-
+			const pullRequestNumber = SessionIdForPr.parsePullRequestNumber(resource);
 			if (!pullRequestNumber) {
 				return;
 			}
 			const repoIds = await getRepoId(this._gitService);
 			if (!repoIds || repoIds.length === 0) {
-				vscode.window.showErrorMessage(options.noRepoErrorMessage);
+				vscode.window.showErrorMessage(l10n.t('No active repository found to checkout pull request.'));
 				return;
 			}
 
-			const extensionId = 'github.vscode-pull-request-github';
-			const isExtensionInstalled = vscode.extensions.getExtension(extensionId) !== undefined;
+			const installLabel = l10n.t('Install and Checkout');
+			const result = await vscode.window.showInformationMessage(
+				l10n.t('The GitHub Pull Requests extension is required to checkout this PR. Would you like to install and checkout?'),
+				{ modal: true },
+				installLabel
+			);
 
-			if (!isExtensionInstalled) {
-				const result = await vscode.window.showInformationMessage(
-					options.installPromptMessage,
-					{ modal: true },
-					options.actionLabel
-				);
-
-				if (result !== options.actionLabel) {
-					return;
-				}
-
-				await vscode.commands.executeCommand('workbench.extensions.installExtension', extensionId, { enable: true });
+			if (result === installLabel) {
+				await vscode.commands.executeCommand('workbench.extensions.installExtension', 'github.vscode-pull-request-github', { enable: true });
+				await vscode.commands.executeCommand('pr.checkoutFromDescription', { owner: repoIds[0].org, repo: repoIds[0].repo, number: pullRequestNumber });
 			}
-
-			await options.executeAction(repoIds[0], pullRequestNumber);
 		};
-
-		const checkoutPullRequestReroute = (sessionItemOrResource?: vscode.ChatSessionItem | vscode.Uri) =>
-			executePullRequestActionWithExtensionInstall(sessionItemOrResource, {
-				actionLabel: l10n.t('Install and Checkout'),
-				noRepoErrorMessage: l10n.t('No active repository found to checkout pull request.'),
-				installPromptMessage: l10n.t('The GitHub Pull Requests extension is required to checkout this PR. Would you like to install and checkout?'),
-				executeAction: async (repoId, pullRequestNumber) => {
-					await vscode.commands.executeCommand('pr.checkoutFromDescription', { owner: repoId.org, repo: repoId.repo, number: pullRequestNumber });
-				},
-			});
 		this._register(vscode.commands.registerCommand('github.copilot.chat.checkoutPullRequestReroute', checkoutPullRequestReroute));
-
-		const openPullRequestReroute = (sessionItemOrResource?: vscode.ChatSessionItem | number | vscode.Uri) =>
-			executePullRequestActionWithExtensionInstall(sessionItemOrResource, {
-				actionLabel: l10n.t('Install and Open'),
-				noRepoErrorMessage: l10n.t('No active repository found to open pull request.'),
-				installPromptMessage: l10n.t('The GitHub Pull Requests extension is required to open this PR. Would you like to install and open?'),
-				executeAction: async (repoId, pullRequestNumber) => {
-					await vscode.commands.executeCommand('pr.openDescription', {
-						pullRequestDetails: {
-							number: pullRequestNumber,
-							repository: {
-								owner: {
-									login: repoId.org,
-								},
-								name: repoId.repo,
-							},
-						},
-					});
-				},
-			});
-		this._register(vscode.commands.registerCommand('github.copilot.chat.openPullRequestReroute', openPullRequestReroute));
 
 		// Command for browsing repositories in the repository picker
 		const openRepositoryCommand = async (sessionItemResource?: vscode.Uri) => {
 			const quickPick = vscode.window.createQuickPick();
-			const quickPickDisposables = new DisposableStore();
 			quickPick.placeholder = l10n.t('Search for a repository...');
 			quickPick.matchOnDescription = true;
 			quickPick.matchOnDetail = true;
@@ -395,7 +343,7 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 
 			// Handle dynamic search
 			let searchTimeout: ReturnType<typeof setTimeout> | undefined;
-			quickPickDisposables.add(quickPick.onDidChangeValue(async (value) => {
+			const onDidChangeValueDisposable = quickPick.onDidChangeValue(async (value) => {
 				if (searchTimeout) {
 					clearTimeout(searchTimeout);
 				}
@@ -408,9 +356,9 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 						quickPick.busy = false;
 					}
 				}, 300);
-			}));
+			});
 
-			quickPickDisposables.add(quickPick.onDidAccept(() => {
+			const onDidAcceptDisposable = quickPick.onDidAccept(() => {
 				const selected = quickPick.selectedItems[0];
 				if (selected && sessionItemResource) {
 					this.sessionRepositoryMap.set(sessionItemResource, selected.label);
@@ -425,15 +373,16 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 					});
 				}
 				quickPick.hide();
-			}));
+			});
 
-			quickPickDisposables.add(quickPick.onDidHide(() => {
+			quickPick.onDidHide(() => {
 				if (searchTimeout) {
 					clearTimeout(searchTimeout);
 				}
-				quickPickDisposables.dispose();
+				onDidChangeValueDisposable.dispose();
+				onDidAcceptDisposable.dispose();
 				quickPick.dispose();
-			}));
+			});
 		};
 		this._register(vscode.commands.registerCommand(OPEN_REPOSITORY_COMMAND_ID, openRepositoryCommand));
 
@@ -1329,11 +1278,7 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 	}
 
 	private getPullRequestBadge(repoIds: GithubRepoId[] | undefined, pr: PullRequestSearchItem): vscode.MarkdownString | undefined {
-		if (
-			vscode.workspace.workspaceFolders === undefined || // empty window
-			vscode.workspace.isAgentSessionsWorkspace ||       // agent sessions workspace
-			(repoIds && repoIds.length > 1)                    // multiple repositories
-		) {
+		if (vscode.workspace.workspaceFolders === undefined || (repoIds && repoIds.length > 1)) {
 			const badgeLabel = `${pr.repository.owner.login}/${pr.repository.name}`;
 			const badge = new vscode.MarkdownString(`$(repo) ${badgeLabel}`, true);
 			badge.supportThemeIcons = true;
@@ -1404,7 +1349,7 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 		metadata: ConfirmationMetadata,
 		base_ref?: string,
 		head_ref?: string
-	): Promise<vscode.ChatResponsePullRequestPart> {
+	): Promise<{ uri: vscode.Uri; title: string; description: string; author: string; linkTag: string }> {
 
 		let history: string | undefined;
 
@@ -1504,12 +1449,7 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 
 		// Return this for external callers, eg: CLI
 		return {
-			uri, // PR uri,
-			command: {
-				title: vscode.l10n.t('View Pull Request #{0}', pullRequest.number),
-				command: 'github.copilot.chat.openPullRequestReroute',
-				arguments: [pullRequest.number]
-			},
+			uri, // PR uri
 			title: pullRequest.title,
 			description: pullRequest.body || '',
 			author: getAuthorDisplayName(pullRequest.author),

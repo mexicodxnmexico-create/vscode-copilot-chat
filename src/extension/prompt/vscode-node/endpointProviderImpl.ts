@@ -23,15 +23,14 @@ import { IExperimentationService } from '../../../platform/telemetry/common/null
 import { ITelemetryService } from '../../../platform/telemetry/common/telemetry';
 import { TokenizerType } from '../../../util/common/tokenizer';
 import { Emitter, Event } from '../../../util/vs/base/common/event';
-import { Disposable } from '../../../util/vs/base/common/lifecycle';
 import { IInstantiationService, ServicesAccessor } from '../../../util/vs/platform/instantiation/common/instantiation';
 
 
-export class ProductionEndpointProvider extends Disposable implements IEndpointProvider {
+export class ProductionEndpointProvider implements IEndpointProvider {
 
 	declare readonly _serviceBrand: undefined;
 
-	private readonly _onDidModelsRefresh = this._register(new Emitter<void>());
+	private readonly _onDidModelsRefresh = new Emitter<void>();
 	readonly onDidModelsRefresh: Event<void> = this._onDidModelsRefresh.event;
 
 	private _chatEndpoints: Map<string, IChatEndpoint> = new Map();
@@ -52,7 +51,6 @@ export class ProductionEndpointProvider extends Disposable implements IEndpointP
 		@IAuthenticationService protected readonly _authService: IAuthenticationService,
 		@IRequestLogger _requestLogger: IRequestLogger
 	) {
-		super();
 
 		this._modelFetcher = new ModelMetadataFetcher(
 			collectFetcherTelemetry,
@@ -70,11 +68,11 @@ export class ProductionEndpointProvider extends Disposable implements IEndpointP
 		);
 
 		// When new models come in from CAPI we want to clear our local caches and let the endpoints be recreated since there may be new info
-		this._register(this._modelFetcher.onDidModelsRefresh(() => {
+		this._modelFetcher.onDidModelsRefresh(() => {
 			this._chatEndpoints.clear();
 			this._embeddingEndpoints.clear();
 			this._onDidModelsRefresh.fire();
-		}));
+		});
 	}
 
 	private get _overridenChatModel(): string | undefined {

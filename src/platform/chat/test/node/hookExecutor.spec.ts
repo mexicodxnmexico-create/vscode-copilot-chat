@@ -10,7 +10,6 @@ import { CancellationToken, CancellationTokenSource } from '../../../../util/vs/
 import { URI } from '../../../../util/vs/base/common/uri';
 import { TestLogService } from '../../../testing/common/testLogService';
 import { HookCommandResultKind } from '../../common/hookExecutor';
-import { IHooksOutputChannel } from '../../common/hooksOutputChannel';
 import { NodeHookExecutor } from '../../node/hookExecutor';
 
 let mockChild: MockChildProcess;
@@ -59,8 +58,7 @@ describe('NodeHookExecutor', () => {
 	let child: MockChildProcess;
 
 	beforeEach(() => {
-		const mockOutputChannel: IHooksOutputChannel = { _serviceBrand: undefined, appendLine: vi.fn() };
-		executor = new NodeHookExecutor(new TestLogService(), mockOutputChannel);
+		executor = new NodeHookExecutor(new TestLogService());
 		child = createMockChild();
 		mockChild = child;
 	});
@@ -194,9 +192,8 @@ describe('NodeHookExecutor', () => {
 		vi.useFakeTimers();
 		try {
 			const promise = executor.executeCommand(
-				cmd('test', { timeout: 5 }),
-				undefined,
-				CancellationToken.None
+				cmd('test', { timeoutSec: 5 }),
+				undefined, CancellationToken.None
 			);
 
 			vi.advanceTimersByTime(5000);

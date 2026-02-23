@@ -339,11 +339,10 @@ export type IWorkspaceState = IInitialWorkspaceState | IInteractionWorkspaceStat
  * Generates a unique output folder name based on the current date and time.
  * @returns A string representing the output folder name.
  */
-export function generateOutputFolderName(prefix?: string): string {
+export function generateOutputFolderName(): string {
 	const twodigits = (n: number) => String(n).padStart(2, '0');
 	const d = new Date();
 	const date = `${d.getFullYear()}${twodigits(d.getMonth() + 1)}${twodigits(d.getDate())}`;
 	const time = `${twodigits(d.getHours())}${twodigits(d.getMinutes())}${twodigits(d.getSeconds())}`;
-	const prefixPart = prefix ? `${prefix}-` : '';
-	return `out-${prefixPart}${date}-${time}`;
+	return `out-${date}-${time}`;
 }

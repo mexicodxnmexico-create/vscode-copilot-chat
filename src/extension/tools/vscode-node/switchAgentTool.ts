@@ -31,13 +31,12 @@ export class SwitchAgentTool implements ICopilotTool<ISwitchAgentParams> {
 		}
 
 		const askQuestionsEnabled = this.configurationService.getConfig(ConfigKey.AskQuestionsEnabled);
-		const exploreSubagentEnabled = this.configurationService.getConfig(ConfigKey.TeamInternal.PlanAgentExploreSubagentEnabled);
-		const planAgentBody = PlanAgentProvider.buildAgentBody(askQuestionsEnabled, exploreSubagentEnabled);
+		const planAgentBody = PlanAgentProvider.buildAgentBody(askQuestionsEnabled);
 
 		// Execute command to switch agent
 		await vscode.commands.executeCommand('workbench.action.chat.toggleAgentMode', {
 			modeId: agentName,
-			sessionResource: options.chatSessionResource
+			sessionResource: options.chatSessionResource ? vscode.Uri.parse(options.chatSessionResource) : undefined
 		});
 
 		return new LanguageModelToolResult([

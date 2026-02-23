@@ -17,6 +17,7 @@ export function registerSelectionChangedNotification(logger: ILogger, httpServer
 		selectionDelayer.trigger(() => {
 			const selectionInfo = getSelectionInfo(event.textEditor);
 			selectionState.update(selectionInfo);
+			logger.trace(`Selection changed in: ${selectionInfo.filePath}`);
 			httpServer.broadcastNotification('selection_changed', selectionInfo as unknown as Record<string, unknown>);
 		});
 	};

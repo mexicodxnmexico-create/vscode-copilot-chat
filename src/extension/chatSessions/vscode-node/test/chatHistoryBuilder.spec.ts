@@ -68,13 +68,11 @@ function taskToolResult(toolUseId: string, agentId: string, content: string): St
 }
 
 function session(messages: StoredMessage[], subagents: ISubagentSession[] = []): IClaudeCodeSession {
-	const timestamp = new Date();
 	return {
 		id: 'test-session',
 		label: 'Test',
 		messages,
-		created: (messages[0]?.timestamp ?? timestamp).getTime(),
-		lastRequestEnded: (messages[messages.length - 1]?.timestamp ?? timestamp).getTime(),
+		timestamp: new Date(),
 		subagents,
 	};
 }
@@ -686,8 +684,7 @@ describe('buildChatHistory', () => {
 				id: 'fixture-session',
 				label: 'Fixture Test',
 				messages,
-				created: Date.now(),
-				lastRequestEnded: Date.now(),
+				timestamp: new Date(),
 				subagents: [],
 			};
 
