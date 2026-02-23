@@ -1,3 +1,3 @@
-## 2024-03-08 - Regex Optimization in TF-IDF
-**Learning:** Using `matchAll` with complex regexes containing lookarounds can be significantly slower than a manual scanning loop with simple regexes and `exec`.
-**Action:** When parsing large amounts of text (like in TF-IDF tokenization), prefer scanning loops with simple regexes. Also, be careful with global regexes (`/g`) in module scope as they are stateful (`lastIndex`).
+## 2024-03-24 - SQLite json_each vs IN clause
+**Learning:** Using `WHERE json_each.key IN (SELECT value FROM json_each(?))` with a JSON string parameter is significantly slower (~30-40% drop in search ops/sec) than dynamically constructing the query with `WHERE json_each.key IN (?, ?, ...)` for small number of terms (1-3) in `node:sqlite`. The overhead of JSON parsing and `json_each` table-valued function likely outweighs the cost of preparing a new statement with variable placeholders.
+**Action:** Prefer dynamic query construction with `IN (?, ...)` for simple lists over passing JSON arrays to `json_each` when the list size is small and performance is critical. Only consider `json_each` if the list is very large (to avoid parameter limit) or if caching the statement is absolutely necessary and the overhead is acceptable.

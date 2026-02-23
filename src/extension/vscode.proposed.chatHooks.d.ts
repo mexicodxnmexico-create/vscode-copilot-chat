@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// version: 6
+// version: 5
 
 declare module 'vscode' {
 
@@ -32,7 +32,7 @@ declare module 'vscode' {
 		/**
 		 * Maximum execution time in seconds.
 		 */
-		readonly timeout?: number;
+		readonly timeoutSec?: number;
 	}
 
 	/**
@@ -83,6 +83,10 @@ declare module 'vscode' {
 		 */
 		readonly hooks?: ChatRequestHooks;
 	}
+
+	export namespace chat {
+	}
+
 
 	/**
 	 * A progress part representing the execution result of a hook.

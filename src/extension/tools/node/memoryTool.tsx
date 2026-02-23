@@ -11,15 +11,13 @@ import { createDirectoryIfNotExists, IFileSystemService } from '../../../platfor
 import { FileType } from '../../../platform/filesystem/common/fileTypes';
 import { ILogService } from '../../../platform/log/common/logService';
 import { IExperimentationService } from '../../../platform/telemetry/common/nullExperimentationService';
-import { ITelemetryService } from '../../../platform/telemetry/common/telemetry';
 import { CancellationToken } from '../../../util/vs/base/common/cancellation';
 import { URI } from '../../../util/vs/base/common/uri';
-import { LanguageModelTextPart, LanguageModelToolResult, MarkdownString } from '../../../vscodeTypes';
+import { LanguageModelTextPart, LanguageModelToolResult } from '../../../vscodeTypes';
 import { IAgentMemoryService, RepoMemoryEntry } from '../common/agentMemoryService';
 import { IMemoryCleanupService } from '../common/memoryCleanupService';
 import { ToolName } from '../common/toolNames';
 import { ICopilotTool, ToolRegistry } from '../common/toolsRegistry';
-import { formatUriForFileWidget } from '../common/toolUtils';
 
 const MEMORY_BASE_DIR = 'memory-tool/memories';
 const REPO_PATH_PREFIX = '/memories/repo';
@@ -140,13 +138,6 @@ function makeSnippet(fileContent: string, editLine: number, path: string): strin
 
 // --- Tool implementation ---
 
-type MemoryToolOutcome = 'success' | 'error' | 'notFound' | 'notEnabled';
-
-interface MemoryToolResult {
-	text: string;
-	outcome: MemoryToolOutcome;
-}
-
 export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 	public static readonly toolName = ToolName.Memory;
 
@@ -158,7 +149,6 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 		@ILogService private readonly logService: ILogService,
 		@IConfigurationService private readonly configurationService: IConfigurationService,
 		@IExperimentationService private readonly experimentationService: IExperimentationService,
-		@ITelemetryService private readonly telemetryService: ITelemetryService,
 	) {
 		if (this.configurationService.getExperimentBasedConfig(ConfigKey.MemoryToolEnabled, this.experimentationService)) {
 			this.memoryCleanupService.start();
@@ -168,49 +158,8 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 	prepareInvocation(options: vscode.LanguageModelToolInvocationPrepareOptions<MemoryToolParams>, _token: CancellationToken): vscode.ProviderResult<vscode.PreparedToolInvocation> {
 		const command = options.input.command;
 		const path = command === 'rename' ? (options.input as IRenameParams).old_path ?? (options.input as IRenameParams).path : options.input.path;
-
-		if (path && !isRepoPath(path)) {
-			return this._prepareLocalInvocation(command, path, options.chatSessionResource);
-		}
-		return this._prepareRepoInvocation(command, path);
-	}
-
-	private _prepareLocalInvocation(command: string, path: string, chatSessionResource?: vscode.Uri): vscode.PreparedToolInvocation {
-		// Directory paths (e.g. /memories/, /memories/session/) — show verb only, no file widget
-		if (path.endsWith('/')) {
-			switch (command) {
-				case 'view':
-					return { invocationMessage: l10n.t('Reading memory'), pastTenseMessage: l10n.t('Read memory') };
-				case 'delete':
-					return { invocationMessage: l10n.t('Deleting memory'), pastTenseMessage: l10n.t('Deleted memory') };
-				default:
-					return { invocationMessage: l10n.t('Updating memory'), pastTenseMessage: l10n.t('Updated memory') };
-			}
-		}
-
-		const fw = this._resolveFileWidget(path, chatSessionResource);
-
-		switch (command) {
-			case 'view':
-				return { invocationMessage: new MarkdownString(l10n.t('Reading memory {0}', fw)), pastTenseMessage: new MarkdownString(l10n.t('Read memory {0}', fw)) };
-			case 'create':
-				return { invocationMessage: new MarkdownString(l10n.t('Creating memory file {0}', fw)), pastTenseMessage: new MarkdownString(l10n.t('Created memory file {0}', fw)) };
-			case 'str_replace':
-				return { invocationMessage: new MarkdownString(l10n.t('Updating memory file {0}', fw)), pastTenseMessage: new MarkdownString(l10n.t('Updated memory file {0}', fw)) };
-			case 'insert':
-				return { invocationMessage: new MarkdownString(l10n.t('Inserting into memory file {0}', fw)), pastTenseMessage: new MarkdownString(l10n.t('Inserted into memory file {0}', fw)) };
-			case 'delete':
-				return { invocationMessage: new MarkdownString(l10n.t('Deleting memory {0}', fw)), pastTenseMessage: new MarkdownString(l10n.t('Deleted memory {0}', fw)) };
-			case 'rename':
-				return { invocationMessage: new MarkdownString(l10n.t('Renaming memory {0}', fw)), pastTenseMessage: new MarkdownString(l10n.t('Renamed memory {0}', fw)) };
-			default:
-				return { invocationMessage: new MarkdownString(l10n.t('Updating memory {0}', fw)), pastTenseMessage: new MarkdownString(l10n.t('Updated memory {0}', fw)) };
-		}
-	}
-
-	private _prepareRepoInvocation(command: string, path: string | undefined): vscode.PreparedToolInvocation {
 		const fileName = path ? path.split('/').pop() || path : undefined;
-		const suffix = fileName ? ` ${fileName}` : '';
+		const suffix = fileName && !isRepoPath(path!) ? ` ${fileName}` : '';
 		switch (command) {
 			case 'view':
 				return { invocationMessage: l10n.t('Reading memory{0}', suffix), pastTenseMessage: l10n.t('Read memory{0}', suffix) };
@@ -225,90 +174,53 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 			case 'rename':
 				return { invocationMessage: l10n.t('Renaming memory{0}', suffix), pastTenseMessage: l10n.t('Renamed memory{0}', suffix) };
 			default:
-				return { invocationMessage: l10n.t('Updating memory{0}', suffix), pastTenseMessage: l10n.t('Updated memory{0}', suffix) };
+				return { invocationMessage: l10n.t`Updating memory`, pastTenseMessage: l10n.t`Updated memory` };
 		}
-	}
-
-	/**
-	 * Resolves a local memory path to a file widget string for display in invocation messages.
-	 * Constructs the URI directly from storage URIs to avoid validation that may throw.
-	 */
-	private _resolveFileWidget(path: string, chatSessionResource?: vscode.Uri): string {
-		const segments = path.split('/').filter(s => s.length > 0);
-
-		if (isSessionPath(path)) {
-			const storageUri = this.extensionContext.storageUri;
-			if (!storageUri) {
-				return path;
-			}
-			// Session paths: /memories/session/foo.md → skip 'memories' and 'session'
-			const relativeSegments = segments.slice(2);
-			const baseUri = URI.file(URI.from(storageUri).path);
-			const pathParts = chatSessionResource
-				? [MEMORY_BASE_DIR, extractSessionId(URI.from(chatSessionResource).toString()), ...relativeSegments]
-				: [MEMORY_BASE_DIR, ...relativeSegments];
-			return formatUriForFileWidget(URI.joinPath(baseUri, ...pathParts));
-		}
-
-		const globalStorageUri = this.extensionContext.globalStorageUri;
-		if (!globalStorageUri) {
-			return path;
-		}
-		// User paths: /memories/foo.md → skip 'memories'
-		const relativeSegments = segments.slice(1);
-		const baseUri = URI.file(URI.from(globalStorageUri).path);
-		return formatUriForFileWidget(URI.joinPath(baseUri, MEMORY_BASE_DIR, ...relativeSegments));
 	}
 
 	async invoke(options: vscode.LanguageModelToolInvocationOptions<MemoryToolParams>, _token: CancellationToken): Promise<vscode.LanguageModelToolResult> {
 		const params = options.input;
-		const sessionResource = options.chatSessionResource?.toString();
-		const resultText = await this._dispatch(params, sessionResource, options.chatRequestId, options.model);
+		const sessionResource = options.chatSessionResource;
+		const resultText = await this._dispatch(params, sessionResource);
 		return new LanguageModelToolResult([new LanguageModelTextPart(resultText)]);
 	}
 
 
-	private async _dispatch(params: MemoryToolParams, sessionResource?: string, requestId?: string, model?: vscode.LanguageModelChat): Promise<string> {
+	private async _dispatch(params: MemoryToolParams, sessionResource?: string): Promise<string> {
 		const path = params.command === 'rename' ? (params.old_path ?? params.path) : params.path;
 		if (!path) {
-			this._sendLocalTelemetry(params.command, 'user', 'error', requestId, model);
 			return 'Error: Missing required path parameter.';
 		}
 		const pathError = validatePath(path);
 		if (pathError) {
-			this._sendLocalTelemetry(params.command, 'user', 'error', requestId, model);
 			return pathError;
 		}
 
 		// Route /memories/repo/* to CAPI (only create is supported)
 		if (isRepoPath(path)) {
-			const result = await this._dispatchRepo(params, path);
-			this._sendRepoTelemetry(params.command, result.outcome, requestId, model);
-			return result.text;
+			return this._dispatchRepo(params, path);
 		}
 
 		// Route /memories/session/* to session-scoped local storage
 		// Everything else under /memories/* goes to user-scoped storage
 		const scope: MemoryScope = isSessionPath(path) ? 'session' : 'user';
-		const result = await this._dispatchLocal(params, scope, sessionResource);
-		this._sendLocalTelemetry(params.command, scope, result.outcome, requestId, model);
-		return result.text;
+		return this._dispatchLocal(params, scope, sessionResource);
 	}
 
-	private async _dispatchRepo(params: MemoryToolParams, path: string): Promise<MemoryToolResult> {
+	private async _dispatchRepo(params: MemoryToolParams, path: string): Promise<string> {
 		switch (params.command) {
 			case 'create':
 				return this._repoCreate(params);
 			default:
-				return { text: `Error: The '${params.command}' operation is not supported for repository memories at ${path}. Only 'create' is allowed for /memories/repo/.`, outcome: 'error' };
+				return `Error: The '${params.command}' operation is not supported for repository memories at ${path}. Only 'create' is allowed for /memories/repo/.`;
 		}
 	}
 
-	private async _repoCreate(params: ICreateParams): Promise<MemoryToolResult> {
+	private async _repoCreate(params: ICreateParams): Promise<string> {
 		try {
 			const isEnabled = await this.agentMemoryService.checkMemoryEnabled();
 			if (!isEnabled) {
-				return { text: 'Error: Copilot Memory is not enabled. Repository memory operations require Copilot Memory to be enabled.', outcome: 'notEnabled' };
+				return 'Error: Copilot Memory is not enabled. Repository memory operations require Copilot Memory to be enabled.';
 			}
 
 			// Derive subject/category hint from the path (e.g. /memories/repo/testing.json → "testing")
@@ -340,13 +252,13 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 
 			const success = await this.agentMemoryService.storeRepoMemory(entry);
 			if (success) {
-				return { text: `File created successfully at: ${params.path}`, outcome: 'success' };
+				return `File created successfully at: ${params.path}`;
 			} else {
-				return { text: 'Error: Failed to store repository memory entry.', outcome: 'error' };
+				return 'Error: Failed to store repository memory entry.';
 			}
 		} catch (error) {
 			this.logService.error('[MemoryTool] Error creating repo memory:', error);
-			return { text: `Error: Cannot create repository memory: ${error.message}`, outcome: 'error' };
+			return `Error: Cannot create repository memory: ${error.message}`;
 		}
 	}
 
@@ -403,7 +315,7 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 		return resolved;
 	}
 
-	private async _dispatchLocal(params: MemoryToolParams, scope: MemoryScope, sessionResource?: string): Promise<MemoryToolResult> {
+	private async _dispatchLocal(params: MemoryToolParams, scope: MemoryScope, sessionResource?: string): Promise<string> {
 		try {
 			switch (params.command) {
 				case 'view':
@@ -419,15 +331,15 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 				case 'rename':
 					return this._localRename(params, scope, sessionResource);
 				default:
-					return { text: `Error: Unknown command '${(params as MemoryToolParams).command}'.`, outcome: 'error' };
+					return `Error: Unknown command '${(params as MemoryToolParams).command}'.`;
 			}
 		} catch (error) {
 			this.logService.error('[MemoryTool] Local operation error:', error);
-			return { text: `Error: ${error.message}`, outcome: 'error' };
+			return `Error: ${error.message}`;
 		}
 	}
 
-	private async _localView(path: string, viewRange?: [number, number], scope: MemoryScope = 'user', sessionResource?: string): Promise<MemoryToolResult> {
+	private async _localView(path: string, viewRange?: [number, number], scope: MemoryScope = 'user', sessionResource?: string): Promise<string> {
 		// When viewing the top-level /memories/ directory with user scope, merge user + session contents
 		if (scope === 'user' && isMemoriesRoot(path)) {
 			return this._localViewMergedRoot(path, sessionResource);
@@ -444,13 +356,13 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 		} catch {
 			this.logService.debug(`[MemoryTool] Failed to stat ${path}`);
 			if (isMemoriesRoot(path)) {
-				return { text: 'No memories found.', outcome: 'notFound' };
+				return 'No memories found.';
 			}
-			return { text: `No memories found in ${path}.`, outcome: 'notFound' };
+			return `No memories found in ${path}.`;
 		}
 
 		if (fileStat.type === FileType.Directory) {
-			return { text: await this._listDirectory(path, uri), outcome: 'success' };
+			return this._listDirectory(path, uri);
 		}
 
 		// Read file contents with line numbers
@@ -462,20 +374,20 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 			const lines = text.split('\n');
 			const [start, end] = viewRange;
 			if (start < 1 || start > lines.length) {
-				return { text: `Error: Invalid view_range: start line ${start} is out of range [1, ${lines.length}].`, outcome: 'error' };
+				return `Error: Invalid view_range: start line ${start} is out of range [1, ${lines.length}].`;
 			}
 			if (end < start || end > lines.length) {
-				return { text: `Error: Invalid view_range: end line ${end} is out of range [${start}, ${lines.length}].`, outcome: 'error' };
+				return `Error: Invalid view_range: end line ${end} is out of range [${start}, ${lines.length}].`;
 			}
 			const sliced = lines.slice(start - 1, end);
 			const numbered = sliced.map((line, i) => `${formatLineNumber(start + i)}\t${line}`);
-			return { text: `Here's the content of ${path} (lines ${start}-${end}) with line numbers:\n${numbered.join('\n')}`, outcome: 'success' };
+			return `Here's the content of ${path} (lines ${start}-${end}) with line numbers:\n${numbered.join('\n')}`;
 		}
 
-		return { text: formatFileContent(path, text), outcome: 'success' };
+		return formatFileContent(path, text);
 	}
 
-	private async _localViewMergedRoot(path: string, sessionResource?: string): Promise<MemoryToolResult> {
+	private async _localViewMergedRoot(path: string, sessionResource?: string): Promise<string> {
 		const lines: string[] = [];
 
 		// List user-scoped files
@@ -528,10 +440,10 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 		}
 
 		if (lines.length === 0 || (lines.length === 1 && lines[0] === '/memories/session/')) {
-			return { text: 'No memories found.', outcome: 'notFound' };
+			return 'No memories found.';
 		}
 
-		return { text: `Here are the files and directories in ${path}:\n${lines.join('\n')}`, outcome: 'success' };
+		return `Here are the files and directories in ${path}:\n${lines.join('\n')}`;
 	}
 
 	private async _listDirectory(path: string, uri: URI, maxDepth: number = 2, currentDepth: number = 0): Promise<string> {
@@ -582,14 +494,14 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 		return lines.join('\n');
 	}
 
-	private async _localCreate(params: ICreateParams, scope: MemoryScope, sessionResource?: string): Promise<MemoryToolResult> {
+	private async _localCreate(params: ICreateParams, scope: MemoryScope, sessionResource?: string): Promise<string> {
 		const uri = this._resolveUri(params.path, scope, sessionResource);
 
 		// Check if file exists
 		try {
 			await this.fileSystemService.stat(uri);
 			this.logService.debug(`[MemoryTool] Create failed - file already exists: ${params.path}`);
-			return { text: `Error: File ${params.path} already exists`, outcome: 'error' };
+			return `Error: File ${params.path} already exists`;
 		} catch {
 			// File doesn't exist — good
 		}
@@ -605,14 +517,14 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 				this.memoryCleanupService.markAccessed(uri);
 			}
 			this.logService.debug(`[MemoryTool] Created memory file: ${params.path}`);
-			return { text: `File created successfully at: ${params.path}`, outcome: 'success' };
+			return `File created successfully at: ${params.path}`;
 		} catch (error) {
 			this.logService.error(`[MemoryTool] Failed to create file ${params.path}:`, error);
 			throw error;
 		}
 	}
 
-	private async _localStrReplace(params: IStrReplaceParams, scope: MemoryScope, sessionResource?: string): Promise<MemoryToolResult> {
+	private async _localStrReplace(params: IStrReplaceParams, scope: MemoryScope, sessionResource?: string): Promise<string> {
 		const uri = this._resolveUri(params.path, scope, sessionResource);
 		if (scope === 'session') {
 			this.memoryCleanupService.markAccessed(uri);
@@ -624,7 +536,7 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 			content = new TextDecoder().decode(buffer);
 		} catch {
 			this.logService.debug(`[MemoryTool] str_replace failed - file not found: ${params.path}`);
-			return { text: `The path ${params.path} does not exist. Please provide a valid path.`, outcome: 'notFound' };
+			return `The path ${params.path} does not exist. Please provide a valid path.`;
 		}
 
 		const occurrences: number[] = [];
@@ -641,21 +553,21 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 
 		if (occurrences.length === 0) {
 			this.logService.debug(`[MemoryTool] str_replace failed - pattern not found in ${params.path}`);
-			return { text: `No replacement was performed, old_str \`${params.old_str}\` did not appear verbatim in ${params.path}.`, outcome: 'error' };
+			return `No replacement was performed, old_str \`${params.old_str}\` did not appear verbatim in ${params.path}.`;
 		}
 
 		if (occurrences.length > 1) {
 			this.logService.debug(`[MemoryTool] str_replace failed - multiple matches in ${params.path}`);
-			return { text: `No replacement was performed. Multiple occurrences of old_str \`${params.old_str}\` in lines: ${occurrences.join(', ')}. Please ensure it is unique.`, outcome: 'error' };
+			return `No replacement was performed. Multiple occurrences of old_str \`${params.old_str}\` in lines: ${occurrences.join(', ')}. Please ensure it is unique.`;
 		}
 
 		const newContent = content.replace(params.old_str, params.new_str);
 		await this.fileSystemService.writeFile(uri, new TextEncoder().encode(newContent));
 		this.logService.debug(`[MemoryTool] Updated memory file: ${params.path}`);
-		return { text: makeSnippet(newContent, occurrences[0], params.path), outcome: 'success' };
+		return makeSnippet(newContent, occurrences[0], params.path);
 	}
 
-	private async _localInsert(params: IInsertParams, scope: MemoryScope, sessionResource?: string): Promise<MemoryToolResult> {
+	private async _localInsert(params: IInsertParams, scope: MemoryScope, sessionResource?: string): Promise<string> {
 		const uri = this._resolveUri(params.path, scope, sessionResource);
 		if (scope === 'session') {
 			this.memoryCleanupService.markAccessed(uri);
@@ -665,7 +577,7 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 		const insertText = params.insert_text ?? params.new_str;
 		if (!insertText) {
 			this.logService.debug(`[MemoryTool] insert failed - missing insert_text for ${params.path}`);
-			return { text: 'Error: Missing required insert_text parameter for insert.', outcome: 'error' };
+			return 'Error: Missing required insert_text parameter for insert.';
 		}
 
 		let content: string;
@@ -674,7 +586,7 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 			content = new TextDecoder().decode(buffer);
 		} catch {
 			this.logService.debug(`[MemoryTool] insert failed - file not found: ${params.path}`);
-			return { text: `Error: The path ${params.path} does not exist`, outcome: 'notFound' };
+			return `Error: The path ${params.path} does not exist`;
 		}
 
 		const lines = content.split('\n');
@@ -682,7 +594,7 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 
 		if (params.insert_line < 0 || params.insert_line > nLines) {
 			this.logService.debug(`[MemoryTool] insert failed - invalid line number ${params.insert_line} for file with ${nLines} lines`);
-			return { text: `Error: Invalid \`insert_line\` parameter: ${params.insert_line}. It should be within the range of lines of the file: [0, ${nLines}].`, outcome: 'error' };
+			return `Error: Invalid \`insert_line\` parameter: ${params.insert_line}. It should be within the range of lines of the file: [0, ${nLines}].`;
 		}
 
 		const newLines = insertText.split('\n');
@@ -691,41 +603,41 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 		const newContent = lines.join('\n');
 		await this.fileSystemService.writeFile(uri, new TextEncoder().encode(newContent));
 		this.logService.debug(`[MemoryTool] Inserted into memory file: ${params.path}`);
-		return { text: makeSnippet(newContent, params.insert_line + 1, params.path), outcome: 'success' };
+		return makeSnippet(newContent, params.insert_line + 1, params.path);
 	}
 
-	private async _localDelete(path: string, scope: MemoryScope, sessionResource?: string): Promise<MemoryToolResult> {
+	private async _localDelete(path: string, scope: MemoryScope, sessionResource?: string): Promise<string> {
 		const uri = this._resolveUri(path, scope, sessionResource);
 
 		try {
 			await this.fileSystemService.stat(uri);
 		} catch {
 			this.logService.debug(`[MemoryTool] delete failed - path not found: ${path}`);
-			return { text: `Error: The path ${path} does not exist`, outcome: 'notFound' };
+			return `Error: The path ${path} does not exist`;
 		}
 
 		await this.fileSystemService.delete(uri, { recursive: true });
 		this.logService.debug(`[MemoryTool] Deleted memory file: ${path}`);
-		return { text: `Successfully deleted ${path}`, outcome: 'success' };
+		return `Successfully deleted ${path}`;
 	}
 
-	private async _localRename(params: IRenameParams, scope: MemoryScope, sessionResource?: string): Promise<MemoryToolResult> {
+	private async _localRename(params: IRenameParams, scope: MemoryScope, sessionResource?: string): Promise<string> {
 		// The model may send `path` instead of `old_path`
 		const oldPath = params.old_path ?? params.path;
 		if (!oldPath) {
 			this.logService.debug(`[MemoryTool] rename failed - missing old_path`);
-			return { text: 'Error: Missing required old_path parameter for rename.', outcome: 'error' };
+			return 'Error: Missing required old_path parameter for rename.';
 		}
 
 		const newPathError = validatePath(params.new_path);
 		if (newPathError) {
-			return { text: newPathError, outcome: 'error' };
+			return newPathError;
 		}
 
 		// Prevent renaming across different scopes
 		const newScope: MemoryScope = isSessionPath(params.new_path) ? 'session' : 'user';
 		if (scope !== newScope) {
-			return { text: 'Error: Cannot rename across different memory scopes (user vs session).', outcome: 'error' };
+			return 'Error: Cannot rename across different memory scopes (user vs session).';
 		}
 
 		const srcUri = this._resolveUri(oldPath, scope, sessionResource);
@@ -735,13 +647,13 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 			await this.fileSystemService.stat(srcUri);
 		} catch {
 			this.logService.debug(`[MemoryTool] rename failed - source not found: ${oldPath}`);
-			return { text: `Error: The path ${oldPath} does not exist`, outcome: 'notFound' };
+			return `Error: The path ${oldPath} does not exist`;
 		}
 
 		try {
 			await this.fileSystemService.stat(destUri);
 			this.logService.debug(`[MemoryTool] rename failed - destination exists: ${params.new_path}`);
-			return { text: `Error: The destination ${params.new_path} already exists`, outcome: 'error' };
+			return `Error: The destination ${params.new_path} already exists`;
 		} catch {
 			// Destination doesn't exist — good
 		}
@@ -755,47 +667,7 @@ export class MemoryTool implements ICopilotTool<MemoryToolParams> {
 			this.memoryCleanupService.markAccessed(destUri);
 		}
 		this.logService.debug(`[MemoryTool] Renamed memory file: ${oldPath} → ${params.new_path}`);
-		return { text: `Successfully renamed ${oldPath} to ${params.new_path}`, outcome: 'success' };
-	}
-
-	private _sendLocalTelemetry(command: string, scope: MemoryScope, toolOutcome: MemoryToolOutcome, requestId?: string, model?: vscode.LanguageModelChat): void {
-		/* __GDPR__
-			"memoryToolInvoked" : {
-				"owner": "digitarald",
-				"comment": "Tracks memory tool invocations for local user and session scopes",
-				"command": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The memory command executed (view, create, str_replace, insert, delete, rename)" },
-				"scope": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The memory scope: user or session" },
-				"toolOutcome": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "Normalized outcome: success, error, notFound, notEnabled" },
-				"requestId": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The id of the current request turn" },
-				"model": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The model that invoked the tool" }
-			}
-		*/
-		this.telemetryService.sendMSFTTelemetryEvent('memoryToolInvoked', {
-			command,
-			scope,
-			toolOutcome,
-			requestId,
-			model: model?.id,
-		});
-	}
-
-	private _sendRepoTelemetry(command: string, toolOutcome: MemoryToolOutcome, requestId?: string, model?: vscode.LanguageModelChat): void {
-		/* __GDPR__
-			"memoryRepoToolInvoked" : {
-				"owner": "digitarald",
-				"comment": "Tracks repository memory tool invocations",
-				"command": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The memory command executed" },
-				"toolOutcome": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "Normalized outcome: success, error, notFound, notEnabled" },
-				"requestId": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The id of the current request turn" },
-				"model": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The model that invoked the tool" }
-			}
-		*/
-		this.telemetryService.sendMSFTTelemetryEvent('memoryRepoToolInvoked', {
-			command,
-			toolOutcome,
-			requestId,
-			model: model?.id,
-		});
+		return `Successfully renamed ${oldPath} to ${params.new_path}`;
 	}
 }
 

@@ -7,11 +7,9 @@ import { Tree, TreeItem, TreeItemLayout } from '@fluentui/react-components';
 import * as mobx from 'mobx';
 import * as mobxlite from 'mobx-react-lite';
 import * as React from 'react';
-import { NesExternalOptions } from '../stores/nesExternalOptions';
 import { RunnerOptions } from '../stores/runnerOptions';
 import { SimulationRunner, StateKind } from '../stores/simulationRunner';
 import { ISimulationTest } from '../stores/simulationTestsProvider';
-import { TestSource, TestSourceValue } from '../stores/testSource';
 import { DisplayOptions } from './app';
 import { useContextMenu } from './contextMenu';
 import { TestView } from './testView';
@@ -20,12 +18,10 @@ type Props = {
 	readonly tests: readonly ISimulationTest[];
 	readonly runner: SimulationRunner;
 	readonly runnerOptions: RunnerOptions;
-	readonly nesExternalOptions: NesExternalOptions;
-	readonly testSource: TestSourceValue;
 	readonly displayOptions: DisplayOptions;
 };
 
-export const TestList = mobxlite.observer(({ tests, runner, runnerOptions, nesExternalOptions, testSource, displayOptions }: Props) => {
+export const TestList = mobxlite.observer(({ tests, runner, runnerOptions, displayOptions }: Props) => {
 
 	const { showMenu } = useContextMenu();
 
@@ -33,7 +29,7 @@ export const TestList = mobxlite.observer(({ tests, runner, runnerOptions, nesEx
 		case 'testList': {
 			return (
 				<Tree aria-label='Default' style={{ rowGap: '0px', paddingBottom: '30px' }}>
-					{tests.map(test => <TestView key={test.name} test={test} runner={runner} runnerOptions={runnerOptions} nesExternalOptions={nesExternalOptions} testSource={testSource} displayOptions={displayOptions} />)}
+					{tests.map(test => <TestView key={test.name} test={test} runner={runner} runnerOptions={runnerOptions} displayOptions={displayOptions} />)}
 				</Tree>
 			);
 		}
@@ -57,21 +53,13 @@ export const TestList = mobxlite.observer(({ tests, runner, runnerOptions, nesEx
 						n: parseInt(runnerOptions.n.value),
 						noFetch: runnerOptions.noFetch.value,
 						additionalArgs: runnerOptions.additionalArgs.value,
-						nesExternalScenariosPath: testSource.value === TestSource.NesExternal ? nesExternalOptions.externalScenariosPath.value || undefined : undefined,
 					}),
 				},
 				{
 					label: `Run suite (grep update)`,
 					onClick: () => {
 						mobx.runInAction(() => runnerOptions.grep.value = `!s:${suiteName}`);
-						runner.startRunning({
-							grep: `!s:${suiteName}`,
-							cacheMode: runnerOptions.cacheMode.value,
-							n: parseInt(runnerOptions.n.value),
-							noFetch: runnerOptions.noFetch.value,
-							additionalArgs: runnerOptions.additionalArgs.value,
-							nesExternalScenariosPath: testSource.value === TestSource.NesExternal ? nesExternalOptions.externalScenariosPath.value || undefined : undefined,
-						});
+						runner.startRunningFromRunnerOptions();
 					},
 				}
 			];
@@ -93,7 +81,7 @@ export const TestList = mobxlite.observer(({ tests, runner, runnerOptions, nesEx
 									{suiteName}
 								</TreeItemLayout>
 								<Tree aria-label='Default'>
-									{tests.map(test => <TestView key={test.name} test={test} runner={runner} runnerOptions={runnerOptions} nesExternalOptions={nesExternalOptions} testSource={testSource} displayOptions={displayOptions} />)}
+									{tests.map(test => <TestView key={test.name} test={test} runner={runner} runnerOptions={runnerOptions} displayOptions={displayOptions} />)}
 								</Tree>
 							</TreeItem>;
 						})}

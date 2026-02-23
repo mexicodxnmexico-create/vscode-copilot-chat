@@ -7,10 +7,7 @@ import { SimulationStorageValue } from './simulationStorage';
 
 export const enum TestSource {
 	Local = 1,
-	/** AML (Azure ML) runs */
-	External = 2,
-	/** NES external scenarios */
-	NesExternal = 3,
+	External = 2
 }
 
 export type TestSourceValue = SimulationStorageValue<TestSource>;

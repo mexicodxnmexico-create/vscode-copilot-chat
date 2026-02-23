@@ -30,7 +30,6 @@ import {
 	isAssistantMessageEntry,
 	isChainLinkEntry,
 	isSummaryEntry,
-	isUserRequest,
 	ISubagentSession,
 	isUserMessageEntry,
 	ParseError,
@@ -408,9 +407,7 @@ function buildSessionFromLeaf(
 		id: leafMessage.sessionId,
 		label: generateSessionLabel(summaryEntry, messageChain),
 		messages: messageChain,
-		created: messageChain[0].timestamp.getTime(),
-		lastRequestStarted: findLastRequestStartedTimestamp(messageChain),
-		lastRequestEnded: messageChain[messageChain.length - 1].timestamp.getTime(),
+		timestamp: messageChain[messageChain.length - 1].timestamp,
 		subagents: [],
 	};
 
@@ -550,21 +547,6 @@ function getFirstNonEmptyLine(text: string): string {
 }
 
 /**
- * Find the timestamp of the last genuine user request in a message chain.
- * A genuine user request is a user message whose content is NOT solely tool_result blocks.
- * Returns undefined if no genuine user request is found.
- */
-function findLastRequestStartedTimestamp(messages: readonly StoredMessage[]): number | undefined {
-	for (let i = messages.length - 1; i >= 0; i--) {
-		const msg = messages[i];
-		if (msg.type === 'user' && msg.message.role === 'user' && isUserRequest(msg.message.content)) {
-			return msg.timestamp.getTime();
-		}
-	}
-	return undefined;
-}
-
-/**
  * Deduplicate sessions by ID, keeping the one with the most messages.
  * This handles orphaned branches from parallel tool calls.
  */
@@ -684,9 +666,8 @@ export function extractSessionMetadata(
 ): IClaudeCodeSessionInfo | null {
 	const state = {
 		summary: undefined as string | undefined,
-		created: undefined as number | undefined,
-		lastRequestEnded: undefined as number | undefined,
-		lastRequestStartedTimestamp: undefined as number | undefined,
+		firstMessageTimestamp: undefined as Date | undefined,
+		lastMessageTimestamp: undefined as Date | undefined,
 		firstUserMessageContent: undefined as string | undefined,
 		foundSessionId: false,
 	};
@@ -709,9 +690,8 @@ export function extractSessionMetadata(
  */
 interface MetadataExtractionState {
 	summary: string | undefined;
-	created: number | undefined;
-	lastRequestEnded: number | undefined;
-	lastRequestStartedTimestamp: number | undefined;
+	firstMessageTimestamp: Date | undefined;
+	lastMessageTimestamp: Date | undefined;
 	firstUserMessageContent: string | undefined;
 	foundSessionId: boolean;
 }
@@ -767,12 +747,12 @@ function processLineForMetadata(
 		const messageResult = vMessageEntry.validate(parsed);
 		if (!messageResult.error) {
 			const entry = messageResult.content;
-			const messageTimestamp = new Date(entry.timestamp).getTime();
+			const messageTimestamp = new Date(entry.timestamp);
 
 			// Track first message timestamp and content
-			if (state.created === undefined) {
+			if (state.firstMessageTimestamp === undefined) {
 				state.foundSessionId = true;
-				state.created = messageTimestamp;
+				state.firstMessageTimestamp = messageTimestamp;
 
 				// Extract user message content for label fallback
 				if (entry.type === 'user') {
@@ -792,17 +772,12 @@ function processLineForMetadata(
 				}
 			}
 
-			// Track last genuine user request timestamp
-			if (entry.type === 'user' && isUserRequest(entry.message.content)) {
-				state.lastRequestStartedTimestamp = messageTimestamp;
-			}
-
 			// Always update last message timestamp (messages are chronological in file)
-			state.lastRequestEnded = messageTimestamp;
+			state.lastMessageTimestamp = messageTimestamp;
 		}
 	}
 
-	// No early termination - we need to read all messages to get lastRequestEnded
+	// No early termination - we need to read all messages to get lastMessageTimestamp
 	return { shouldContinue: true };
 }
 
@@ -815,7 +790,7 @@ function buildMetadataResult(
 	state: MetadataExtractionState
 ): IClaudeCodeSessionInfo | null {
 	// Require at least one message for a valid session
-	if (state.created === undefined || state.lastRequestEnded === undefined) {
+	if (state.firstMessageTimestamp === undefined || state.lastMessageTimestamp === undefined) {
 		return null;
 	}
 
@@ -833,9 +808,9 @@ function buildMetadataResult(
 	return {
 		id: sessionId,
 		label,
-		created: state.created,
-		lastRequestStarted: state.lastRequestStartedTimestamp,
-		lastRequestEnded: state.lastRequestEnded,
+		timestamp: state.firstMessageTimestamp,
+		firstMessageTimestamp: state.firstMessageTimestamp,
+		lastMessageTimestamp: state.lastMessageTimestamp,
 	};
 }
 
@@ -863,9 +838,8 @@ export async function extractSessionMetadataStreaming(
 
 	const state: MetadataExtractionState = {
 		summary: undefined,
-		created: undefined,
-		lastRequestEnded: undefined,
-		lastRequestStartedTimestamp: undefined,
+		firstMessageTimestamp: undefined,
+		lastMessageTimestamp: undefined,
 		firstUserMessageContent: undefined,
 		foundSessionId: false,
 	};

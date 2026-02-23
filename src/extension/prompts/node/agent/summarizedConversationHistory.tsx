@@ -7,7 +7,7 @@ import * as l10n from '@vscode/l10n';
 import { BasePromptElementProps, PrioritizedList, PromptElement, PromptMetadata, PromptSizing, Raw, SystemMessage, UserMessage } from '@vscode/prompt-tsx';
 import { BudgetExceededError } from '@vscode/prompt-tsx/dist/base/materialized';
 import { ChatMessage } from '@vscode/prompt-tsx/dist/base/output/rawTypes';
-import type { ChatResponsePart, ChatResultPromptTokenDetail, LanguageModelToolInformation, NotebookDocument, Progress } from 'vscode';
+import type { ChatResponsePart, LanguageModelToolInformation, NotebookDocument, Progress } from 'vscode';
 import { IChatHookService, PreCompactHookInput } from '../../../../platform/chat/common/chatHookService';
 import { ChatFetchResponseType, ChatLocation, ChatResponse, FetchSuccess } from '../../../../platform/chat/common/commonTypes';
 import { ConfigKey, IConfigurationService } from '../../../../platform/configuration/common/configurationService';
@@ -20,7 +20,6 @@ import { IPromptPathRepresentationService } from '../../../../platform/prompts/c
 import { IExperimentationService } from '../../../../platform/telemetry/common/nullExperimentationService';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry';
 import { ThinkingData } from '../../../../platform/thinking/common/thinking';
-import { computePromptTokenDetails } from '../../../../platform/tokenizer/node/promptTokenDetails';
 import { IWorkspaceService } from '../../../../platform/workspace/common/workspaceService';
 import { CancellationToken } from '../../../../util/vs/base/common/cancellation';
 import { CancellationError, isCancellationError } from '../../../../util/vs/base/common/errors';
@@ -345,9 +344,7 @@ export class SummarizedConversationHistoryMetadata extends PromptMetadata {
 	constructor(
 		public readonly toolCallRoundId: string,
 		public readonly text: string,
-		public readonly thinking?: ThinkingData,
-		public readonly usage?: APIUsage,
-		public readonly promptTokenDetails?: readonly ChatResultPromptTokenDetail[],
+		public readonly thinking?: ThinkingData
 	) {
 		super();
 	}
@@ -387,7 +384,7 @@ export class SummarizedConversationHistory extends PromptElement<SummarizedAgent
 			const summarizer = this.instantiationService.createInstance(ConversationHistorySummarizer, this.props, sizing, progress, token);
 			const summResult = await summarizer.summarizeHistory();
 			if (summResult) {
-				historyMetadata = new SummarizedConversationHistoryMetadata(summResult.toolCallRoundId, summResult.summary, summResult.thinking, summResult.usage, summResult.promptTokenDetails);
+				historyMetadata = new SummarizedConversationHistoryMetadata(summResult.toolCallRoundId, summResult.summary, summResult.thinking);
 				this.addSummaryToHistory(summResult.summary, summResult.toolCallRoundId, summResult.thinking);
 			}
 		}
@@ -427,11 +424,6 @@ enum SummaryMode {
 	Full = 'full'
 }
 
-interface SummarizationResult {
-	result: FetchSuccess<string>;
-	promptTokenDetails?: readonly ChatResultPromptTokenDetail[];
-}
-
 class ConversationHistorySummarizer {
 	private readonly summarizationId = generateUuid();
 
@@ -449,7 +441,7 @@ class ConversationHistorySummarizer {
 		@IChatHookService private readonly chatHookService: IChatHookService,
 	) { }
 
-	async summarizeHistory(): Promise<{ summary: string; toolCallRoundId: string; thinking?: ThinkingData; usage?: APIUsage; promptTokenDetails?: readonly ChatResultPromptTokenDetail[] }> {
+	async summarizeHistory(): Promise<{ summary: string; toolCallRoundId: string; thinking?: ThinkingData }> {
 		// Execute pre-compact hook before summarization to allow hooks to archive transcripts or perform cleanup
 		await this.executePreCompactHook();
 
@@ -466,15 +458,13 @@ class ConversationHistorySummarizer {
 
 		const summary = await summaryPromise;
 		return {
-			summary: summary.result.value,
+			summary: summary.value,
 			toolCallRoundId: propsInfo.summarizedToolCallRoundId,
-			thinking: propsInfo.summarizedThinking,
-			usage: summary.result.usage,
-			promptTokenDetails: summary.promptTokenDetails,
+			thinking: propsInfo.summarizedThinking
 		};
 	}
 
-	private async getSummaryWithFallback(propsInfo: ISummarizedConversationHistoryInfo): Promise<SummarizationResult> {
+	private async getSummaryWithFallback(propsInfo: ISummarizedConversationHistoryInfo): Promise<FetchSuccess<string>> {
 		const forceMode = this.configurationService.getConfig<string | undefined>(ConfigKey.Advanced.AgentHistorySummarizationMode);
 		if (forceMode === SummaryMode.Simple) {
 			return await this.getSummary(SummaryMode.Simple, propsInfo);
@@ -522,7 +512,7 @@ class ConversationHistorySummarizer {
 		}
 	}
 
-	private async getSummary(mode: SummaryMode, propsInfo: ISummarizedConversationHistoryInfo): Promise<SummarizationResult> {
+	private async getSummary(mode: SummaryMode, propsInfo: ISummarizedConversationHistoryInfo): Promise<FetchSuccess<string>> {
 		const stopwatch = new StopWatch(false);
 		const forceGpt41 = this.configurationService.getExperimentBasedConfig(ConfigKey.Advanced.AgentHistorySummarizationForceGpt41, this.experimentationService);
 		const gpt41Endpoint = await this.endpointProvider.getChatEndpoint('gpt-4.1');
@@ -598,19 +588,7 @@ class ConversationHistorySummarizer {
 			throw e;
 		}
 
-		const tokenizer = endpoint.acquireTokenizer();
-		const promptTokenDetails = await computePromptTokenDetails({
-			messages: summarizationPrompt,
-			tokenizer,
-			tools: this.props.tools ?? undefined,
-			totalPromptTokens: summaryResponse.type === ChatFetchResponseType.Success ? summaryResponse.usage?.prompt_tokens : undefined,
-			maxOutputTokens: endpoint.maxOutputTokens,
-		});
-
-		return {
-			result: await this.handleSummarizationResponse(summaryResponse, mode, stopwatch.elapsed()),
-			promptTokenDetails,
-		};
+		return this.handleSummarizationResponse(summaryResponse, mode, stopwatch.elapsed());
 	}
 
 	private async handleSummarizationResponse(response: ChatResponse, mode: SummaryMode, elapsedTime: number): Promise<FetchSuccess<string>> {

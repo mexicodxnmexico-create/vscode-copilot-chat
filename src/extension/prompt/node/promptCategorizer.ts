@@ -38,10 +38,6 @@ export interface IPromptCategorizerService {
 }
 
 // Categorization outcome values for telemetry
-// Success: outcome == '' — full classification with valid timeEstimates
-// Partial success: outcome == 'partialClassification' — core fields valid, timeEstimate malformed
-// Pipeline failures: other non-empty outcomes (timeout, requestFailed, noToolCall, parseError, invalidClassification, error)
-// Low confidence: outcome == '' AND confidence < 0.5
 const CATEGORIZATION_OUTCOMES = {
 	SUCCESS: '',
 	TIMEOUT: 'timeout',
@@ -49,7 +45,6 @@ const CATEGORIZATION_OUTCOMES = {
 	NO_TOOL_CALL: 'noToolCall',
 	PARSE_ERROR: 'parseError',
 	INVALID_CLASSIFICATION: 'invalidClassification',
-	PARTIAL_CLASSIFICATION: 'partialClassification',
 	ERROR: 'error',
 } as const;
 
@@ -60,59 +55,25 @@ function isValidIsoDuration(duration: string): boolean {
 	return ISO_8601_DURATION_REGEX.test(duration);
 }
 
-/**
- * Returns true when the partial classification has fully valid ISO 8601 time estimates.
- */
-function hasValidTimeEstimates(partial: PromptClassification): boolean {
-	return partial.timeEstimate.bestCase !== '' && partial.timeEstimate.realistic !== '';
-}
-
-/**
- * Extracts a partial classification from the LLM response, validating only the core
- * fields (intent, domain, scope, confidence, reasoning). Time estimates are extracted
- * on a best-effort basis — malformed durations are replaced with empty strings.
- *
- * Returns undefined if the core fields are missing or invalid.
- */
-function extractPartialClassification(obj: unknown): PromptClassification | undefined {
+function isValidClassification(obj: unknown): obj is PromptClassification {
 	if (typeof obj !== 'object' || obj === null) {
-		return undefined;
+		return false;
 	}
 
-	const c = obj as Record<string, unknown>;
+	const classification = obj as Record<string, unknown>;
 
-	// Core fields must all be valid
-	if (
-		typeof c.intent !== 'string' || !isValidIntent(c.intent) ||
-		typeof c.domain !== 'string' || !isValidDomain(c.domain) ||
-		typeof c.scope !== 'string' || !isValidScope(c.scope) ||
-		typeof c.confidence !== 'number' || c.confidence < 0 || c.confidence > 1 ||
-		typeof c.reasoning !== 'string'
-	) {
-		return undefined;
-	}
-
-	// Time estimates are optional — extract valid durations, fall back to ''
-	let bestCase = '';
-	let realistic = '';
-	if (typeof c.timeEstimate === 'object' && c.timeEstimate !== null) {
-		const te = c.timeEstimate as Record<string, unknown>;
-		if (typeof te.bestCase === 'string' && isValidIsoDuration(te.bestCase)) {
-			bestCase = te.bestCase;
-		}
-		if (typeof te.realistic === 'string' && isValidIsoDuration(te.realistic)) {
-			realistic = te.realistic;
-		}
-	}
-
-	return {
-		intent: c.intent,
-		domain: c.domain,
-		scope: c.scope,
-		confidence: c.confidence,
-		reasoning: c.reasoning,
-		timeEstimate: { bestCase, realistic },
-	};
+	return (
+		typeof classification.intent === 'string' && isValidIntent(classification.intent) &&
+		typeof classification.domain === 'string' && isValidDomain(classification.domain) &&
+		typeof classification.scope === 'string' && isValidScope(classification.scope) &&
+		typeof classification.confidence === 'number' && classification.confidence >= 0 && classification.confidence <= 1 &&
+		typeof classification.reasoning === 'string' &&
+		typeof classification.timeEstimate === 'object' && classification.timeEstimate !== null &&
+		typeof (classification.timeEstimate as Record<string, unknown>).bestCase === 'string' &&
+		isValidIsoDuration((classification.timeEstimate as Record<string, unknown>).bestCase as string) &&
+		typeof (classification.timeEstimate as Record<string, unknown>).realistic === 'string' &&
+		isValidIsoDuration((classification.timeEstimate as Record<string, unknown>).realistic as string)
+	);
 }
 
 export class PromptCategorizerService implements IPromptCategorizerService {
@@ -223,25 +184,17 @@ export class PromptCategorizerService implements IPromptCategorizerService {
 				if (categorizationCall) {
 					try {
 						const parsed = JSON.parse(categorizationCall.arguments);
-						const partial = extractPartialClassification(parsed);
-						if (partial && hasValidTimeEstimates(partial)) {
-							classification = partial;
+						if (isValidClassification(parsed)) {
+							classification = parsed;
 							outcome = CATEGORIZATION_OUTCOMES.SUCCESS;
-						} else if (partial) {
-							// Core fields valid but timeEstimate malformed — recover partial
-							classification = partial;
-							outcome = CATEGORIZATION_OUTCOMES.PARTIAL_CLASSIFICATION;
-							errorDetail = `Recovered core fields; invalid timeEstimate (arguments length: ${categorizationCall.arguments.length})`;
-							this.logService.debug(`[PromptCategorizer] Partial classification recovered; ${errorDetail}`);
 						} else {
 							outcome = CATEGORIZATION_OUTCOMES.INVALID_CLASSIFICATION;
-							errorDetail = `Invalid classification structure (arguments length: ${categorizationCall.arguments.length})`;
-							this.logService.warn(`[PromptCategorizer] Invalid classification structure; ${errorDetail}`);
+							errorDetail = categorizationCall.arguments.substring(0, 200);
+							this.logService.warn(`[PromptCategorizer] Invalid classification structure: ${errorDetail}`);
 						}
 					} catch (parseError) {
 						outcome = CATEGORIZATION_OUTCOMES.PARSE_ERROR;
-						const parseMsg = parseError instanceof Error ? parseError.message : String(parseError);
-						errorDetail = `${parseMsg} (arguments length: ${categorizationCall.arguments.length}, timedOut: ${cts.token.isCancellationRequested})`;
+						errorDetail = parseError instanceof Error ? parseError.message : String(parseError);
 						this.logService.warn(`[PromptCategorizer] Failed to parse tool arguments: ${errorDetail}`);
 					}
 				} else {
@@ -287,12 +240,12 @@ export class PromptCategorizerService implements IPromptCategorizerService {
 				"requestId": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The unique request identifier within the session" },
 				"modeName": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The chat mode name being used" },
 				"currentLanguage": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The language ID of the active editor" },
-				"outcome": { "classification": "SystemMetaData", "purpose": "PerformanceAndHealth", "comment": "Classification outcome: empty string for success, partialClassification for recovered core fields, or error kind (timeout, requestFailed, noToolCall, parseError, invalidClassification, error)" },
-				"intent": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The classified intent (populated on success or partialClassification, empty string on failure)" },
-				"domain": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The classified domain (populated on success or partialClassification, empty string on failure)" },
+				"outcome": { "classification": "SystemMetaData", "purpose": "PerformanceAndHealth", "comment": "Classification outcome: empty string for success, or error kind (timeout, requestFailed, noToolCall, parseError, invalidClassification, error)" },
+				"intent": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The intent category (e.g., code_generation, code_fixing)" },
+				"domain": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The domain category (e.g., frontend, backend)" },
 				"timeEstimateBestCase": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "ISO 8601 duration for best case time estimate" },
 				"timeEstimateRealistic": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "ISO 8601 duration for realistic time estimate" },
-				"scope": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The classified scope (populated on success or partialClassification, empty string on failure)" },
+				"scope": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The scope category (e.g., current_file, codebase)" },
 				"promptLength": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "isMeasurement": true, "comment": "Length of the user prompt in characters" },
 				"numReferences": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "isMeasurement": true, "comment": "Number of context references attached to the request" },
 				"numToolReferences": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "isMeasurement": true, "comment": "Number of tool references in the request" },
@@ -308,11 +261,11 @@ export class PromptCategorizerService implements IPromptCategorizerService {
 				modeName: request.modeInstructions2?.name,
 				currentLanguage: currentLanguage ?? '',
 				outcome,
-				intent: classification?.intent ?? '',
-				domain: classification?.domain ?? '',
+				intent: classification?.intent ?? 'unknown',
+				domain: classification?.domain ?? 'unknown',
 				timeEstimateBestCase: classification?.timeEstimate?.bestCase ?? '',
 				timeEstimateRealistic: classification?.timeEstimate?.realistic ?? '',
-				scope: classification?.scope ?? '',
+				scope: classification?.scope ?? 'unknown',
 			},
 			{
 				promptLength: request.prompt.length,
@@ -339,11 +292,11 @@ export class PromptCategorizerService implements IPromptCategorizerService {
 				currentLanguage: currentLanguage ?? '',
 				outcome,
 				errorDetail: truncatedErrorDetail,
-				intent: classification?.intent ?? '',
-				domain: classification?.domain ?? '',
+				intent: classification?.intent ?? 'unknown',
+				domain: classification?.domain ?? 'unknown',
 				timeEstimateBestCase: classification?.timeEstimate?.bestCase ?? '',
 				timeEstimateRealistic: classification?.timeEstimate?.realistic ?? '',
-				scope: classification?.scope ?? '',
+				scope: classification?.scope ?? 'unknown',
 				reasoning: classification?.reasoning ?? '',
 				prompt: truncatedPrompt,
 			},

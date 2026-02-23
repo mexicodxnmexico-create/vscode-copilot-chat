@@ -310,8 +310,7 @@ export class AgentMemoryService extends Disposable implements IAgentMemoryServic
 					fact: memory.fact,
 					citations,
 					reason: memory.reason,
-					category: memory.category,
-					source: { agent: 'vscode' }
+					category: memory.category
 				}
 			}, {
 				type: RequestType.CopilotAgentMemory,

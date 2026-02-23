@@ -10,7 +10,6 @@ import * as l10n from '@vscode/l10n';
 import type * as vscode from 'vscode';
 import { INativeEnvService } from '../../../../platform/env/common/envService';
 import { ILogService } from '../../../../platform/log/common/logService';
-import { CapturingToken } from '../../../../platform/requestLogger/common/capturingToken';
 import { IWorkspaceService } from '../../../../platform/workspace/common/workspaceService';
 import { isLocation } from '../../../../util/common/types';
 import { DeferredPromise } from '../../../../util/vs/base/common/async';
@@ -67,7 +66,7 @@ export class ClaudeAgentManager extends Disposable {
 	): Promise<vscode.ChatResult & { claudeSessionId?: string }> {
 		try {
 			// Read UI state from session state service
-			const modelId = this.sessionStateService.getModelIdForSession(claudeSessionId);
+			const modelId = await this.sessionStateService.getModelIdForSession(claudeSessionId);
 			const permissionMode = this.sessionStateService.getPermissionModeForSession(claudeSessionId);
 			const folderInfo = this.sessionStateService.getFolderInfoForSession(claudeSessionId);
 
@@ -364,7 +363,7 @@ export class ClaudeCodeSession extends Disposable {
 		}
 
 		// Read current model and permission mode from session state service
-		const modelId = this.sessionStateService.getModelIdForSession(this.sessionId);
+		const modelId = await this.sessionStateService.getModelIdForSession(this.sessionId);
 		const permissionMode = this.sessionStateService.getPermissionModeForSession(this.sessionId);
 
 		// Update model and permission mode on active session if they changed
@@ -441,7 +440,7 @@ export class ClaudeCodeSession extends Disposable {
 			env: {
 				...process.env,
 				ANTHROPIC_BASE_URL: `http://localhost:${this.serverConfig.port}`,
-				ANTHROPIC_API_KEY: `${this.serverConfig.nonce}.${this.sessionId}`,
+				ANTHROPIC_API_KEY: this.serverConfig.nonce,
 				CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
 				USE_BUILTIN_RIPGREP: '0',
 				PATH: `${this.envService.appRoot}/node_modules/@vscode/ripgrep/bin${pathSep}${process.env.PATH}`
@@ -558,14 +557,6 @@ export class ClaudeCodeSession extends Disposable {
 			// This is used by the language model server to track which requests are user-initiated
 			this.langModelServer.incrementUserInitiatedMessageCount(this._currentModelId);
 
-			// Create a capturing token for this request to group tool calls under the request
-			// we use the last text block in the prompt as the label for the token, since that is most representative of the user's intent
-			const promptLabel = request.prompt.filter(p => p.type === 'text').at(-1)?.text ?? 'Claude Session Prompt';
-			this.sessionStateService.setCapturingTokenForSession(
-				this.sessionId,
-				new CapturingToken(promptLabel, 'claude', false)
-			);
-
 			yield {
 				type: 'user',
 				message: {
@@ -638,8 +629,6 @@ export class ClaudeCodeSession extends Disposable {
 					this.handleUserMessage(message, this._currentRequest.stream, unprocessedToolCalls, this._currentRequest.toolInvocationToken, this._currentRequest.token);
 				} else if (message.type === 'result') {
 					this.handleResultMessage(message, this._currentRequest.stream);
-					// Clear the capturing token so subsequent requests get their own
-					this.sessionStateService.setCapturingTokenForSession(this.sessionId, undefined);
 					// Resolve and remove the completed request
 					if (this._promptQueue.length > 0) {
 						const completedRequest = this._promptQueue.shift()!;
@@ -656,8 +645,6 @@ export class ClaudeCodeSession extends Disposable {
 	}
 
 	private _cleanup(error: Error): void {
-		// Clear the capturing token so it doesn't leak across sessions or error boundaries
-		this.sessionStateService.setCapturingTokenForSession(this.sessionId, undefined);
 		this._resetSessionState();
 
 		const wasYielding = this._yieldInProgress;

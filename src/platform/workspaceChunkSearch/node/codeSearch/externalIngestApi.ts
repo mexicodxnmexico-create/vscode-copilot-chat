@@ -3,13 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CallTracker } from '../../../../util/common/telemetryCorrelationId';
 import { raceCancellationError } from '../../../../util/vs/base/common/async';
 import { CancellationToken } from '../../../../util/vs/base/common/cancellation';
 import { CancellationError } from '../../../../util/vs/base/common/errors';
 import { IDisposable } from '../../../../util/vs/base/common/lifecycle';
-import { getGithubMetadataHeaders } from '../../../chunking/common/chunkingEndpointClientImpl';
-import { IEnvService } from '../../../env/common/envService';
 import { ILogService } from '../../../log/common/logService';
 
 // Sliding window that holds at least N entries and all entries in the time window.
@@ -205,7 +202,6 @@ export class ApiClient implements IDisposable {
 
 	constructor(
 		target: number | null = 80,
-		@IEnvService private readonly envService: IEnvService,
 		@ILogService private readonly logService: ILogService,
 	) {
 		if (target === null) {
@@ -220,7 +216,6 @@ export class ApiClient implements IDisposable {
 		headers: Record<string, string>,
 		method: string,
 		body: unknown | undefined,
-		callerInfo: CallTracker,
 		token: CancellationToken,
 	): Promise<Response> {
 		if (this.throttler) {
@@ -239,10 +234,7 @@ export class ApiClient implements IDisposable {
 		try {
 			const res = await fetch(url, {
 				method,
-				headers: {
-					...headers,
-					...getGithubMetadataHeaders(callerInfo, this.envService),
-				},
+				headers,
 				body: body ? JSON.stringify(body) : undefined,
 			});
 			if (!res.ok) {

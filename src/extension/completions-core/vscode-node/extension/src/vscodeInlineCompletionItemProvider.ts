@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { basename } from 'path';
 import {
 	CancellationToken,
 	InlineCompletionContext,
@@ -19,8 +18,6 @@ import {
 	workspace
 } from 'vscode';
 import { ILogger, ILogService, LogTarget } from '../../../../../platform/log/common/logService';
-import { CapturingToken } from '../../../../../platform/requestLogger/common/capturingToken';
-import { IRequestLogger } from '../../../../../platform/requestLogger/node/requestLogger';
 import { softAssert } from '../../../../../util/vs/base/common/assert';
 import { Disposable } from '../../../../../util/vs/base/common/lifecycle';
 import { StopWatch } from '../../../../../util/vs/base/common/stopwatch';
@@ -83,7 +80,6 @@ export class CopilotInlineCompletionItemProvider extends Disposable implements I
 		@ICompletionsTelemetryService private readonly telemetryService: ICompletionsTelemetryService,
 		@ICompletionsExtensionStatus private readonly extensionStatusService: ICompletionsExtensionStatus,
 		@ILogService logService: ILogService,
-		@IRequestLogger private readonly requestLogger: IRequestLogger,
 	) {
 		super();
 		this.copilotCompletionFeedbackTracker = this._register(this.instantiationService.createInstance(CopilotCompletionFeedbackTracker));
@@ -112,35 +108,29 @@ export class CopilotInlineCompletionItemProvider extends Disposable implements I
 
 		const sw = new StopWatch();
 
-		const label = `Ghost | ${basename(doc.uri.toString())} (v${doc.version})`;
+		const logContext = new GhostTextLogContext(doc.uri.toString(), doc.version, context);
 
-		const capturingToken = new CapturingToken(label, undefined, true, true);
+		const logger = this.logger.createSubLogger('provideInlineCompletionItems').withExtraTarget(LogTarget.fromCallback((_level, msg) => {
+			logContext.trace(`[${Math.floor(sw.elapsed()).toString().padStart(4, ' ')}ms] ${msg}`);
+		}));
 
-		return await this.requestLogger.captureInvocation(capturingToken, async () => {
+		logger.trace('Started providing inline completion items');
 
-			const logContext = new GhostTextLogContext(doc.uri.toString(), doc.version, context);
+		const telemetryBuilder = this.createTelemetryBuilder();
+		telemetryBuilder.setOpportunityId(context.requestUuid);
 
-			const logger = this.logger.createSubLogger('provideInlineCompletionItems').withExtraTarget(LogTarget.fromCallback((_level, msg) => {
-				logContext.trace(`[${Math.floor(sw.elapsed()).toString().padStart(4, ' ')}ms] ${msg}`);
-			}));
+		try {
+			return await this._provideInlineCompletionItems(doc, position, context, telemetryBuilder, logContext, logger, token);
+		} catch (e) {
+			logContext.setError(e);
+			this.telemetryService.sendGHTelemetryException(e, 'codeUnification.completions.exception');
+			const emptyList = { items: [], telemetryBuilder }; // we need to return an empty list, such that vscode invokes endOfLife on it and we send telemetry
+			return emptyList;
+		} finally {
+			this.inlineEditLogger.add(logContext);
 
-			const telemetryBuilder = this.createTelemetryBuilder();
-			telemetryBuilder.setOpportunityId(context.requestUuid);
-
-			try {
-				logger.trace('Started providing inline completion items');
-				return await this._provideInlineCompletionItems(doc, position, context, telemetryBuilder, logContext, logger, token);
-			} catch (e) {
-				logContext.setError(e);
-				this.telemetryService.sendGHTelemetryException(e, 'codeUnification.completions.exception');
-				const emptyList = { items: [], telemetryBuilder }; // we need to return an empty list, such that vscode invokes endOfLife on it and we send telemetry
-				return emptyList;
-			} finally {
-				this.inlineEditLogger.add(logContext);
-
-				telemetryBuilder.nesBuilder.markEndTime();
-			}
-		});
+			telemetryBuilder.nesBuilder.markEndTime();
+		}
 	}
 
 	private async _provideInlineCompletionItems(

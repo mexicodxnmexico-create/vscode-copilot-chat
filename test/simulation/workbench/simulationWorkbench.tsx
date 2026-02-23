@@ -11,7 +11,6 @@ import { Disposable } from '../../../src/util/vs/base/common/lifecycle';
 import { App, DisplayOptions } from './components/app';
 import { InitArgs, parseInitEventArgs as parseProcessArgv } from './initArgs';
 import { AMLProvider } from './stores/amlSimulations';
-import { NesExternalOptions } from './stores/nesExternalOptions';
 import { RunnerOptions } from './stores/runnerOptions';
 import { SimulationRunsProvider } from './stores/simulationBaseline';
 import { SimulationRunner } from './stores/simulationRunner';
@@ -28,7 +27,6 @@ class SimulationWorkbench extends Disposable {
 	private readonly amlProvider: AMLProvider;
 	private readonly runner: SimulationRunner;
 	private readonly runnerOptions: RunnerOptions;
-	private readonly nesExternalOptions: NesExternalOptions;
 	private readonly tests: SimulationTestsProvider;
 	private readonly displayOptions: DisplayOptions;
 
@@ -39,10 +37,9 @@ class SimulationWorkbench extends Disposable {
 		this.testSource = this.storage.bind('testSource', TestSource.Local);
 		this.amlProvider = this._register(new AMLProvider(this.storage));
 		this.runnerOptions = new RunnerOptions(this.storage);
-		this.nesExternalOptions = new NesExternalOptions(this.storage);
 		this.runner = this._register(new SimulationRunner(this.storage, this.runnerOptions));
 		this.simulationRunsProvider = this._register(new SimulationRunsProvider(this.storage, this.runner));
-		this.tests = this._register(new SimulationTestsProvider(this.testSource, this.runner, this.simulationRunsProvider, this.amlProvider, this.nesExternalOptions));
+		this.tests = this._register(new SimulationTestsProvider(this.testSource, this.runner, this.simulationRunsProvider, this.amlProvider));
 		this.displayOptions = new DisplayOptions(this.storage);
 	}
 
@@ -56,7 +53,6 @@ class SimulationWorkbench extends Disposable {
 				testsProvider={this.tests}
 				runner={this.runner}
 				runnerOptions={this.runnerOptions}
-				nesExternalOptions={this.nesExternalOptions}
 				simulationRunsProvider={this.simulationRunsProvider}
 				amlProvider={this.amlProvider}
 				displayOptions={this.displayOptions}

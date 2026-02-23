@@ -68,8 +68,4 @@ export class NewWorkspacePreviewFileSystemProvider implements FileSystemProvider
 		throw FileSystemError.NoPermissions(destination);
 	}
 	// #endregion
-
-	dispose(): void {
-		this._onDidChangeFile.dispose();
-	}
 }

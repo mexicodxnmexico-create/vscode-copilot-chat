@@ -6,7 +6,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { IVSCodeExtensionContext } from '../../../../platform/extContext/common/extensionContext';
-import { MockGitService } from '../../../../platform/ignore/node/test/mockGitService';
 import { ILogService } from '../../../../platform/log/common/logService';
 import { mock } from '../../../../util/common/test/simpleMock';
 import { URI } from '../../../../util/vs/base/common/uri';
@@ -69,14 +68,12 @@ class MockLogService extends mock<ILogService>() {
 describe('ChatSessionWorkspaceFolderService', () => {
 	let service: ChatSessionWorkspaceFolderService;
 	let extensionContext: MockExtensionContext;
-	let gitService: MockGitService;
 	let logService: MockLogService;
 
 	beforeEach(() => {
 		extensionContext = new MockExtensionContext();
 		logService = new MockLogService();
-		gitService = new MockGitService();
-		service = new ChatSessionWorkspaceFolderService(gitService, logService, extensionContext);
+		service = new ChatSessionWorkspaceFolderService(logService, extensionContext);
 	});
 
 	afterEach(() => {
