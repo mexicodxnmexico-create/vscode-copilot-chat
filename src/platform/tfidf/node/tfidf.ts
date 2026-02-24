@@ -135,6 +135,23 @@ interface DocumentChunkEntry {
 	readonly tf: TermFrequencies;
 }
 
+interface ScorableFileChunk {
+	readonly id: number;
+	readonly file: URI;
+	readonly range: Range;
+	readonly isFullFile: boolean;
+}
+
+interface ScorableDocumentChunkEntry {
+	readonly chunk: ScorableFileChunk;
+	readonly tf: TermFrequencies;
+}
+
+interface ScorableTfIdfDocData {
+	readonly contentVersionId: string;
+	readonly chunks: readonly ScorableDocumentChunkEntry[];
+}
+
 export interface TfIdfDoc {
 	readonly uri: URI;
 	getContentVersionId(): Promise<string>;
@@ -368,7 +385,7 @@ export class PersistentTfIdf {
 	 * Rank the documents by their cosine similarity to a set of search queries.
 	 */
 	public async search(query: string, options?: TfIdfSearchOptions): Promise<FileChunk[]> {
-		const heap = new SimpleHeap<FileChunk>(options?.maxResults ?? Infinity, -Infinity);
+		const heap = new SimpleHeap<ScorableFileChunk>(options?.maxResults ?? Infinity, -Infinity);
 
 		const queryEmbeddings = this.computeEmbeddings(query);
 		if (!queryEmbeddings.size) {
@@ -376,7 +393,7 @@ export class PersistentTfIdf {
 		}
 
 		const idfCache = new Map<string, number>();
-		for (const entry of await this.getAllChunksWithTerms(Array.from(queryEmbeddings.keys()))) {
+		for (const entry of await this.getScorableChunks(Array.from(queryEmbeddings.keys()))) {
 			if (!shouldInclude(entry.chunk.file, options?.globPatterns)) {
 				continue;
 			}
@@ -387,7 +404,17 @@ export class PersistentTfIdf {
 			}
 		}
 
-		return heap.toArray(options?.maxSpread);
+		const topChunks = heap.toArray(options?.maxSpread);
+		const ids = topChunks.map(c => c.id);
+		const textMap = this.getChunksText(ids);
+
+		return topChunks.map(chunk => ({
+			file: chunk.file,
+			range: chunk.range,
+			isFullFile: chunk.isFullFile,
+			text: textMap.get(chunk.id) ?? '',
+			rawText: textMap.get(chunk.id) ?? '',
+		}));
 	}
 
 	private computeEmbeddings(input: string): SparseEmbedding {
@@ -395,7 +422,7 @@ export class PersistentTfIdf {
 		return this.computeTfidf(tf);
 	}
 
-	private score(chunk: DocumentChunkEntry, queryEmbedding: SparseEmbedding, idfCache: Map<string, number>): number {
+	private score(chunk: ScorableDocumentChunkEntry, queryEmbedding: SparseEmbedding, idfCache: Map<string, number>): number {
 		// Compute the dot product between the chunk's embedding and the query embedding
 
 		// Note that the chunk embedding is computed lazily on a per-term basis.
@@ -538,7 +565,7 @@ export class PersistentTfIdf {
 		this.db.exec('COMMIT');
 	}
 
-	private getDoc(uri: URI): TfIdfDocData | undefined {
+	private getDoc(uri: URI): ScorableTfIdfDocData | undefined {
 		const doc = this.db.prepare(
 			'SELECT id, contentVersionId FROM Documents WHERE uri = ?'
 		).get(uri.toString());
@@ -547,23 +574,23 @@ export class PersistentTfIdf {
 		}
 
 		const chunks = this.db.prepare(
-			'SELECT text, startLineNumber, startColumn, endLineNumber, endColumn, isFullFile, json(termFrequencies) as termFrequencies FROM Chunks WHERE documentId = ?'
+			'SELECT id, startLineNumber, startColumn, endLineNumber, endColumn, isFullFile, json(termFrequencies) as termFrequencies FROM Chunks WHERE documentId = ?'
 		).all(doc.id);
 		return {
 			contentVersionId: doc.contentVersionId as string,
 			chunks: chunks.map(row => {
-				return this.reviveDocumentChunkEntry({ ...row, uri: uri.toString() });
+				return this.reviveScorableDocumentChunkEntry({ ...row, uri: uri.toString() });
 			})
 		};
 	}
 
-	private async getAllChunksWithTerms(searchTerms: readonly string[]): Promise<Iterable<DocumentChunkEntry>> {
+	private async getScorableChunks(searchTerms: readonly string[]): Promise<Iterable<ScorableDocumentChunkEntry>> {
 		if (!searchTerms.length) {
 			return [];
 		}
 
 		const chunkResults = this.db.prepare(`
-			SELECT c.id, c.documentId, c.text, c.startLineNumber, c.startColumn, c.endLineNumber, c.endColumn, c.isFullFile,
+			SELECT c.id, c.documentId, c.startLineNumber, c.startColumn, c.endLineNumber, c.endColumn, c.isFullFile,
 				json(c.termFrequencies) as termFrequencies, d.uri
 			FROM Chunks c
 			JOIN Documents d ON c.documentId = d.id
@@ -573,17 +600,36 @@ export class PersistentTfIdf {
 			)
 		`).all(...searchTerms);
 
-		return Iterable.map(chunkResults, row => this.reviveDocumentChunkEntry(row));
+		return Iterable.map(chunkResults, row => this.reviveScorableDocumentChunkEntry(row));
 	}
 
-	private reviveDocumentChunkEntry(row: any): DocumentChunkEntry {
+	private getChunksText(ids: number[]): Map<number, string> {
+		const map = new Map<number, string>();
+		if (!ids.length) {
+			return map;
+		}
+
+		const batchSize = 500;
+		for (let i = 0; i < ids.length; i += batchSize) {
+			const batch = ids.slice(i, i + batchSize);
+			const result = this.db.prepare(`
+				SELECT id, text FROM Chunks WHERE id IN (${batch.map(_ => '?').join(',')})
+			`).all(...batch);
+
+			for (const row of result) {
+				map.set((row as any).id, (row as any).text);
+			}
+		}
+		return map;
+	}
+
+	private reviveScorableDocumentChunkEntry(row: any): ScorableDocumentChunkEntry {
 		return {
 			tf: JSON.parse(row.termFrequencies as string),
 			get chunk() {
 				return {
+					id: row.id as number,
 					file: URI.isUri(row.uri) ? row.uri : URI.parse(row.uri as string),
-					text: row.text as string,
-					rawText: row.text,
 					range: new Range(
 						row.startLineNumber as number,
 						row.startColumn as number,
@@ -595,4 +641,5 @@ export class PersistentTfIdf {
 			}
 		};
 	}
+
 }
