@@ -51,13 +51,19 @@ function handleSolutionUpdate(message: Message) {
 	updateLoadingContainer(message);
 
 	if (solutionsContainer) {
+		if (message.percentage >= 100) {
+			solutionsContainer.setAttribute('aria-busy', 'false');
+		} else {
+			solutionsContainer.setAttribute('aria-busy', 'true');
+		}
+
 		solutionsContainer.innerHTML = message.solutions
 			.map((solution, index) => {
 				const citationUrl = solution.citation?.url ?? '';
 				const safeUrl = getSafeUrl(citationUrl) ?? '#';
 				const renderedCitation = solution.citation
 					? `<p>
-						<span style="vertical-align: text-bottom"><strong>&#9888; Warning:</strong></span>
+						<span style="vertical-align: text-bottom"><span aria-hidden="true">&#9888;</span> <strong>Warning:</strong></span>
 						${DOMPurify.sanitize(solution.citation.message)}
 						<a href="${DOMPurify.sanitize(safeUrl)}" target="_blank" rel="noopener noreferrer">Inspect source code</a>
 					  </p>`
