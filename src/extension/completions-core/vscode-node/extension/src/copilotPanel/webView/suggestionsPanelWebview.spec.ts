@@ -84,16 +84,32 @@ describe('suggestionsPanelWebview', () => {
         // Note: URL normalization adds a trailing slash to the hostname
         expect(solutions).toContain('<a href="http://example.com/" target="_blank" rel="noopener noreferrer">Inspect source code</a>');
 
-        // Check for improved warning (visible, bold, with icon)
-        // Note: innerHTML might escape entities differently depending on jsdom version,
-        // so we check for the expected output string or parts of it.
-        // &#9888; might be rendered as the character itself.
-        // Let's check loosely or try to match exactly if we know how jsdom behaves.
-        // Usually innerHTML unescapes entities. &#9888; becomes ⚠.
-        expect(solutions).toContain('<span style="vertical-align: text-bottom"><strong>⚠ Warning:</strong></span>');
+        // Check for improved warning (visible, bold, with icon hidden from screen reader)
+        // Note: innerHTML might escape entities differently depending on jsdom version.
+        // We check for the structure where the icon is hidden and the text is visible.
+        expect(solutions).toContain('<span style="vertical-align: text-bottom"><span aria-hidden="true">⚠</span> <strong>Warning:</strong></span>');
+    });
 
-        // Ensure aria-hidden is gone
-        expect(solutions).not.toContain('aria-hidden="true"');
+    it('updates aria-busy state on solutionsContainer', async () => {
+        // Send partial update
+        const loadingMessage = {
+            command: 'solutionsUpdated',
+            solutions: [],
+            percentage: 50,
+        };
+        window.postMessage(loadingMessage, '*');
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(container.getAttribute('aria-busy')).toBe('true');
+
+        // Send complete update
+        const completeMessage = {
+            command: 'solutionsUpdated',
+            solutions: [],
+            percentage: 100,
+        };
+        window.postMessage(completeMessage, '*');
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(container.getAttribute('aria-busy')).toBe('false');
     });
 
     it('does not render malicious citation URL', async () => {
