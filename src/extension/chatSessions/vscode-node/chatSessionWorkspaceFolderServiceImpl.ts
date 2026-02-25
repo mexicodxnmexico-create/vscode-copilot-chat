@@ -144,10 +144,22 @@ export class ChatSessionWorkspaceFolderService extends Disposable implements ICh
 
 		this.logService.trace(`[ChatSessionWorkspaceFolderService ${sessionId}][getWorkspaceChanges] Repository found for ${workspaceFolderUri.toString()}: indexChanges=${repository.changes.indexChanges.length}, workingTree=${repository.changes.workingTree.length}`);
 
+		const fileStatsMap = new Map<string, { additions: number; deletions: number }>();
+		try {
+			const diffs = await this.gitService.diffBetweenWithStats(workspaceFolderUri, 'HEAD', '');
+			if (diffs) {
+				for (const diff of diffs) {
+					fileStatsMap.set(diff.uri.fsPath, { additions: diff.insertions, deletions: diff.deletions });
+				}
+			}
+		} catch (error) {
+			this.logService.error(`[ChatSessionWorkspaceFolderService ${sessionId}][getWorkspaceChanges] Failed to get diff stats: ${error}`);
+		}
+
 		const changes: ChatSessionWorktreeFile[] = [];
 		for (const change of [...repository.changes.indexChanges, ...repository.changes.workingTree]) {
 			try {
-				const fileStats = await this.gitService.diffIndexWithHEADShortStats(change.uri);
+				const fileStats = fileStatsMap.get(change.uri.fsPath);
 				changes.push({
 					filePath: change.uri.fsPath,
 					originalFilePath: change.status !== 1 /* INDEX_ADDED */
@@ -157,7 +169,7 @@ export class ChatSessionWorkspaceFolderService extends Disposable implements ICh
 						? change.uri.fsPath
 						: undefined,
 					statistics: {
-						additions: fileStats?.insertions ?? 0,
+						additions: fileStats?.additions ?? 0,
 						deletions: fileStats?.deletions ?? 0
 					}
 				} satisfies ChatSessionWorktreeFile);
