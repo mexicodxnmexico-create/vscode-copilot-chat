@@ -194,9 +194,15 @@ export function render(node: RenderNode, options: RenderOptions = {}): RenderedT
 			return renderEmpty(node, costFunction);
 		}
 		const text = renderParts.join('');
-		const cost = costFunction
-			? costFunction(text)
-			: [...renderedNodes.values()].reduce((sum, n) => sum + n.cost, 0);
+		let cost: number;
+		if (costFunction) {
+			cost = costFunction(text);
+		} else {
+			cost = 0;
+			for (const node of renderedNodes.values()) {
+				cost += node.cost;
+			}
+		}
 		return { text, cost, renderedNodes };
 	}
 
@@ -240,7 +246,10 @@ export function render(node: RenderNode, options: RenderOptions = {}): RenderedT
 		const text = renderParts.join('');
 		if (costFunction === undefined) {
 			// Within budget by construction
-			const cost = [...renderedNodes.values()].reduce((sum, n) => sum + n.cost, 0);
+			let cost = 0;
+			for (const node of renderedNodes.values()) {
+				cost += node.cost;
+			}
 			return { text, cost, renderedNodes };
 		}
 
