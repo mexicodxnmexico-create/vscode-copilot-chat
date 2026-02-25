@@ -172,6 +172,22 @@ export class PersistentTfIdf {
 
 	private readonly db!: sql.DatabaseSync;
 
+	private readonly _statements = new Map<string, ReturnType<typeof this.db.prepare>>();
+
+	/**
+	 * Returns a cached prepared statement for the given SQL.
+	 * Caching prepared statements avoids the overhead of parsing and planning the query
+	 * on every execution, which is significant for frequent operations like search and indexing.
+	 */
+	private getStatement(sql: string): ReturnType<typeof this.db.prepare> {
+		let stmt = this._statements.get(sql);
+		if (!stmt) {
+			stmt = this.db.prepare(sql);
+			this._statements.set(sql, stmt);
+		}
+		return stmt;
+	}
+
 	constructor(dbPath: URI | ':memory:') {
 		const syncOptions: sql.DatabaseSyncOptions = {
 			open: true,
@@ -285,7 +301,7 @@ export class PersistentTfIdf {
 	}
 
 	private getDocContentVersionId(uri: URI): string | undefined {
-		const result = this.db.prepare(
+		const result = this.getStatement(
 			'SELECT contentVersionId FROM Documents WHERE uri = ?'
 		).get(uri.toString());
 		return result?.contentVersionId as string | undefined;
@@ -334,7 +350,7 @@ export class PersistentTfIdf {
 				continue;
 			}
 
-			this.db.prepare(`
+			this.getStatement(`
 				DELETE FROM Documents WHERE uri = ?
 			`).run(uri.toString());
 
@@ -343,7 +359,7 @@ export class PersistentTfIdf {
 			const allOccurrences = countRecordFrom(doc.chunks.flatMap(chunk => Object.keys(chunk.tf)));
 
 			for (const [term, count] of Object.entries(allOccurrences)) {
-				this.db.prepare(`
+				this.getStatement(`
 					UPDATE ChunkOccurrences
 					SET chunkCount = chunkCount - ?
 					WHERE term = ?;
@@ -352,14 +368,14 @@ export class PersistentTfIdf {
 		}
 		this.db.exec('COMMIT');
 
-		this.db.prepare(`
+		this.getStatement(`
 			DELETE FROM ChunkOccurrences
 			WHERE chunkCount < 1;
 		`).run();
 	}
 
 	public get fileCount(): number {
-		return this.db.prepare(
+		return this.getStatement(
 			`SELECT COUNT(*) as count FROM Documents`
 		).get()!.count as number | undefined ?? 0;
 	}
@@ -447,14 +463,14 @@ export class PersistentTfIdf {
 			return this._cachedChunkCount;
 		}
 
-		const result = this.db.prepare(
+		const result = this.getStatement(
 			'SELECT COUNT(*) as count FROM Chunks'
 		).get();
 		return result?.count as number | undefined ?? 0;
 	}
 
 	private getChunkOccurrences(term: string): number {
-		const result = this.db.prepare(
+		const result = this.getStatement(
 			'SELECT chunkCount FROM ChunkOccurrences WHERE term = ?'
 		).get(term);
 		return result?.chunkCount as number | undefined ?? 0;
@@ -475,14 +491,14 @@ export class PersistentTfIdf {
 			try {
 				for (const { uri, doc } of docs) {
 					// Add new the document
-					const docId = this.db.prepare(
+					const docId = this.getStatement(
 						'INSERT OR REPLACE INTO Documents (uri, contentVersionId) VALUES (?, ?)'
 					)
 						.run(uri.toString(), doc.contentVersionId)
 						.lastInsertRowid;
 
 					// Insert new chunks
-					const insertChunkOp = this.db.prepare(
+					const insertChunkOp = this.getStatement(
 						'INSERT INTO Chunks (documentId, text, startLineNumber, startColumn, endLineNumber, endColumn, isFullFile, termFrequencies) VALUES (?, ?, ?, ?, ?, ?, ?, jsonb(?))'
 					);
 
@@ -525,7 +541,7 @@ export class PersistentTfIdf {
 		processBatch(batch);
 
 		// Update occurrences list
-		const insertOccurrencesOp = this.db.prepare(`
+		const insertOccurrencesOp = this.getStatement(`
 			INSERT INTO ChunkOccurrences (term, chunkCount)
 			VALUES (?, ?)
 			ON CONFLICT(term) DO UPDATE SET chunkCount = chunkCount + ?;
@@ -539,14 +555,14 @@ export class PersistentTfIdf {
 	}
 
 	private getDoc(uri: URI): TfIdfDocData | undefined {
-		const doc = this.db.prepare(
+		const doc = this.getStatement(
 			'SELECT id, contentVersionId FROM Documents WHERE uri = ?'
 		).get(uri.toString());
 		if (!doc) {
 			return undefined;
 		}
 
-		const chunks = this.db.prepare(
+		const chunks = this.getStatement(
 			'SELECT text, startLineNumber, startColumn, endLineNumber, endColumn, isFullFile, json(termFrequencies) as termFrequencies FROM Chunks WHERE documentId = ?'
 		).all(doc.id);
 		return {
