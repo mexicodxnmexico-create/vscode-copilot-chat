@@ -161,11 +161,11 @@ export interface CodeSearchRepo extends IDisposable {
 	refreshStatusFromEndpoint(force: boolean, token: CancellationToken): Promise<RemoteCodeSearchState | undefined>;
 }
 
-abstract class BaseRemoteCodeSearchRepo extends Disposable implements CodeSearchRepo {
+export abstract class BaseRemoteCodeSearchRepo extends Disposable implements CodeSearchRepo {
 
-	// TODO: Switch to use backoff instead of polling at fixed intervals
-	private readonly _repoIndexPollingInterval = 3000; // ms
-	private readonly maxPollingAttempts = 120;
+	private readonly _initialRepoIndexPollingInterval = 3000; // ms
+	private readonly _maxRepoIndexPollingInterval = 60000; // 60s
+	private readonly _maxPollingTotalDuration = 10 * 60 * 1000; // 10 minutes
 
 	private _state: RemoteCodeSearchState;
 
@@ -190,7 +190,7 @@ abstract class BaseRemoteCodeSearchRepo extends Disposable implements CodeSearch
 	private _repoIndexPolling?: {
 		readonly poll: IntervalTimer;
 		readonly deferredP: DeferredPromise<void>;
-		attemptNumber: number;
+		startTime: number;
 	};
 
 	constructor(
@@ -292,14 +292,14 @@ abstract class BaseRemoteCodeSearchRepo extends Disposable implements CodeSearch
 
 		const existing = this._repoIndexPolling;
 		if (existing) {
-			existing.attemptNumber = 0; // reset
+			existing.startTime = Date.now(); // reset
 			return existing.deferredP.p;
 		}
 
 		const deferredP = new DeferredPromise<void>();
 		const poll = new IntervalTimer();
 
-		const pollEntry = { poll, deferredP, attemptNumber: 0 };
+		const pollEntry = { poll, deferredP, startTime: Date.now() };
 		this._repoIndexPolling = pollEntry;
 
 		const onComplete = () => {
@@ -308,7 +308,16 @@ abstract class BaseRemoteCodeSearchRepo extends Disposable implements CodeSearch
 			this._repoIndexPolling = undefined;
 		};
 
-		poll.cancelAndSet(async () => {
+		let currentDelay = this._initialRepoIndexPollingInterval;
+
+		const scheduleNextPoll = () => {
+			if (this._isDisposed || deferredP.isSettled) {
+				return;
+			}
+			poll.cancelAndSet(pollTask, currentDelay);
+		};
+
+		const pollTask = async () => {
 			if (this._isDisposed) {
 				// It's possible the repo has been closed since
 				this._logService.trace(`CodeSearchChunkSearch.startPollingForRepoIndexingComplete(${this.repoInfo.rootUri}). Repo no longer tracked.`);
@@ -316,9 +325,9 @@ abstract class BaseRemoteCodeSearchRepo extends Disposable implements CodeSearch
 			}
 
 			if (this.status === CodeSearchRepoStatus.BuildingIndex) {
-				const attemptNumber = pollEntry.attemptNumber++;
-				if (attemptNumber > this.maxPollingAttempts) {
-					this._logService.trace(`CodeSearchChunkSearch.startPollingForRepoIndexingComplete(${this.repoInfo.rootUri}). Max attempts reached.Stopping polling.`);
+				const elapsedTime = Date.now() - pollEntry.startTime;
+				if (elapsedTime > this._maxPollingTotalDuration) {
+					this._logService.trace(`CodeSearchChunkSearch.startPollingForRepoIndexingComplete(${this.repoInfo.rootUri}). Max polling duration reached. Stopping polling.`);
 					if (!this._isDisposed) {
 						this.updateState({ status: CodeSearchRepoStatus.CouldNotCheckIndexStatus });
 					}
@@ -343,7 +352,9 @@ abstract class BaseRemoteCodeSearchRepo extends Disposable implements CodeSearch
 						return onComplete();
 					}
 					case CodeSearchRepoStatus.BuildingIndex: {
-						// Poll again
+						// Poll again with increased delay
+						currentDelay = Math.min(currentDelay * 1.5, this._maxRepoIndexPollingInterval);
+						scheduleNextPoll();
 						return;
 					}
 					default: {
@@ -358,7 +369,9 @@ abstract class BaseRemoteCodeSearchRepo extends Disposable implements CodeSearch
 				this._logService.trace(`CodeSearchChunkSearch.startPollingForRepoIndexingComplete(${this.repoInfo.rootUri}). Found unknown repo state: ${this.status}. Stopping polling`);
 				return onComplete();
 			}
-		}, this._repoIndexPollingInterval);
+		};
+
+		scheduleNextPoll();
 
 		return deferredP.p;
 	}
