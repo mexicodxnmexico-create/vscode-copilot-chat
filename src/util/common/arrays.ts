@@ -75,7 +75,15 @@ export function min(array: number[]): number {
 
 	let min = array[0];
 	for (let i = 1; i < array.length; i++) {
-		min = Math.min(min, array[i]);
+		const item = array[i];
+		// Math.min is expensive due to function call overhead.
+		// We manually check for NaN to preserve Math.min behavior (propagate NaN).
+		if (Number.isNaN(item)) {
+			return NaN;
+		}
+		if (item < min) {
+			min = item;
+		}
 	}
 	return min;
 }
