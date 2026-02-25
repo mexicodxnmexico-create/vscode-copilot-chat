@@ -319,6 +319,17 @@ stderr: ${installResult.stderr}`);
 
 	async readServerManifest(packagesDir: string, id: string, version: string): Promise<string | undefined> {
 		const serverJsonPath = path.join(packagesDir, id.toLowerCase(), version.toLowerCase(), '.mcp', 'server.json');
+
+		// Prevent path traversal
+		const resolvedServerJsonPath = path.resolve(serverJsonPath);
+		const resolvedPackagesDir = path.resolve(packagesDir);
+		const expectedPrefix = resolvedPackagesDir.endsWith(path.sep) ? resolvedPackagesDir : resolvedPackagesDir + path.sep;
+
+		if (!resolvedServerJsonPath.startsWith(expectedPrefix)) {
+			this.logService.warn(`Potential path traversal attempt detected for package ${id}@${version}. Resolved path: ${serverJsonPath}`);
+			return undefined;
+		}
+
 		try {
 			await fs.access(serverJsonPath, fs.constants.R_OK);
 		} catch {
