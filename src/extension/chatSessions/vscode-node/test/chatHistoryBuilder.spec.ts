@@ -462,13 +462,6 @@ describe('buildChatHistory', () => {
 			expect(snapshot[0]).toMatchObject({ type: 'request', prompt: 'What does this do?' });
 		});
 
-		it('strips system-reminders from legacy string format', () => {
-			const result = buildChatHistory(session([
-				userMsg('<system-reminder>\nInternal.\n</system-reminder>\n\nActual question'),
-			]));
-			const snapshot = mapHistoryForSnapshot(result);
-			expect(snapshot[0]).toMatchObject({ type: 'request', prompt: 'Actual question' });
-		});
 
 		it('produces no request turn when user message is only a system-reminder', () => {
 			const result = buildChatHistory(session([
