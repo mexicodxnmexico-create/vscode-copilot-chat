@@ -5,7 +5,7 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource ../../../../prompt/jsx-runtime/ */
 
-import { ComponentContext, KeepTogether, PromptElementProps, Text } from '../../../../prompt/src/components/components';
+import { ComponentContext, KeepTogether, PromptComponentChild, PromptElementProps, Text } from '../../../../prompt/src/components/components';
 import { normalizeLanguageId } from '../../../../prompt/src/prompt';
 import {
 	CompletionRequestData,
@@ -41,7 +41,7 @@ export const Traits = (_props: PromptElementProps, context: ComponentContext) =>
 						{`${trait.name}: ${trait.value}`}
 					</Text>
 				))
-			]}
+			] as PromptComponentChild[]}
 		</KeepTogether>
 	);
 };
