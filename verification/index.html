@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Suggestions Panel Verification</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .solutionHeading { margin-top: 40px; }
+        pre { border: 1px solid #ccc; padding: 10px; border-radius: 4px; }
+        .snippetContainer { margin-bottom: 10px; }
+        /* Simple styling for vscode-button simulation */
+        vscode-button { display: inline-block; padding: 5px 10px; background: #007acc; color: white; cursor: pointer; border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <h2>Suggestions Panel</h2>
+    <div id="loadingContainer" aria-live="assertive" aria-atomic="true">
+        1 Suggestion
+    </div>
+
+    <!-- Simulating the state after loading completes: aria-busy="false" -->
+    <div id="solutionsContainer" aria-busy="false" aria-describedby="progress-bar">
+        <h3 class='solutionHeading' id="solution-1-heading">Suggestion 1</h3>
+        <div class='snippetContainer' aria-labelledby="solution-1-heading" role="group" data-solution-index="0">
+            <pre>console.log('Hello World');</pre>
+        </div>
+
+        <!-- The citation with the added aria-label -->
+        <p>
+            <span style="vertical-align: text-bottom"><strong><span aria-hidden="true">&#9888;</span> Warning:</strong></span>
+            Similar code detected.
+            <a href="https://example.com" target="_blank" rel="noopener noreferrer" aria-label="Inspect source code (opens in a new window)">Inspect source code</a>
+        </p>
+
+        <vscode-button role="button" class="acceptButton" id="acceptButton0" appearance="secondary" data-solution-index="0">Accept suggestion 1</vscode-button>
+    </div>
+</body>
+</html>
