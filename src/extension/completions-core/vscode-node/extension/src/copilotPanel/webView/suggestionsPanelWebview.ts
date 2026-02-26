@@ -51,6 +51,12 @@ function handleSolutionUpdate(message: Message) {
 	updateLoadingContainer(message);
 
 	if (solutionsContainer) {
+		if (message.percentage >= 100) {
+			solutionsContainer.setAttribute('aria-busy', 'false');
+		} else {
+			solutionsContainer.setAttribute('aria-busy', 'true');
+		}
+
 		solutionsContainer.innerHTML = message.solutions
 			.map((solution, index) => {
 				const citationUrl = solution.citation?.url ?? '';
@@ -59,7 +65,7 @@ function handleSolutionUpdate(message: Message) {
 					? `<p>
 						<span style="vertical-align: text-bottom"><strong><span aria-hidden="true">&#9888;</span> Warning:</strong></span>
 						${DOMPurify.sanitize(solution.citation.message)}
-						<a href="${DOMPurify.sanitize(solution.citation.url)}" target="_blank" rel="noopener noreferrer">Inspect source code</a>
+						<a href="${DOMPurify.sanitize(solution.citation.url)}" target="_blank" rel="noopener noreferrer" aria-label="Inspect source code (opens in a new window)">Inspect source code</a>
 					  </p>`
 					: '';
 				const sanitizedSnippet = DOMPurify.sanitize(solution.htmlSnippet);
@@ -67,7 +73,7 @@ function handleSolutionUpdate(message: Message) {
 				return `<h3 class='solutionHeading' id="solution-${index + 1}-heading">Suggestion ${index + 1}</h3>
 				<div class='snippetContainer' aria-labelledby="solution-${index + 1}-heading" role="group" data-solution-index="${index}">${sanitizedSnippet
 					}</div>
-				${DOMPurify.sanitize(renderedCitation, { ADD_ATTR: ['target'] })}
+				${DOMPurify.sanitize(renderedCitation, { ADD_ATTR: ['target', 'aria-label'] })}
 				<vscode-button role="button" class="acceptButton" id="acceptButton${index}" appearance="secondary" data-solution-index="${index}">Accept suggestion ${index + 1
 					}</vscode-button>`;
 			})
