@@ -23,7 +23,14 @@ export function getFenceForCodeBlock(code: string, minNumberOfBackticks = 3) {
 
 export const filepathCodeBlockMarker = 'filepath:';
 
+const filepathRegexpCache = new Map<string, RegExp>();
+
 export function createFilepathRegexp(languageId?: string): RegExp {
+	const key = languageId || '';
+	if (filepathRegexpCache.has(key)) {
+		return filepathRegexpCache.get(key)!;
+	}
+
 	const language = getLanguage(languageId);
 	const prefixes: string[] = ['#', '\\/\\/']; // always allow # and // as comment start
 	const suffixes: string[] = [];
@@ -37,7 +44,9 @@ export function createFilepathRegexp(languageId?: string): RegExp {
 	language.alternativeLineComments?.forEach(add);
 	const startMatch = `(?:${prefixes.join('|')})`;
 	const optionalEndMatch = suffixes.length ? `(?:\\s*${suffixes.join('|')})?` : '';
-	return new RegExp(`^\\s*${startMatch}\\s*${filepathCodeBlockMarker}\\s*(.*?)${optionalEndMatch}\\s*$`);
+	const regexp = new RegExp(`^\\s*${startMatch}\\s*${filepathCodeBlockMarker}\\s*(.*?)${optionalEndMatch}\\s*$`);
+	filepathRegexpCache.set(key, regexp);
+	return regexp;
 }
 
 /**
