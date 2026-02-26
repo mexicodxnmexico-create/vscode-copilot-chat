@@ -21,6 +21,12 @@ const configs: RepetitionConfig[] = [
 	{ max_token_sequence_length: 30, last_tokens_to_consider: 60 },
 ];
 
+export interface RepetitionResult {
+	matches: boolean;
+	patternLength: number;
+	windowSize: number;
+}
+
 /**
  * Return whether the given token array ends in a repetition of a pattern.
  * Controlling the necessary pattern length is set in the configs array.
@@ -29,16 +35,39 @@ export function isRepetitive(tokens: readonly string[]): boolean {
 	const tokensBackwards = tokens.slice();
 	tokensBackwards.reverse();
 	return (
-		isRepeatedPattern(tokensBackwards) ||
-		isRepeatedPattern(tokensBackwards.filter(token => token.trim().length > 0))
+		checkRepeatedPattern(tokensBackwards).matches ||
+		checkRepeatedPattern(tokensBackwards.filter(token => token.trim().length > 0)).matches
 	);
+}
+
+export function detectExactRepetition(tokens: readonly string[]): RepetitionResult {
+	const tokensBackwards = tokens.slice();
+	tokensBackwards.reverse();
+	return checkRepeatedPattern(tokensBackwards);
+}
+
+export function trimRepetitiveTokens(tokens: readonly string[]): readonly string[] | undefined {
+	const result = detectExactRepetition(tokens);
+	if (!result.matches) {
+		return undefined;
+	}
+
+	const L = result.patternLength;
+	let i = tokens.length - 1 - L;
+	// Look backwards for the start of the repetition
+	while (i >= 0 && tokens[i] === tokens[i + L]) {
+		i--;
+	}
+	const start = i + 1;
+	// Keep the prefix plus one repetition of the pattern
+	return tokens.slice(0, start + L);
 }
 
 /**
  * Determine whether the given array or string starts with the repetition of a pattern,
  * according to one of the predefined configs.
  */
-function isRepeatedPattern<T>(s: ArrayLike<T>): boolean {
+function checkRepeatedPattern<T>(s: ArrayLike<T>): RepetitionResult {
 	const prefix = kmp_prefix_function(s);
 	for (const config of configs) {
 		if (s.length < config.last_tokens_to_consider) {
@@ -49,10 +78,10 @@ function isRepeatedPattern<T>(s: ArrayLike<T>): boolean {
 		// pattern that makes up `s`, where the last repetition is possibly truncated.
 		const patternLength = config.last_tokens_to_consider - 1 - prefix[config.last_tokens_to_consider - 1];
 		if (patternLength <= config.max_token_sequence_length) {
-			return true;
+			return { matches: true, patternLength, windowSize: config.last_tokens_to_consider };
 		}
 	}
-	return false;
+	return { matches: false, patternLength: 0, windowSize: 0 };
 }
 
 /** Return the Knuth-Morris-Pratt prefix function pi.
