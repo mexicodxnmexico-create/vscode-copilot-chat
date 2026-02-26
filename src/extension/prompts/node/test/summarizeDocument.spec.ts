@@ -101,7 +101,7 @@ describe('createSummarizedDocument[visualizable]', () => {
 		const [otherCode, selectedCode] =
 			await generateSummarizedDocumentAndExtractGoodSelection(
 				fromFixtureOld(filename, 'typescript'),
-				[696, 0, 711, 0]
+				[691, 0, 706, 0]
 			);
 		await expect(otherCode).toMatchFileSnapshot(summarizedDocPathInFixture(filename));
 		await expect(selectedCode).toMatchFileSnapshot(selectionDocPathInFixture(filename));
