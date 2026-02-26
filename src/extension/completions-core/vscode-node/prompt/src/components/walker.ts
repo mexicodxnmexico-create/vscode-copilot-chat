@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Chunk, PromptSnapshotNode } from './components';
+import { Chunk, KeepTogether, PromptSnapshotNode } from './components';
 
 /**
  * Represents the context during the traversal of a prompt snapshot tree.
@@ -95,7 +95,7 @@ export function defaultTransformers(): WalkContextTransformer[] {
 		},
 		// Chunk transformer
 		(node, _, context) => {
-			if (node.name === Chunk.name) {
+			if (node.name === Chunk.name || node.name === KeepTogether.name) {
 				// Initialize chunk set if it doesn't exist
 				const chunks = context.chunks ? new Set<string>(context.chunks as Set<string>) : new Set<string>();
 				// Add current node path to the set
