@@ -112,24 +112,11 @@ function isSystemReminderBlock(text: string): boolean {
 }
 
 /**
- * Strips <system-reminder> tags and their content from a string.
- * Used for backwards compatibility with legacy sessions where system-reminders
- * were concatenated with user text in a single string.
- *
- * TODO: Remove this function after a few releases (added in 0.38.x) once legacy
- * sessions with concatenated system-reminders are no longer common.
- */
-function stripSystemReminders(text: string): string {
-	return text.replace(/<system-reminder>[\s\S]*?<\/system-reminder>\s*/g, '');
-}
-
-/**
  * Extracts visible text content from a user message, filtering out system reminders.
  */
 function extractTextContent(content: string | ContentBlock[]): string {
 	if (typeof content === 'string') {
-		// TODO: Remove this branch when stripSystemReminders is removed (legacy compat)
-		return stripSystemReminders(content);
+		return content;
 	}
 
 	// For array content (new format), filter out entire blocks that are system-reminders
