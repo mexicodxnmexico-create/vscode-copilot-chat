@@ -357,9 +357,7 @@ function parsePattern(arg1: string | IRelativePattern, options: IGlobOptions): P
 		...options,
 		equals: ignoreCase ? equalsIgnoreCase : (a: string, b: string) => a === b,
 		endsWith: ignoreCase ? endsWithIgnoreCase : (str: string, candidate: string) => str.endsWith(candidate),
-		// TODO: the '!isLinux' part below is to keep current behavior unchanged, but it should probably be removed
-		// in favor of passing correct options from the caller.
-		isEqualOrParent: (base: string, candidate: string) => isEqualOrParent(base, candidate, !isLinux || ignoreCase)
+		isEqualOrParent: (base: string, candidate: string) => isEqualOrParent(base, candidate, ignoreCase)
 	};
 
 	// Check cache
