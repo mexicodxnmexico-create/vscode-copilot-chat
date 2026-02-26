@@ -136,10 +136,9 @@ suite('GitHubOrgCustomAgentProvider', () => {
 		assert.deepEqual(agents, []);
 	});
 
-	// todo: MockFileSystemService previously had a bug where deleted files would
-	// still show up when listing directories. This was fixed and caused this test
-	// to fail: test_agent.md is cleared from the cache in the first poll
-	test.skip('returns cached agents on first call', async () => {
+	// Verifies that we can retrieve cached agents immediately on startup,
+	// even before the background poll has completed or updated the cache.
+	test('returns cached agents on first call', async () => {
 		// Set up file system mocks BEFORE creating provider to avoid race with background fetch
 		// Also prevent background fetch from interfering by having no organizations
 		mockOctoKitService.setUserOrganizations([]);
@@ -156,16 +155,28 @@ Test prompt content`;
 		// Re-enable testorg for cache reading (user is in org, but no workspace repo)
 		mockOctoKitService.setUserOrganizations(['testorg']);
 
+		// Delay polling to ensure we can read from cache before it's cleared
+		let continuePolling: () => void;
+		const pollingPaused = new Promise<void>(resolve => { continuePolling = resolve; });
+		const originalGetRepos = mockOctoKitService.getOrganizationRepositories;
+		mockOctoKitService.getOrganizationRepositories = async (org, opts, page) => {
+			await pollingPaused;
+			return originalGetRepos.call(mockOctoKitService, org, opts, page);
+		};
+
 		const provider = createProvider();
 
-		// Wait for initial poll attempt (won't fetch since no agents in API)
-		await waitForPolling();
+		// Do not wait for polling to complete. Polling is now blocked at getOrganizationRepositories.
 
 		const agents = await provider.provideCustomAgents({}, {} as any);
 
 		assert.equal(agents.length, 1);
 		const agentName = agents[0].uri.path.split('/').pop()?.replace('.agent.md', '');
 		assert.equal(agentName, 'test_agent');
+
+		// Unblock polling and let it complete
+		continuePolling!();
+		await waitForPolling();
 	});
 
 	test('fetches and caches agents from API', async () => {
@@ -756,7 +767,7 @@ Agent 1 prompt`;
 	});
 
 	// todo: MockFileSystemService previously had a bug where deleted files would
-	// still show up when listing directories. This was fixed and caused this test
+	// even before the background poll has completed or updated the cache.
 	// to fail: agent files are cleared from the cache in the first poll
 	test.skip('handles malformed frontmatter in cached files', async () => {
 		// Prevent background fetch from interfering
