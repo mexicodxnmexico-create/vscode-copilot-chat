@@ -253,7 +253,7 @@ export class CopilotCLISession extends DisposableStore implements ICopilotCLISes
 				this.logService.warn('[AskQuestionsTool] No stream available, cannot show question carousel');
 				throw new Error('User skipped question');
 			}
-			const answer = await this._userQuestionHandler.askUserQuestion(userInputRequest, this._stream, request.toolInvocationToken, token);
+			const answer = await this._userQuestionHandler.askUserQuestion(userInputRequest, request.toolInvocationToken, token);
 			if (!answer) {
 				throw new Error('User skipped question');
 			}
@@ -507,6 +507,10 @@ export class CopilotCLISession extends DisposableStore implements ICopilotCLISes
 			}
 			// If its a workspace file, and not editing protected files, we auto-approve.
 			if (!autoApprove && isWorkspaceFile && !(await requiresFileEditconfirmation(this.instantiationService, permissionRequest, toolCall))) {
+				autoApprove = true;
+			}
+			// If we're working in the working directory (non-isolation), and not editing protected files, we auto-approve.
+			if (!autoApprove && isWorkingDirectoryFile && !(await requiresFileEditconfirmation(this.instantiationService, permissionRequest, toolCall, Uri.file(workingDirectory)))) {
 				autoApprove = true;
 			}
 
