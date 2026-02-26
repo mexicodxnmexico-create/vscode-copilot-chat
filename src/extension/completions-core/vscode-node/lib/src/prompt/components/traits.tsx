@@ -34,12 +34,14 @@ export const Traits = (_props: PromptElementProps, context: ComponentContext) =>
 
 	return (
 		<KeepTogether>
-			<Text>{'Consider this related information:\n'}</Text>
-			{...traits.map(trait => (
-				<Text key={trait.id} source={trait}>
-					{`${trait.name}: ${trait.value}`}
-				</Text>
-			))}
+			{[
+				<Text key="header">{'Consider this related information:\n'}</Text>,
+				...traits.map(trait => (
+					<Text key={trait.id} source={trait}>
+						{`${trait.name}: ${trait.value}`}
+					</Text>
+				))
+			]}
 		</KeepTogether>
 	);
 };
