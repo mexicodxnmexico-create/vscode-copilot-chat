@@ -106,4 +106,39 @@ suite('Anomaly Repetition Tests', function () {
 		const repetitive = isRepetitive(tokens);
 		assert.strictEqual(repetitive, true, 'Repetition should be found.');
 	});
+
+	suite('trimRepetitiveTokens', function () {
+		test('trims sequence of single repeated token', function () {
+			const tokens = 'Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar'.split(' ');
+			const trimmed = trimRepetitiveTokens(tokens);
+			assert.deepStrictEqual(trimmed, ['Bar']);
+		});
+
+		test('trims repeated pattern', function () {
+			const pattern = 'Bar Far Car';
+			// Repeat enough times to satisfy config (30 tokens)
+			const tokens = Array(10).fill(pattern).join(' ').split(' ');
+			const trimmed = trimRepetitiveTokens(tokens);
+			assert.deepStrictEqual(trimmed, ['Bar', 'Far', 'Car']);
+		});
+
+		test('trims repetition with prefix', function () {
+			const tokens = ['prefix', ...'foo foo foo foo foo foo foo foo foo foo foo'.split(' ')];
+			const trimmed = trimRepetitiveTokens(tokens);
+			assert.deepStrictEqual(trimmed, ['prefix', 'foo']);
+		});
+
+		test('returns undefined for non-repetitive tokens', function () {
+			const tokens = 'Bar Far Car'.split(' ');
+			const trimmed = trimRepetitiveTokens(tokens);
+			assert.strictEqual(trimmed, undefined);
+		});
+
+        test('returns undefined for filtered repetition (not exact)', function () {
+			const tokens = ['prefix', 'foo', 'foo', 'foo', 'foo', 'foo', 'foo', 'foo', 'foo', 'foo', '   ', 'foo'];
+			const trimmed = trimRepetitiveTokens(tokens);
+            // It should be undefined because detectExactRepetition logic won't match the fuzzy whitespace
+			assert.strictEqual(trimmed, undefined);
+        });
+	});
 });
