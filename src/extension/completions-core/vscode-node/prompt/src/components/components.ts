@@ -161,3 +161,11 @@ export function Text(props: TextPromptElementProps) {
 export function Chunk(props: PromptElementProps) {
 	return props.children;
 }
+
+/**
+ * Basic component to represent a group of components that gets elided all together or not at all.
+ * Use this to keep header and content together.
+ */
+export function KeepTogether(props: PromptElementProps) {
+	return props.children;
+}

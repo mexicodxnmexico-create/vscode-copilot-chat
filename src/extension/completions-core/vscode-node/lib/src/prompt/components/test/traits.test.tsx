@@ -74,13 +74,13 @@ suite('Traits component', function () {
 		// Assert that keys are in the path
 		assert.deepStrictEqual(extractNodesWitPath(snapshot.snapshot!), [
 			'$[0].Traits',
-			'$[0].Traits[0].f',
-			'$[0].Traits[0].f[0].Text',
-			'$[0].Traits[0].f[0].Text[0]',
-			'$[0].Traits[0].f["traitid1"].Text',
-			'$[0].Traits[0].f["traitid1"].Text[0]',
-			'$[0].Traits[0].f["traitid2"].Text',
-			'$[0].Traits[0].f["traitid2"].Text[0]',
+			'$[0].Traits[0].KeepTogether',
+			'$[0].Traits[0].KeepTogether[0].Text',
+			'$[0].Traits[0].KeepTogether[0].Text[0]',
+			'$[0].Traits[0].KeepTogether["traitid1"].Text',
+			'$[0].Traits[0].KeepTogether["traitid1"].Text[0]',
+			'$[0].Traits[0].KeepTogether["traitid2"].Text',
+			'$[0].Traits[0].KeepTogether["traitid2"].Text[0]',
 		]);
 
 		assert.deepStrictEqual(result.length, 3);
