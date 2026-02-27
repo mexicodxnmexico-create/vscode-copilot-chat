@@ -4,7 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 /** @jsxRuntime automatic */
 /** @jsxImportSource ../../../jsx-runtime */
-import { Chunk, ComponentContext, PromptElement, PromptElementProps, Text } from '../../components/components';
+import {
+	Chunk,
+	ComponentContext,
+	PromptElement,
+	PromptElementProps,
+	Text,
+} from '../../components/components';
 import { Dispatch, StateUpdater } from '../../components/hooks';
 import { VirtualPromptReconciler } from '../../components/reconciler';
 import * as assert from 'assert';
@@ -136,14 +142,20 @@ suite('Virtual prompt reconciler', function () {
 			new VirtualPromptReconciler(prompt);
 			assert.fail('Should have thrown an error');
 		} catch (e) {
-			assert.equal((e as Error).message, 'Duplicate keys found: 23, aKey');
+			assert.equal(
+				(e as Error).message,
+				'Duplicate keys found: 23, aKey',
+			);
 		}
 	});
 
 	test('rejects duplicate keys on same level during reconciliation', function () {
 		let outerSetCount: Dispatch<StateUpdater<number>>;
 
-		const MyTestComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const MyTestComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [count, setCount] = context.useState(1);
 
 			outerSetCount = setCount;
@@ -203,8 +215,12 @@ suite('Virtual prompt reconciler', function () {
 	test('Should re-render if the state of the component changed', function () {
 		let outerShouldRenderChildren: Dispatch<StateUpdater<boolean>>;
 
-		const MyTestComponent = (props: PromptElementProps, context: ComponentContext) => {
-			const [shouldRenderChildren, setShouldRenderChildren] = context.useState(false);
+		const MyTestComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
+			const [shouldRenderChildren, setShouldRenderChildren] =
+				context.useState(false);
 
 			outerShouldRenderChildren = setShouldRenderChildren;
 
@@ -227,8 +243,12 @@ suite('Virtual prompt reconciler', function () {
 	test('Should re-render if the state of a nested component changed', function () {
 		let outerSetShouldRenderChildren: Dispatch<StateUpdater<boolean>>;
 
-		const MyTestComponent = (props: PromptElementProps, context: ComponentContext) => {
-			const [shouldRenderChildren, setShouldRenderChildren] = context.useState(false);
+		const MyTestComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
+			const [shouldRenderChildren, setShouldRenderChildren] =
+				context.useState(false);
 
 			outerSetShouldRenderChildren = setShouldRenderChildren;
 
@@ -238,11 +258,9 @@ suite('Virtual prompt reconciler', function () {
 		};
 
 		const reconciler = new VirtualPromptReconciler(
-			(
-				<>
-					<MyTestComponent />
-				</>
-			)
+			<>
+				<MyTestComponent />
+			</>,
 		);
 		const resultOne = reconciler.reconcile();
 		assert.deepStrictEqual(resultOne!.children?.length, 1);
@@ -259,7 +277,10 @@ suite('Virtual prompt reconciler', function () {
 	test('Should not re-render if the state did not change', function () {
 		let created = false;
 
-		const MyTestComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const MyTestComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [count, _] = context.useState(0);
 
 			if (created) {
@@ -276,14 +297,19 @@ suite('Virtual prompt reconciler', function () {
 			reconciler.reconcile();
 			reconciler.reconcile();
 		} catch (e) {
-			assert.fail('Component was created more than once, which should not happen');
+			assert.fail(
+				'Component was created more than once, which should not happen',
+			);
 		}
 	});
 
 	test('Should preserve child state if position and type within parent are the same', function () {
 		let outerSetParentState: Dispatch<StateUpdater<string>>;
 
-		const ParentComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const ParentComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [parentState, setParentState] = context.useState('BEFORE');
 
 			outerSetParentState = setParentState;
@@ -297,8 +323,13 @@ suite('Virtual prompt reconciler', function () {
 		};
 		type ChildComponentProps = { parentState: string };
 		let childState = 'UNINITIALIZED';
-		const ChildComponent = (props: ChildComponentProps, context: ComponentContext) => {
-			const [childComponentState, _] = context.useState(props.parentState);
+		const ChildComponent = (
+			props: ChildComponentProps,
+			context: ComponentContext,
+		) => {
+			const [childComponentState, _] = context.useState(
+				props.parentState,
+			);
 			childState = childComponentState;
 
 			return <Text>This is the child state {childComponentState}</Text>;
@@ -317,7 +348,10 @@ suite('Virtual prompt reconciler', function () {
 	test('Should not preserve child state if position and type change and switch back', function () {
 		let outerSetParentState: Dispatch<StateUpdater<string>>;
 
-		const ParentComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const ParentComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [parentState, setParentState] = context.useState('BEFORE');
 
 			outerSetParentState = setParentState;
@@ -339,8 +373,13 @@ suite('Virtual prompt reconciler', function () {
 		};
 		type ChildComponentProps = { parentState: string };
 		let childState = 'UNINITIALIZED';
-		const ChildComponent = (props: ChildComponentProps, context: ComponentContext) => {
-			const [childComponentState, _] = context.useState(props.parentState);
+		const ChildComponent = (
+			props: ChildComponentProps,
+			context: ComponentContext,
+		) => {
+			const [childComponentState, _] = context.useState(
+				props.parentState,
+			);
 			childState = childComponentState;
 
 			return <Text>This is the child state {childComponentState}</Text>;
@@ -363,7 +402,10 @@ suite('Virtual prompt reconciler', function () {
 	test('Should preserve child state if position changes but key stays the same', function () {
 		let outerSetParentState: Dispatch<StateUpdater<string>>;
 
-		const ParentComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const ParentComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [parentState, setParentState] = context.useState('BEFORE');
 
 			outerSetParentState = setParentState;
@@ -372,21 +414,26 @@ suite('Virtual prompt reconciler', function () {
 				return (
 					<>
 						<Text>This is the parent count: {parentState}</Text>
-						<ChildComponent key='child' parentState={parentState} />
+						<ChildComponent key="child" parentState={parentState} />
 					</>
 				);
 			}
 			return (
 				<>
-					<ChildComponent key='child' parentState={parentState} />
+					<ChildComponent key="child" parentState={parentState} />
 					<Text>This is the parent count: {parentState}</Text>
 				</>
 			);
 		};
 		type ChildComponentProps = { parentState: string };
 		let childState = 'UNINITIALIZED';
-		const ChildComponent = (props: ChildComponentProps, context: ComponentContext) => {
-			const [childComponentState, _] = context.useState(props.parentState);
+		const ChildComponent = (
+			props: ChildComponentProps,
+			context: ComponentContext,
+		) => {
+			const [childComponentState, _] = context.useState(
+				props.parentState,
+			);
 			childState = childComponentState;
 
 			return <Text>This is the child state {childComponentState}</Text>;
@@ -409,7 +456,10 @@ suite('Virtual prompt reconciler', function () {
 	test('Should preserve child state if position and type within parent are the same with deep nesting', function () {
 		let outerSetParentState: Dispatch<StateUpdater<string>>;
 
-		const ParentComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const ParentComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [parentState, setParentState] = context.useState('BEFORE');
 
 			outerSetParentState = setParentState;
@@ -423,8 +473,13 @@ suite('Virtual prompt reconciler', function () {
 		};
 		type ChildComponentProps = { parentState: string };
 		let childState = 'UNINITIALIZED';
-		const ChildComponent = (props: ChildComponentProps, context: ComponentContext) => {
-			const [childComponentState, _] = context.useState(props.parentState);
+		const ChildComponent = (
+			props: ChildComponentProps,
+			context: ComponentContext,
+		) => {
+			const [childComponentState, _] = context.useState(
+				props.parentState,
+			);
 			childState = childComponentState;
 
 			return (
@@ -435,8 +490,13 @@ suite('Virtual prompt reconciler', function () {
 			);
 		};
 		let childChildState = 'UNINITIALIZED';
-		const ChildChildComponent = (props: ChildComponentProps, context: ComponentContext) => {
-			const [childComponentState, _] = context.useState(props.parentState);
+		const ChildChildComponent = (
+			props: ChildComponentProps,
+			context: ComponentContext,
+		) => {
+			const [childComponentState, _] = context.useState(
+				props.parentState,
+			);
 			childChildState = childComponentState;
 
 			return <Text>This is the child state {childComponentState}</Text>;
@@ -457,7 +517,10 @@ suite('Virtual prompt reconciler', function () {
 	test('Should preserve child state if position and type within parent are the same with multiple children of same type', function () {
 		let outerSetParentState: Dispatch<StateUpdater<string>>;
 
-		const ParentComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const ParentComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [parentState, setParentState] = context.useState('BEFORE');
 
 			outerSetParentState = setParentState;
@@ -472,8 +535,13 @@ suite('Virtual prompt reconciler', function () {
 		};
 		type ChildComponentProps = { parentState: string };
 		let childState: string[] = [];
-		const ChildComponent = (props: ChildComponentProps, context: ComponentContext) => {
-			const [childComponentState, _] = context.useState(props.parentState);
+		const ChildComponent = (
+			props: ChildComponentProps,
+			context: ComponentContext,
+		) => {
+			const [childComponentState, _] = context.useState(
+				props.parentState,
+			);
 			childState.push(childComponentState);
 
 			return <Text>This is the child state {childComponentState}</Text>;
@@ -494,7 +562,10 @@ suite('Virtual prompt reconciler', function () {
 		let outerSetParentCount: Dispatch<StateUpdater<number>>;
 		let outerSetParentState: Dispatch<StateUpdater<string>>;
 
-		const ParentComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const ParentComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [parentState, setParentState] = context.useState('FIRST');
 			const [count, setCount] = context.useState(0);
 
@@ -504,7 +575,9 @@ suite('Virtual prompt reconciler', function () {
 			const renderChildren = () => {
 				const children = [];
 				for (let i = 0; i < count; i++) {
-					children.push(<Text>This is the parent count: {parentState}</Text>);
+					children.push(
+						<Text>This is the parent count: {parentState}</Text>,
+					);
 				}
 				children.push(<ChildComponent parentState={parentState} />);
 				return children;
@@ -513,8 +586,13 @@ suite('Virtual prompt reconciler', function () {
 		};
 		type ChildComponentProps = { parentState: string };
 		let childState = 'UNINITIALIZED';
-		const ChildComponent = (props: ChildComponentProps, context: ComponentContext) => {
-			const [childComponentState, _] = context.useState(props.parentState);
+		const ChildComponent = (
+			props: ChildComponentProps,
+			context: ComponentContext,
+		) => {
+			const [childComponentState, _] = context.useState(
+				props.parentState,
+			);
 			childState = childComponentState;
 
 			return <Text>This is the child state {childComponentState}</Text>;
@@ -535,7 +613,10 @@ suite('Virtual prompt reconciler', function () {
 		const cts = new CancellationTokenSource();
 		let outerSetCount: Dispatch<StateUpdater<number>> = () => 0;
 
-		const MyTestComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const MyTestComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [count, setCount] = context.useState(0);
 			outerSetCount = setCount;
 			return <Text>This is my component {count}</Text>;
@@ -553,7 +634,10 @@ suite('Virtual prompt reconciler', function () {
 
 	test('Creates a pipe to route data to a component', async function () {
 		let componentData = '';
-		const DataComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const DataComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			context.useData(isString, (data: string) => {
 				componentData = data;
 			});
@@ -568,20 +652,28 @@ suite('Virtual prompt reconciler', function () {
 	});
 
 	test('Fails to pump data before initialization', async function () {
-		const reconciler = new VirtualPromptReconciler(undefined as unknown as PromptElement);
+		const reconciler = new VirtualPromptReconciler(
+			undefined as unknown as PromptElement,
+		);
 		const pipe = reconciler.createPipe();
 		try {
 			await pipe.pump('test');
 			assert.fail('Should have thrown an error');
 		} catch (e) {
-			assert.equal((e as Error).message, 'No tree to pump data into. Pumping data before initializing?');
+			assert.equal(
+				(e as Error).message,
+				'No tree to pump data into. Pumping data before initializing?',
+			);
 		}
 	});
 
 	test('Creates a pipe to route data to a component after previous reconciliation has been cancelled', async function () {
 		const cts = new CancellationTokenSource();
 		let componentData = '';
-		const DataComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const DataComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			context.useData(isString, (data: string) => {
 				componentData = data;
 			});
@@ -598,7 +690,10 @@ suite('Virtual prompt reconciler', function () {
 	});
 
 	test('Computes node statistics on reconcile', async function () {
-		const DataComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const DataComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [state, setState] = context.useState('');
 			context.useData(isString, (data: string) => {
 				setState(data);
@@ -611,13 +706,17 @@ suite('Virtual prompt reconciler', function () {
 		await pipe.pump('test');
 		const tree = reconciler.reconcile();
 
-		const updateTime = tree?.lifecycle?.lifecycleData.getUpdateTimeMsAndReset();
+		const updateTime =
+			tree?.lifecycle?.lifecycleData.getUpdateTimeMsAndReset();
 		assert.ok(updateTime);
 		assert.ok(updateTime > 0);
 	});
 
 	test('Computes node statistics on reconcile with measurements from data pumping', async function () {
-		const DataComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const DataComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [state, setState] = context.useState('');
 			context.useData(isString, (data: string) => {
 				setState(data);
@@ -630,7 +729,8 @@ suite('Virtual prompt reconciler', function () {
 		await pipe.pump('test');
 
 		let tree = reconciler.reconcile();
-		let updateTime = tree?.lifecycle?.lifecycleData.getUpdateTimeMsAndReset();
+		let updateTime =
+			tree?.lifecycle?.lifecycleData.getUpdateTimeMsAndReset();
 		assert.ok(updateTime);
 		assert.ok(updateTime > 0);
 
@@ -640,10 +740,13 @@ suite('Virtual prompt reconciler', function () {
 	});
 
 	test('Updates data time is updated on every data update', async function () {
-		const DataComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const DataComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [count, setCount] = context.useState(0);
 			context.useData(isNumber, async (newCount: number) => {
-				await new Promise(resolve => setTimeout(resolve, count));
+				await new Promise((resolve) => setTimeout(resolve, count));
 				setCount(newCount);
 			});
 			return <>{count}</>;
@@ -665,26 +768,30 @@ suite('Virtual prompt reconciler', function () {
 
 	test('Creates a pipe to route data to many components', async function () {
 		let componentDataA = '';
-		const DataComponentA = (props: PromptElementProps, context: ComponentContext) => {
+		const DataComponentA = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			context.useData(isString, (data: string) => {
 				componentDataA = data;
 			});
 			return <></>;
 		};
 		let componentDataB = '';
-		const DataComponentB = (props: PromptElementProps, context: ComponentContext) => {
+		const DataComponentB = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			context.useData(isString, (data: string) => {
 				componentDataB = data;
 			});
 			return <></>;
 		};
 		const reconciler = new VirtualPromptReconciler(
-			(
-				<>
-					<DataComponentA />
-					<DataComponentB />
-				</>
-			)
+			<>
+				<DataComponentA />
+				<DataComponentB />
+			</>,
 		);
 
 		const pipe = reconciler.createPipe();
@@ -696,7 +803,10 @@ suite('Virtual prompt reconciler', function () {
 
 	test('Creates a pipe to route data async to many components', async function () {
 		let componentDataA = '';
-		const DataComponentA = (props: PromptElementProps, context: ComponentContext) => {
+		const DataComponentA = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			context.useData(isString, async (data: string) => {
 				await Promise.resolve();
 				componentDataA = data;
@@ -704,7 +814,10 @@ suite('Virtual prompt reconciler', function () {
 			return <></>;
 		};
 		let componentDataB = '';
-		const DataComponentB = (props: PromptElementProps, context: ComponentContext) => {
+		const DataComponentB = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			context.useData(isString, async (data: string) => {
 				await Promise.resolve();
 				componentDataB = data;
@@ -712,12 +825,10 @@ suite('Virtual prompt reconciler', function () {
 			return <></>;
 		};
 		const reconciler = new VirtualPromptReconciler(
-			(
-				<>
-					<DataComponentA />
-					<DataComponentB />
-				</>
-			)
+			<>
+				<DataComponentA />
+				<DataComponentB />
+			</>,
 		);
 
 		const pipe = reconciler.createPipe();
@@ -743,12 +854,10 @@ suite('Virtual prompt reconciler', function () {
 			return <></>;
 		};
 		const reconciler = new VirtualPromptReconciler(
-			(
-				<>
-					<DataComponentA />
-					<DataComponentB />
-				</>
-			)
+			<>
+				<DataComponentA />
+				<DataComponentB />
+			</>,
 		);
 
 		const pipe1 = reconciler.createPipe();

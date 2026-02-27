@@ -22,7 +22,10 @@ export interface IThinkingDataContainerProps extends BasePromptElementProps {
 export class ThinkingDataContainer extends PromptElement<IThinkingDataContainerProps> {
 	render() {
 		const { thinking } = this.props;
-		const container: IThinkingDataOpaque = { type: CustomDataPartMimeTypes.ThinkingData, thinking };
+		const container: IThinkingDataOpaque = {
+			type: CustomDataPartMimeTypes.ThinkingData,
+			thinking,
+		};
 		return <opaque value={container} tokenUsage={thinking.tokens} />;
 	}
 }
@@ -30,14 +33,20 @@ export class ThinkingDataContainer extends PromptElement<IThinkingDataContainerP
 /**
  * Attempts to parse a Raw opaque content part into ThinkingData, if the type matches.
  */
-export function rawPartAsThinkingData(part: Raw.ChatCompletionContentPartOpaque): ThinkingData | undefined {
+export function rawPartAsThinkingData(
+	part: Raw.ChatCompletionContentPartOpaque,
+): ThinkingData | undefined {
 	const value = part.value as unknown;
 	if (!value || typeof value !== 'object') {
 		return;
 	}
 
 	const data = value as IThinkingDataOpaque;
-	if (data.type === CustomDataPartMimeTypes.ThinkingData && data.thinking && typeof data.thinking === 'object') {
+	if (
+		data.type === CustomDataPartMimeTypes.ThinkingData &&
+		data.thinking &&
+		typeof data.thinking === 'object'
+	) {
 		return data.thinking;
 	}
 	return;

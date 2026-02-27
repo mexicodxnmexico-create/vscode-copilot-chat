@@ -61,7 +61,10 @@ suite('Virtual prompt', function () {
 		let outerSetCount: Dispatch<StateUpdater<number>>;
 		let renderCount = 0;
 
-		const MyTestComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const MyTestComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [count, setCount] = context.useState(0);
 
 			outerSetCount = setCount;
@@ -86,7 +89,10 @@ suite('Virtual prompt', function () {
 		let outerCancelCount: Dispatch<StateUpdater<number>>;
 		const cts = new CancellationTokenSource();
 
-		const CancellingComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const CancellingComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [_, setCount] = context.useState(0);
 			outerCancelCount = setCount;
 
@@ -109,24 +115,35 @@ suite('Virtual prompt', function () {
 
 		const result = virtualPrompt.snapshot(cts.token);
 
-		assert.deepStrictEqual(result, { snapshot: undefined, status: 'cancelled' });
+		assert.deepStrictEqual(result, {
+			snapshot: undefined,
+			status: 'cancelled',
+		});
 	});
 
 	test('Should return an error if there was an error during snapshot', function () {
-		const virtualPrompt = new VirtualPrompt(undefined as unknown as PromptElement);
+		const virtualPrompt = new VirtualPrompt(
+			undefined as unknown as PromptElement,
+		);
 
 		const result = virtualPrompt.snapshot();
 
 		assert.deepStrictEqual(result.snapshot, undefined);
 		assert.deepStrictEqual(result.status, 'error');
-		assert.deepStrictEqual(result.error?.message, 'No tree to reconcile, make sure to pass a valid prompt');
+		assert.deepStrictEqual(
+			result.error?.message,
+			'No tree to reconcile, make sure to pass a valid prompt',
+		);
 	});
 
 	test('Should return an error if there was an error during reconciliation', function () {
 		let outerSetCount: Dispatch<StateUpdater<number>>;
 		let created = false;
 
-		const MyTestComponent = (props: PromptElementProps, context: ComponentContext) => {
+		const MyTestComponent = (
+			props: PromptElementProps,
+			context: ComponentContext,
+		) => {
 			const [count, setCount] = context.useState(0);
 
 			if (created) {
@@ -153,7 +170,10 @@ suite('Virtual prompt', function () {
 
 		assert.deepStrictEqual(result.snapshot, undefined);
 		assert.deepStrictEqual(result.status, 'error');
-		assert.deepStrictEqual(result.error?.message, 'Component was recreated');
+		assert.deepStrictEqual(
+			result.error?.message,
+			'Component was recreated',
+		);
 	});
 
 	test('Should create a pipe', function () {

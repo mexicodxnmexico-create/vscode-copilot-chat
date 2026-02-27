@@ -3,8 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { BasePromptElementProps, PromptElement, PromptPiece, PromptSizing, SystemMessage, TextChunk, UserMessage } from '@vscode/prompt-tsx';
-import { ChatFetchResponseType, ChatLocation } from '../../../platform/chat/common/commonTypes';
+import {
+	BasePromptElementProps,
+	PromptElement,
+	PromptPiece,
+	PromptSizing,
+	SystemMessage,
+	TextChunk,
+	UserMessage,
+} from '@vscode/prompt-tsx';
+import {
+	ChatFetchResponseType,
+	ChatLocation,
+} from '../../../platform/chat/common/commonTypes';
 import { IEndpointProvider } from '../../../platform/endpoint/common/endpointProvider';
 import { createServiceIdentifier } from '../../../util/common/services';
 import { CancellationToken } from '../../../util/vs/base/common/cancellation';
@@ -17,25 +28,32 @@ const LIST_RE = /\s*(?:. )?([a-z0-9_-]+)\s*/;
 export interface ILanguageToolsProvider {
 	readonly _serviceBrand: undefined;
 
-	getToolsForLanguages(languages: string[], token: CancellationToken): Promise<{ ok: boolean; commands: string[] }>;
+	getToolsForLanguages(
+		languages: string[],
+		token: CancellationToken,
+	): Promise<{ ok: boolean; commands: string[] }>;
 }
 
-export const ILanguageToolsProvider = createServiceIdentifier<ILanguageToolsProvider>('ILanguageToolsProvider');
+export const ILanguageToolsProvider =
+	createServiceIdentifier<ILanguageToolsProvider>('ILanguageToolsProvider');
 
 export class LanguageToolsProvider {
 	constructor(
 		@IEndpointProvider private readonly endpointProvider: IEndpointProvider,
-		@IInstantiationService private readonly instantiationService: IInstantiationService
-	) {
-	}
+		@IInstantiationService
+		private readonly instantiationService: IInstantiationService,
+	) {}
 
-	public async getToolsForLanguages(languages: string[], token: CancellationToken) {
+	public async getToolsForLanguages(
+		languages: string[],
+		token: CancellationToken,
+	) {
 		const endpoint = await this.endpointProvider.getChatEndpoint('gpt-4.1');
 		const promptRenderer = PromptRenderer.create(
 			this.instantiationService,
 			endpoint,
 			ToolLanguagesPrompt,
-			{ languages }
+			{ languages },
 		);
 
 		const prompt = await promptRenderer.render(undefined, token);
@@ -44,7 +62,7 @@ export class LanguageToolsProvider {
 			prompt.messages,
 			undefined,
 			token,
-			ChatLocation.Other
+			ChatLocation.Other,
 		);
 
 		if (fetchResult.type !== ChatFetchResponseType.Success) {
@@ -55,39 +73,62 @@ export class LanguageToolsProvider {
 			ok: true,
 			commands: fetchResult.value
 				.split('\n')
-				.map(s => LIST_RE.exec(s)?.[1])
+				.map((s) => LIST_RE.exec(s)?.[1])
 				.filter((s): s is string => !!s),
 		};
 	}
 }
 
-
-class ToolLanguagesPrompt extends PromptElement<{ languages: string[] } & BasePromptElementProps, void> {
+class ToolLanguagesPrompt extends PromptElement<
+	{ languages: string[] } & BasePromptElementProps,
+	void
+> {
 	override render(_state: void, _sizing: PromptSizing): PromptPiece {
 		return (
 			<>
 				<SystemMessage priority={10}>
-					You are an AI programming assistant that is specialized for usage of command-line tools developers use to build software.<br />
-					I'm working on software in the given following languages. Please list the names of common command-line tools I might use to build and test my software.<br />
-					Do NOT list tools that don't run my code, such as those used only for linting. For example, if I ask for JavaScript, the list should include tools like node, npx, and mocha, but not eslint.<br />
-					Be thorough! Try to give a list of *at least* 10 such tools.<br />
-					Print these tools out as a list, separated by commas. Do NOT print any additional explanation or context.
+					You are an AI programming assistant that is specialized for<br />
+					usage of command-line tools developers use to build<br />
+					software.<br />
+					<br />
+					I'm working on software in the given following languages.<br />
+					Please list the names of common command-line tools I might<br />
+					use to build and test my software.<br />
+					<br />
+					Do NOT list tools that don't run my code, such as those used<br />
+					only for linting. For example, if I ask for JavaScript, the<br />
+					list should include tools like node, npx, and mocha, but not<br />
+					eslint.<br />
+					<br />
+					Be thorough! Try to give a list of *at least* 10 such tools.
+					<br />
+					Print these tools out as a list, separated by commas. Do NOT<br />
+					print any additional explanation or context.<br />
 					<br />
 					<TextChunk priority={8}>
-						# Example<br />
+						# Example
+						<br />
 						## User: <br />
-						- python<br />
-						- rust<br />
-						## Response:<br />
-						- python<br />
-						- pip<br />
-						- cargo<br />
-						- rustc<br />
+						- python
+						<br />
+						- rust
+						<br />
+						## Response:
+						<br />
+						- python
+						<br />
+						- pip
+						<br />
+						- cargo
+						<br />
+						- rustc
+						<br />
 					</TextChunk>
 				</SystemMessage>
 				<UserMessage priority={9}>
 					<TextChunk breakOnWhitespace flexGrow={1}>
-						The languages I'm working in are:<br />
+						The languages I'm working in are:
+						<br />
 						{this.props.languages.join('\n -')}
 					</TextChunk>
 				</UserMessage>

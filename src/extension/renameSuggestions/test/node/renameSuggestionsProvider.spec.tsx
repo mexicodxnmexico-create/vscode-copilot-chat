@@ -217,45 +217,105 @@ suite('preprocessSymbolNames', () => {
 	test('to camelCase', () => {
 		const result = RenameSuggestionsProvider.preprocessSymbolNames({
 			currentSymbolName: 'camelCase',
-			newSymbolNames: ['snake_case', 'kebab-case', 'PascalCase', 'UPPER_SNAKE_CASE', 'lower-kebab-case'],
+			newSymbolNames: [
+				'snake_case',
+				'kebab-case',
+				'PascalCase',
+				'UPPER_SNAKE_CASE',
+				'lower-kebab-case',
+			],
 			languageId: 'javascript',
 		});
-		expect(result).toEqual(['snakeCase', 'kebabCase', 'pascalCase', 'upperSnakeCase', 'lowerKebabCase']);
+		expect(result).toEqual([
+			'snakeCase',
+			'kebabCase',
+			'pascalCase',
+			'upperSnakeCase',
+			'lowerKebabCase',
+		]);
 	});
 
 	test('to snake_case', () => {
 		const result = RenameSuggestionsProvider.preprocessSymbolNames({
 			currentSymbolName: 'snake_case',
-			newSymbolNames: ['camelCase', 'kebab-case', 'PascalCase', 'UPPER_SNAKE_CASE', 'lower-kebab-case'],
+			newSymbolNames: [
+				'camelCase',
+				'kebab-case',
+				'PascalCase',
+				'UPPER_SNAKE_CASE',
+				'lower-kebab-case',
+			],
 			languageId: 'python',
 		});
-		expect(result).toEqual(['camel_case', 'kebab_case', 'pascal_case', 'upper_snake_case', 'lower_kebab_case']);
+		expect(result).toEqual([
+			'camel_case',
+			'kebab_case',
+			'pascal_case',
+			'upper_snake_case',
+			'lower_kebab_case',
+		]);
 	});
 
 	test('to PascalCase', () => {
 		const result = RenameSuggestionsProvider.preprocessSymbolNames({
 			currentSymbolName: 'PascalCase',
-			newSymbolNames: ['camelCase', 'kebab-case', 'snake_case', 'UPPER_SNAKE_CASE', 'lower-kebab-case'],
+			newSymbolNames: [
+				'camelCase',
+				'kebab-case',
+				'snake_case',
+				'UPPER_SNAKE_CASE',
+				'lower-kebab-case',
+			],
 			languageId: 'javascript',
 		});
-		expect(result).toEqual(['CamelCase', 'KebabCase', 'SnakeCase', 'UpperSnakeCase', 'LowerKebabCase']);
+		expect(result).toEqual([
+			'CamelCase',
+			'KebabCase',
+			'SnakeCase',
+			'UpperSnakeCase',
+			'LowerKebabCase',
+		]);
 	});
 
 	test('to kebab-case', () => {
 		const result = RenameSuggestionsProvider.preprocessSymbolNames({
 			currentSymbolName: 'kebab-case',
-			newSymbolNames: ['camelCase', 'snake_case', 'PascalCase', 'UPPER_SNAKE_CASE', 'lower-kebab-case'],
+			newSymbolNames: [
+				'camelCase',
+				'snake_case',
+				'PascalCase',
+				'UPPER_SNAKE_CASE',
+				'lower-kebab-case',
+			],
 			languageId: 'javascript',
 		});
-		expect(result).toEqual(['camel-case', 'snake-case', 'pascal-case', 'upper-snake-case', 'lower-kebab-case']);
+		expect(result).toEqual([
+			'camel-case',
+			'snake-case',
+			'pascal-case',
+			'upper-snake-case',
+			'lower-kebab-case',
+		]);
 	});
 
 	test('as is', () => {
 		const result = RenameSuggestionsProvider.preprocessSymbolNames({
 			currentSymbolName: 'Unknown_Format',
-			newSymbolNames: ['camelCase', 'snake_case', 'PascalCase', 'UPPER_SNAKE_CASE', 'lower-kebab-case'],
+			newSymbolNames: [
+				'camelCase',
+				'snake_case',
+				'PascalCase',
+				'UPPER_SNAKE_CASE',
+				'lower-kebab-case',
+			],
 			languageId: 'javascript',
 		});
-		expect(result).toEqual(['camelCase', 'snake_case', 'PascalCase', 'UPPER_SNAKE_CASE', 'lower-kebab-case']);
+		expect(result).toEqual([
+			'camelCase',
+			'snake_case',
+			'PascalCase',
+			'UPPER_SNAKE_CASE',
+			'lower-kebab-case',
+		]);
 	});
 });

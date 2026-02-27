@@ -3,7 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { BasePromptElementProps, PromptElement, PromptPiece, PromptSizing, SystemMessage, UserMessage } from '@vscode/prompt-tsx';
+import {
+	BasePromptElementProps,
+	PromptElement,
+	PromptPiece,
+	PromptSizing,
+	SystemMessage,
+	UserMessage,
+} from '@vscode/prompt-tsx';
 import { PromptRenderer } from '../../../extension/prompts/node/base/promptRenderer';
 import { Tag } from '../../../extension/prompts/node/base/tag';
 import { ChatLocation } from '../../../platform/chat/common/commonTypes';
@@ -12,44 +19,58 @@ import { createServiceIdentifier } from '../../../util/common/services';
 import { CancellationToken } from '../../../util/vs/base/common/cancellation';
 import { IInstantiationService } from '../../../util/vs/platform/instantiation/common/instantiation';
 
-export const IAIEvaluationService = createServiceIdentifier<IAIEvaluationService>('IAIEvaluationService');
+export const IAIEvaluationService =
+	createServiceIdentifier<IAIEvaluationService>('IAIEvaluationService');
 
 /**
  * A service used in testing to evaluate if a response meets a given criteria.
  */
 export interface IAIEvaluationService {
-
 	_serviceBrand: undefined;
 
-	evaluate(response: string, criteria: string, token: CancellationToken): Promise<EvaluationResult>;
+	evaluate(
+		response: string,
+		criteria: string,
+		token: CancellationToken,
+	): Promise<EvaluationResult>;
 }
 
 export interface EvaluationResult {
 	readonly errorMessage?: string;
 }
 
-
 export class AIEvaluationService implements IAIEvaluationService {
 	_serviceBrand: undefined;
 
 	constructor(
 		@IEndpointProvider private readonly endpointProvider: IEndpointProvider,
-		@IInstantiationService private readonly instantiationService: IInstantiationService,
-	) {
-	}
+		@IInstantiationService
+		private readonly instantiationService: IInstantiationService,
+	) {}
 
-	async evaluate(response: string, criteria: string, token: CancellationToken): Promise<EvaluationResult> {
-		const endpoint = await this.endpointProvider.getChatEndpoint('copilot-fast');
-		const promptRenderer = PromptRenderer.create(this.instantiationService, endpoint, EvaluationPrompt, {
-			response, criteria
-		});
+	async evaluate(
+		response: string,
+		criteria: string,
+		token: CancellationToken,
+	): Promise<EvaluationResult> {
+		const endpoint =
+			await this.endpointProvider.getChatEndpoint('copilot-fast');
+		const promptRenderer = PromptRenderer.create(
+			this.instantiationService,
+			endpoint,
+			EvaluationPrompt,
+			{
+				response,
+				criteria,
+			},
+		);
 		const prompt = await promptRenderer.render();
 		const fetchResult = await endpoint.makeChatRequest(
 			'testEvaluation',
 			prompt.messages,
 			undefined,
 			token,
-			ChatLocation.Other
+			ChatLocation.Other,
 		);
 		if (fetchResult.type === 'success') {
 			return this.parseReply(fetchResult.value);
@@ -77,30 +98,51 @@ export interface EvaluationPromptProps extends BasePromptElementProps {
 }
 
 export class EvaluationPrompt extends PromptElement<EvaluationPromptProps> {
-
-	override render(state: void, sizing: PromptSizing): PromptPiece<any, any> | undefined {
+	override render(
+		state: void,
+		sizing: PromptSizing,
+	): PromptPiece<any, any> | undefined {
 		return (
 			<>
 				<SystemMessage priority={1001}>
-					You are a world class examiner and must decide whether a response fulfills a given criteria<br />
+					You are a world class examiner and must decide whether a<br />
+					response fulfills a given criteria<br />
 					<br />
-					Think step by step:<br />
-					1. Examine the provided response and criteria.<br />
-					2. Evaluate whether the response addresses the criteria adequately.<br />
-					3. If the evaluation is negative, end your reply with a line that starts with 'FAIL', followed by a single sentence explaining why.<br />
-					4. If the evaluation is positive, end your reply with a line that starts with 'PASS, followed by a single sentence explaining why.<br />
-					5. Do not add any additional feedback or comments after the line with 'FAIL' or 'PASS'<br />
 					<br />
-					Focus on being clear, helpful, and thorough.<br />
+					Think step by step:
+					<br />
+					1. Examine the provided response and criteria.
+					<br />
+					2. Evaluate whether the response addresses the criteria<br />
+					adequately.<br />
+					<br />
+					3. If the evaluation is negative, end your reply with a line<br />
+					that starts with 'FAIL', followed by a single sentence<br />
+					explaining why.<br />
+					<br />
+					4. If the evaluation is positive, end your reply with a line<br />
+					that starts with 'PASS, followed by a single sentence<br />
+					explaining why.<br />
+					<br />
+					5. Do not add any additional feedback or comments after the<br />
+					line with 'FAIL' or 'PASS'<br />
+					<br />
+					<br />
+					Focus on being clear, helpful, and thorough.
+					<br />
 				</SystemMessage>
 				<UserMessage flexGrow={1}>
-					<Tag name='response' priority={100}>
+					<Tag name="response" priority={100}>
 						{this.props.response}
 					</Tag>
-					<Tag name='criteria' priority={100}>
+					<Tag name="criteria" priority={100}>
 						{this.props.criteria}
 					</Tag>
-					Please reply with your evaluation of whether the response meets the criteria. Finish your reply with a line that starts with "PASS" or "FAIL" followed by a single sentence that explains why. Do not add any additional feedback or comments after the line with "FAIL" or "PASS".
+					Please reply with your evaluation of whether the response<br />
+					meets the criteria. Finish your reply with a line that<br />
+					starts with "PASS" or "FAIL" followed by a single sentence<br />
+					that explains why. Do not add any additional feedback or<br />
+					comments after the line with "FAIL" or "PASS".<br />
 				</UserMessage>
 			</>
 		);

@@ -7,16 +7,16 @@
 		"rootDir": ".",
 		"lib": ["ES2021", "dom"],
 		// Reset values set in the parent tsconfig
-		"strict": true,   /* enable all strict type-checking options */
+		"strict": true /* enable all strict type-checking options */,
 		/* Additional Checks */
-		"noUnusedLocals": true, /* Report errors on unused locals. */
-		"noImplicitOverride": true, /* Force use of `override` keyword. */
+		"noUnusedLocals": true /* Report errors on unused locals. */,
+		"noImplicitOverride": true /* Force use of `override` keyword. */,
 		"allowSyntheticDefaultImports": true,
 		"esModuleInterop": true,
 		"useDefineForClassFields": false,
 		"resolveJsonModule": true,
 		"experimentalDecorators": true,
-		"isolatedModules": false,
+		"isolatedModules": false
 	},
-	"exclude": [],
+	"exclude": []
 }

@@ -4,10 +4,8 @@
 		"moduleResolution": "Node16",
 		"noEmit": true,
 		"target": "ES2022",
-		"lib": ["ES2022" ],
+		"lib": ["ES2022"],
 		"strict": true
 	},
-	"include": [
-		".",
-	],
+	"include": ["."]
 }

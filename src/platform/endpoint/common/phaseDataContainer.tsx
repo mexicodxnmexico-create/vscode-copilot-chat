@@ -21,7 +21,10 @@ export interface IPhaseDataContainerProps extends BasePromptElementProps {
 export class PhaseDataContainer extends PromptElement<IPhaseDataContainerProps> {
 	render() {
 		const { phase } = this.props;
-		const container: IPhaseDataOpaque = { type: CustomDataPartMimeTypes.PhaseData, phase };
+		const container: IPhaseDataOpaque = {
+			type: CustomDataPartMimeTypes.PhaseData,
+			phase,
+		};
 		return <opaque value={container} />;
 	}
 }
@@ -29,14 +32,19 @@ export class PhaseDataContainer extends PromptElement<IPhaseDataContainerProps> 
 /**
  * Attempts to parse a Raw opaque content part into a phase string, if the type matches.
  */
-export function rawPartAsPhaseData(part: Raw.ChatCompletionContentPartOpaque): string | undefined {
+export function rawPartAsPhaseData(
+	part: Raw.ChatCompletionContentPartOpaque,
+): string | undefined {
 	const value = part.value as unknown;
 	if (!value || typeof value !== 'object') {
 		return;
 	}
 
 	const data = value as IPhaseDataOpaque;
-	if (data.type === CustomDataPartMimeTypes.PhaseData && typeof data.phase === 'string') {
+	if (
+		data.type === CustomDataPartMimeTypes.PhaseData &&
+		typeof data.phase === 'string'
+	) {
 		return data.phase;
 	}
 	return;

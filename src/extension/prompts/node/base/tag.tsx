@@ -3,7 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { PromptElement, PromptElementProps, TextChunk, useKeepWith } from '@vscode/prompt-tsx';
+import {
+	PromptElement,
+	PromptElementProps,
+	TextChunk,
+	useKeepWith,
+} from '@vscode/prompt-tsx';
 
 export type TagProps = PromptElementProps<{
 	name: string;
@@ -11,11 +16,9 @@ export type TagProps = PromptElementProps<{
 }>;
 
 export class Tag extends PromptElement<TagProps> {
-
 	private static readonly _regex = /^[a-zA-Z_][\w\.\-]*$/;
 
 	render() {
-
 		const { name, children, attrs = {} } = this.props;
 
 		if (!Tag._regex.test(name)) {
@@ -42,7 +45,10 @@ export class Tag extends PromptElement<TagProps> {
 		return (
 			<>
 				<KeepWith>{`<${name}${attrStr}>\n`}</KeepWith>
-				<TagInner priority={1} flexGrow={1}>{children}<br /></TagInner>
+				<TagInner priority={1} flexGrow={1}>
+					{children}
+					<br />
+				</TagInner>
 				<KeepWith>{`</${name}>`}</KeepWith>
 				<br />
 			</>

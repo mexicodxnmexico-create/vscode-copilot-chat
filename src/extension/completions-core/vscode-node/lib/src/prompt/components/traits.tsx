@@ -5,7 +5,11 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource ../../../../prompt/jsx-runtime/ */
 
-import { ComponentContext, PromptElementProps, Text } from '../../../../prompt/src/components/components';
+import {
+	ComponentContext,
+	PromptElementProps,
+	Text,
+} from '../../../../prompt/src/components/components';
 import { normalizeLanguageId } from '../../../../prompt/src/prompt';
 import {
 	CompletionRequestData,
@@ -13,7 +17,10 @@ import {
 } from '../completionsPromptFactory/componentsCompletionsPromptFactory';
 import { TraitWithId } from '../contextProviders/contextItemSchemas';
 
-export const Traits = (_props: PromptElementProps, context: ComponentContext) => {
+export const Traits = (
+	_props: PromptElementProps,
+	context: ComponentContext,
+) => {
 	const [traits, setTraits] = context.useState<TraitWithId[]>();
 	const [languageId, setLanguageId] = context.useState<string>();
 
@@ -22,7 +29,9 @@ export const Traits = (_props: PromptElementProps, context: ComponentContext) =>
 			setTraits(data.traits);
 		}
 
-		const normalizedLanguageId = normalizeLanguageId(data.document.detectedLanguageId);
+		const normalizedLanguageId = normalizeLanguageId(
+			data.document.detectedLanguageId,
+		);
 		if (normalizedLanguageId !== languageId) {
 			setLanguageId(normalizedLanguageId);
 		}
@@ -36,7 +45,7 @@ export const Traits = (_props: PromptElementProps, context: ComponentContext) =>
 	return (
 		<>
 			<Text>{'Consider this related information:\n'}</Text>
-			{...traits.map(trait => (
+			{...traits.map((trait) => (
 				<Text key={trait.id} source={trait}>
 					{`${trait.name}: ${trait.value}`}
 				</Text>

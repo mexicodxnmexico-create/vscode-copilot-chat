@@ -3,8 +3,21 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { makeStyles, MenuItem, MenuList, tokens } from '@fluentui/react-components';
-import React, { createContext, MouseEvent, ReactNode, useContext, useEffect, useRef, useState } from 'react';
+import {
+	makeStyles,
+	MenuItem,
+	MenuList,
+	tokens,
+} from '@fluentui/react-components';
+import React, {
+	createContext,
+	MouseEvent,
+	ReactNode,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+} from 'react';
 
 type MenuEntry = {
 	label: string;
@@ -19,12 +32,18 @@ type ContextMenuContextProps = {
 	isVisible: boolean;
 };
 
-const ContextMenuContext = createContext<ContextMenuContextProps | undefined>(undefined);
+const ContextMenuContext = createContext<ContextMenuContextProps | undefined>(
+	undefined,
+);
 
-export const ContextMenuProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-
+export const ContextMenuProvider: React.FC<{ children: ReactNode }> = ({
+	children,
+}) => {
 	const [menuEntries, setMenuEntries] = useState<MenuEntry[]>([]);
-	const [menuPosition, setMenuPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+	const [menuPosition, setMenuPosition] = useState<{ x: number; y: number }>({
+		x: 0,
+		y: 0,
+	});
 	const [isVisible, setIsVisible] = useState(false);
 
 	const showMenu = (event: MouseEvent, entries: MenuEntry[]) => {
@@ -39,7 +58,9 @@ export const ContextMenuProvider: React.FC<{ children: ReactNode }> = ({ childre
 	};
 
 	return (
-		<ContextMenuContext.Provider value={{ showMenu, hideMenu, menuEntries, menuPosition, isVisible }}>
+		<ContextMenuContext.Provider
+			value={{ showMenu, hideMenu, menuEntries, menuPosition, isVisible }}
+		>
 			{children}
 		</ContextMenuContext.Provider>
 	);
@@ -48,7 +69,9 @@ export const ContextMenuProvider: React.FC<{ children: ReactNode }> = ({ childre
 export const useContextMenu = () => {
 	const context = useContext(ContextMenuContext);
 	if (!context) {
-		throw new Error('useContextMenu must be used within a ContextMenuProvider');
+		throw new Error(
+			'useContextMenu must be used within a ContextMenuProvider',
+		);
 	}
 	return context;
 };
@@ -81,7 +104,11 @@ export const ContextMenu: React.FC = () => {
 			return;
 		}
 		const handleClickOutside = (e: globalThis.MouseEvent) => {
-			if (menuListRef.current && e.target instanceof Node && !menuListRef.current.contains(e.target)) {
+			if (
+				menuListRef.current &&
+				e.target instanceof Node &&
+				!menuListRef.current.contains(e.target)
+			) {
 				hideMenu();
 			}
 		};
@@ -110,10 +137,7 @@ export const ContextMenu: React.FC = () => {
 				zIndex: 1000,
 			}}
 		>
-			<MenuList
-				ref={menuListRef}
-				onClick={hideMenu}
-			>
+			<MenuList ref={menuListRef} onClick={hideMenu}>
 				{menuEntries.map((entry, index) => (
 					<MenuItem
 						key={index}

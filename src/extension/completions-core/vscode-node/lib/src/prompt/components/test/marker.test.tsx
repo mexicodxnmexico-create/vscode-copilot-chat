@@ -13,7 +13,11 @@ import { DocumentMarker } from '../../../prompt/components/marker';
 import { createCompletionRequestData } from '../../../test/completionsPrompt';
 import { createLibTestingContext } from '../../../test/context';
 import { querySnapshot } from '../../../test/snapshot';
-import { createTextDocument, InMemoryNotebookDocument, TestTextDocumentManager } from '../../../test/textDocument';
+import {
+	createTextDocument,
+	InMemoryNotebookDocument,
+	TestTextDocumentManager,
+} from '../../../test/textDocument';
 import { ICompletionsTextDocumentManagerService } from '../../../textDocumentManager';
 
 suite('Document Marker', function () {
@@ -36,11 +40,17 @@ suite('Document Marker', function () {
 	});
 
 	test('creates language marker with relative path present but type is notebook', async function () {
-		const textDocument = createTextDocument('vscode-notebook:///mynotebook.ipynb', 'typescript', 0, '');
-		(accessor.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager).setNotebookDocument(
-			textDocument,
-			new InMemoryNotebookDocument([])
+		const textDocument = createTextDocument(
+			'vscode-notebook:///mynotebook.ipynb',
+			'typescript',
+			0,
+			'',
 		);
+		(
+			accessor.get(
+				ICompletionsTextDocumentManagerService,
+			) as TestTextDocumentManager
+		).setNotebookDocument(textDocument, new InMemoryNotebookDocument([]));
 		const marker = await renderMarker(accessor, textDocument.uri);
 
 		assert.deepStrictEqual(marker, 'Language: typescript');
@@ -55,13 +65,17 @@ suite('Document Marker', function () {
 				const a = 1;
 				function f|
 				const b = 2;
-			`
+			`,
 		);
 		const tdms = accessor.get(ICompletionsTextDocumentManagerService);
-		const position = textDocument.positionAt(textDocument.getText().indexOf('|'));
+		const position = textDocument.positionAt(
+			textDocument.getText().indexOf('|'),
+		);
 		const virtualPrompt = new VirtualPrompt(<DocumentMarker tdms={tdms} />);
 		const pipe = virtualPrompt.createPipe();
-		await pipe.pump(createCompletionRequestData(accessor, textDocument, position));
+		await pipe.pump(
+			createCompletionRequestData(accessor, textDocument, position),
+		);
 		const snapshot = virtualPrompt.snapshot();
 		return querySnapshot(snapshot.snapshot!, 'DocumentMarker.*.Text');
 	}

@@ -3,7 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { BasePromptElementProps, PromptElement, PromptReference, PromptSizing } from '@vscode/prompt-tsx';
+import {
+	BasePromptElementProps,
+	PromptElement,
+	PromptReference,
+	PromptSizing,
+} from '@vscode/prompt-tsx';
 import type { ChatLanguageModelToolReference } from 'vscode';
 import { IIgnoreService } from '../../../../platform/ignore/common/ignoreService';
 import { ILogService } from '../../../../platform/log/common/logService';
@@ -15,18 +20,20 @@ import { IPromptVariablesService } from '../../../prompt/node/promptVariablesSer
 import { EmbeddedInsideUserMessage } from '../base/promptElement';
 import { Tag } from '../base/tag';
 
-export interface PromptFileProps extends BasePromptElementProps, EmbeddedInsideUserMessage {
+export interface PromptFileProps
+	extends BasePromptElementProps, EmbeddedInsideUserMessage {
 	readonly variable: PromptVariable;
 	readonly omitReferences?: boolean;
 }
 
 export class PromptFile extends PromptElement<PromptFileProps, void> {
-
 	constructor(
 		props: PromptFileProps,
-		@IPromptVariablesService private readonly promptVariablesService: IPromptVariablesService,
+		@IPromptVariablesService
+		private readonly promptVariablesService: IPromptVariablesService,
 		@ILogService private readonly logService: ILogService,
-		@IPromptPathRepresentationService private readonly promptPathRepresentationService: IPromptPathRepresentationService,
+		@IPromptPathRepresentationService
+		private readonly promptPathRepresentationService: IPromptPathRepresentationService,
 		@IIgnoreService private readonly ignoreService: IIgnoreService,
 		@IWorkspaceService private readonly workspaceService: IWorkspaceService,
 	) {
@@ -37,7 +44,9 @@ export class PromptFile extends PromptElement<PromptFileProps, void> {
 		const variable = this.props.variable.reference;
 		const uri = variable.value;
 		if (!URI.isUri(uri)) {
-			this.logService.debug(`Prompt file variable does not have a URI value: ${variable.value}`);
+			this.logService.debug(
+				`Prompt file variable does not have a URI value: ${variable.value}`,
+			);
 			return undefined;
 		}
 
@@ -49,19 +58,31 @@ export class PromptFile extends PromptElement<PromptFileProps, void> {
 		const attrs: Record<string, string> = {};
 		attrs.id = variable.name;
 		attrs.filePath = this.promptPathRepresentationService.getFilePath(uri);
-		return <Tag name='attachment' attrs={attrs}>
-			{!this.props.omitReferences && <references value={[new PromptReference(uri, undefined)]} />}
-			Prompt instructions file:<br />
-			{content}
-		</Tag>;
+		return (
+			<Tag name="attachment" attrs={attrs}>
+				{!this.props.omitReferences && (
+					<references value={[new PromptReference(uri, undefined)]} />
+				)}
+				Prompt instructions file:
+				<br />
+				{content}
+			</Tag>
+		);
 	}
 
-	private async getBodyContent(fileUri: URI, toolReferences: readonly ChatLanguageModelToolReference[] | undefined): Promise<string | undefined> {
+	private async getBodyContent(
+		fileUri: URI,
+		toolReferences: readonly ChatLanguageModelToolReference[] | undefined,
+	): Promise<string | undefined> {
 		try {
 			const doc = await this.workspaceService.openTextDocument(fileUri);
 			let content = doc.getText();
 			if (toolReferences && toolReferences.length > 0) {
-				content = await this.promptVariablesService.resolveToolReferencesInPrompt(content, toolReferences);
+				content =
+					await this.promptVariablesService.resolveToolReferencesInPrompt(
+						content,
+						toolReferences,
+					);
 			}
 
 			let bodyOffset = 0;
@@ -74,7 +95,9 @@ export class PromptFile extends PromptElement<PromptFileProps, void> {
 			}
 			return content.substring(bodyOffset);
 		} catch (e) {
-			this.logService.debug(`Prompt file not found: ${fileUri.toString()}`);
+			this.logService.debug(
+				`Prompt file not found: ${fileUri.toString()}`,
+			);
 			return undefined;
 		}
 	}

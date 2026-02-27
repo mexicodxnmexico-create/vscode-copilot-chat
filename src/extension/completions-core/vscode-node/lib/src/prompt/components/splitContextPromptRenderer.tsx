@@ -5,8 +5,14 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource ../../../../prompt/jsx-runtime/ */
 
-import { ComponentStatistics, PromptSnapshotNode } from '../../../../prompt/src/components/components';
-import { SnapshotWalker, WalkContextTransformer } from '../../../../prompt/src/components/walker';
+import {
+	ComponentStatistics,
+	PromptSnapshotNode,
+} from '../../../../prompt/src/components/components';
+import {
+	SnapshotWalker,
+	WalkContextTransformer,
+} from '../../../../prompt/src/components/walker';
 import { isContextNode } from './completionsContext';
 import {
 	CompletionsPromptRenderer,
@@ -14,7 +20,12 @@ import {
 	transformers,
 } from './completionsPromptRenderer';
 import { BeforeCursor } from './currentFile';
-import { ElidedBlock, makeContextPrompt, makePrefixPrompt, WeightedBlock } from './elision';
+import {
+	ElidedBlock,
+	makeContextPrompt,
+	makePrefixPrompt,
+	WeightedBlock,
+} from './elision';
 
 let contextIndex = 0;
 function resetContextIndex() {
@@ -26,12 +37,15 @@ function getNextContextIndex() {
 }
 
 export class SplitContextPromptRenderer extends CompletionsPromptRenderer {
-	protected override formatPrefix: (elidedBlocks: ElidedBlock[]) => string = makePrefixPrompt;
-	protected override formatContext: ((elidedBlocks: ElidedBlock[]) => string[]) | undefined = makeContextPrompt;
+	protected override formatPrefix: (elidedBlocks: ElidedBlock[]) => string =
+		makePrefixPrompt;
+	protected override formatContext:
+		| ((elidedBlocks: ElidedBlock[]) => string[])
+		| undefined = makeContextPrompt;
 
 	override processSnapshot(
 		snapshot: PromptSnapshotNode,
-		delimiter: string
+		delimiter: string,
 	): {
 		prefixBlocks: WeightedBlock[];
 		suffixBlock: WeightedBlock;
@@ -51,7 +65,10 @@ export class SplitContextPromptRenderer extends CompletionsPromptRenderer {
 				return true;
 			}
 
-			if (node.statistics.updateDataTimeMs && node.statistics.updateDataTimeMs > 0) {
+			if (
+				node.statistics.updateDataTimeMs &&
+				node.statistics.updateDataTimeMs > 0
+			) {
 				componentStatistics.push({
 					componentPath: node.path,
 					updateDataTimeMs: node.statistics.updateDataTimeMs,
@@ -86,7 +103,9 @@ export class SplitContextPromptRenderer extends CompletionsPromptRenderer {
 
 				// Add delimiter to non-prefix nodes
 				const nodeValueWithDelimiter =
-					isPrefix || node.value.endsWith(delimiter) ? node.value : node.value + delimiter;
+					isPrefix || node.value.endsWith(delimiter)
+						? node.value
+						: node.value + delimiter;
 				prefixBlocks.push({
 					type: isPrefix ? 'prefix' : 'context',
 					value: normalizeLineEndings(nodeValueWithDelimiter),

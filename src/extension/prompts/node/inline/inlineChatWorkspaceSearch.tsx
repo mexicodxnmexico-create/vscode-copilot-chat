@@ -3,12 +3,22 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { BasePromptElementProps, PromptElement, PromptSizing } from '@vscode/prompt-tsx';
-import { KeywordItem, ResolvedWorkspaceChunkQuery } from '../../../../platform/workspaceChunkSearch/common/workspaceChunkSearch';
+import {
+	BasePromptElementProps,
+	PromptElement,
+	PromptSizing,
+} from '@vscode/prompt-tsx';
+import {
+	KeywordItem,
+	ResolvedWorkspaceChunkQuery,
+} from '../../../../platform/workspaceChunkSearch/common/workspaceChunkSearch';
 import { TelemetryCorrelationId } from '../../../../util/common/telemetryCorrelationId';
 import { Diagnostic } from '../../../../vscodeTypes';
 import { IDocumentContext } from '../../../prompt/node/documentContext';
-import { ChunksToolProps, WorkspaceChunks } from '../panel/workspace/workspaceContext';
+import {
+	ChunksToolProps,
+	WorkspaceChunks,
+} from '../panel/workspace/workspaceContext';
 
 interface InlineChatWorkspaceSearchProps extends BasePromptElementProps {
 	readonly documentContext: IDocumentContext;
@@ -18,24 +28,38 @@ interface InlineChatWorkspaceSearchProps extends BasePromptElementProps {
 }
 
 export class InlineChatWorkspaceSearch extends PromptElement<InlineChatWorkspaceSearchProps> {
-
 	render(state: void, sizing: PromptSizing) {
-		const { useWorkspaceChunksFromSelection, useWorkspaceChunksFromDiagnostics } = this.props;
+		const {
+			useWorkspaceChunksFromSelection,
+			useWorkspaceChunksFromDiagnostics,
+		} = this.props;
 
-		if (!useWorkspaceChunksFromSelection && !useWorkspaceChunksFromDiagnostics) {
+		if (
+			!useWorkspaceChunksFromSelection &&
+			!useWorkspaceChunksFromDiagnostics
+		) {
 			return null;
 		}
 
 		let tokenBudget = sizing.tokenBudget;
-		if (useWorkspaceChunksFromSelection && useWorkspaceChunksFromDiagnostics) {
+		if (
+			useWorkspaceChunksFromSelection &&
+			useWorkspaceChunksFromDiagnostics
+		) {
 			tokenBudget = tokenBudget / 2;
 		}
 		return (
 			<>
-				{useWorkspaceChunksFromSelection &&
-					<WorkspaceChunks {...this.getChunkSearchPropsForSelection()} />}
-				{useWorkspaceChunksFromDiagnostics &&
-					<WorkspaceChunks {...this.getChunkSearchPropsForDiagnostics(tokenBudget)} />}
+				{useWorkspaceChunksFromSelection && (
+					<WorkspaceChunks
+						{...this.getChunkSearchPropsForSelection()}
+					/>
+				)}
+				{useWorkspaceChunksFromDiagnostics && (
+					<WorkspaceChunks
+						{...this.getChunkSearchPropsForDiagnostics(tokenBudget)}
+					/>
+				)}
 			</>
 		);
 	}
@@ -43,7 +67,7 @@ export class InlineChatWorkspaceSearch extends PromptElement<InlineChatWorkspace
 	private getChunkSearchPropsForSelection(): ChunksToolProps {
 		const { document, wholeRange } = this.props.documentContext;
 		let range = document.validateRange(wholeRange);
-		this.props.diagnostics.forEach(d => {
+		this.props.diagnostics.forEach((d) => {
 			range = range.union(d.range);
 		});
 		const selectedText = document.getText(range);
@@ -52,16 +76,19 @@ export class InlineChatWorkspaceSearch extends PromptElement<InlineChatWorkspace
 			`Please find code that is similar to the following code block:\n`,
 			'```',
 			selectedText,
-			'```'
+			'```',
 		].join('\n');
 		return {
-			telemetryInfo: new TelemetryCorrelationId('InlineChatWorkspaceSearch::getChunkSearchPropsForSelection'),
+			telemetryInfo: new TelemetryCorrelationId(
+				'InlineChatWorkspaceSearch::getChunkSearchPropsForSelection',
+			),
 			query: {
 				rawQuery: query,
-				resolveQueryAndKeywords: async (): Promise<ResolvedWorkspaceChunkQuery> => ({
-					rephrasedQuery: query,
-					keywords: getKeywordsForContent(selectedText),
-				}),
+				resolveQueryAndKeywords:
+					async (): Promise<ResolvedWorkspaceChunkQuery> => ({
+						rephrasedQuery: query,
+						keywords: getKeywordsForContent(selectedText),
+					}),
 				resolveQuery: async () => query,
 			},
 			// do not return matches in the current file
@@ -70,18 +97,23 @@ export class InlineChatWorkspaceSearch extends PromptElement<InlineChatWorkspace
 		};
 	}
 
-	private getChunkSearchPropsForDiagnostics(tokenBudget: number): ChunksToolProps {
+	private getChunkSearchPropsForDiagnostics(
+		tokenBudget: number,
+	): ChunksToolProps {
 		const document = this.props.documentContext.document;
-		const messages = this.props.diagnostics.map(d => d.message).join(' ');
+		const messages = this.props.diagnostics.map((d) => d.message).join(' ');
 		const query = `Please find code that can help me fix the following problems: ${messages}`;
 		return {
-			telemetryInfo: new TelemetryCorrelationId('InlineChatWorkspaceSearch::getChunkSearchPropsForDiagnostics'),
+			telemetryInfo: new TelemetryCorrelationId(
+				'InlineChatWorkspaceSearch::getChunkSearchPropsForDiagnostics',
+			),
 			query: {
 				rawQuery: query,
-				resolveQueryAndKeywords: async (): Promise<ResolvedWorkspaceChunkQuery> => ({
-					rephrasedQuery: query,
-					keywords: getKeywordsForContent(messages),
-				}),
+				resolveQueryAndKeywords:
+					async (): Promise<ResolvedWorkspaceChunkQuery> => ({
+						rephrasedQuery: query,
+						keywords: getKeywordsForContent(messages),
+					}),
 				resolveQuery: async () => query,
 			},
 			// do not return matches in the current file
@@ -94,8 +126,13 @@ export class InlineChatWorkspaceSearch extends PromptElement<InlineChatWorkspace
 function getKeywordsForContent(text: string): readonly KeywordItem[] {
 	// extract all identifiers in the selected text
 	const identifiers = new Set<string>();
-	for (const match of text.matchAll(/(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g)) {
+	for (const match of text.matchAll(
+		/(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g,
+	)) {
 		identifiers.add(match[0]);
 	}
-	return Array.from(identifiers.values(), k => ({ keyword: k, variations: [] }));
+	return Array.from(identifiers.values(), (k) => ({
+		keyword: k,
+		variations: [],
+	}));
 }

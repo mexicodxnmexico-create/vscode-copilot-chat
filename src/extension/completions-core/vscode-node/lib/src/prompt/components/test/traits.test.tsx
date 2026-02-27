@@ -46,7 +46,11 @@ suite('Traits component', function () {
 		try {
 			await renderTrait(accessor);
 		} catch (e) {
-			assert.ok((e as Error).message.startsWith('No children found at path segment '));
+			assert.ok(
+				(e as Error).message.startsWith(
+					'No children found at path segment ',
+				),
+			);
 		}
 	});
 
@@ -54,22 +58,35 @@ suite('Traits component', function () {
 		try {
 			await renderTrait(accessor, []);
 		} catch (e) {
-			assert.ok((e as Error).message.startsWith('No children found at path segment '));
+			assert.ok(
+				(e as Error).message.startsWith(
+					'No children found at path segment ',
+				),
+			);
 		}
 	});
 
 	test('Renders a single trait', async function () {
 		const snapshot = await renderTrait(accessor, [trait1]);
-		const traits = querySnapshot(snapshot.snapshot!, 'Traits') as PromptSnapshotNode[];
+		const traits = querySnapshot(
+			snapshot.snapshot!,
+			'Traits',
+		) as PromptSnapshotNode[];
 		assert.deepStrictEqual(traits.length, 2);
-		assert.deepStrictEqual(traits[0].children?.[0].value, 'Consider this related information:\n');
+		assert.deepStrictEqual(
+			traits[0].children?.[0].value,
+			'Consider this related information:\n',
+		);
 		assert.deepStrictEqual(traits[1].props?.source, trait1);
 		assert.deepStrictEqual(traits[1].children?.[0].value, 'foo: bar');
 	});
 
 	test('Renders multiple traits', async function () {
 		const snapshot = await renderTrait(accessor, [trait1, trait2]);
-		const result = querySnapshot(snapshot.snapshot!, 'Traits') as PromptSnapshotNode[];
+		const result = querySnapshot(
+			snapshot.snapshot!,
+			'Traits',
+		) as PromptSnapshotNode[];
 
 		// Assert that keys are in the path
 		assert.deepStrictEqual(extractNodesWitPath(snapshot.snapshot!), [
@@ -84,9 +101,15 @@ suite('Traits component', function () {
 		]);
 
 		assert.deepStrictEqual(result.length, 3);
-		const traits = querySnapshot(snapshot.snapshot!, 'Traits') as PromptSnapshotNode[];
+		const traits = querySnapshot(
+			snapshot.snapshot!,
+			'Traits',
+		) as PromptSnapshotNode[];
 		assert.deepStrictEqual(traits.length, 3);
-		assert.deepStrictEqual(traits[0].children?.[0].value, 'Consider this related information:\n');
+		assert.deepStrictEqual(
+			traits[0].children?.[0].value,
+			'Consider this related information:\n',
+		);
 		assert.deepStrictEqual(traits[1].props?.source, trait1);
 		assert.deepStrictEqual(traits[1].children?.[0].value, 'foo: bar');
 		assert.deepStrictEqual(traits[2].props?.source, trait2);
@@ -103,7 +126,7 @@ async function renderTrait(accessor: ServicesAccessor, traits?: TraitWithId[]) {
 		const a = 1;
 		function f|
 		const b = 2;
-	`
+	`,
 	);
 	const position = document.positionAt(document.getText().indexOf('|'));
 

@@ -20,7 +20,6 @@ import { SimulationTestsProvider } from './stores/simulationTestsProvider';
 import { TestSource, TestSourceValue } from './stores/testSource';
 import { REPO_ROOT, monacoModule } from './utils/utils';
 
-
 class SimulationWorkbench extends Disposable {
 	private readonly storage: SimulationStorage;
 	private readonly testSource: TestSourceValue;
@@ -40,9 +39,21 @@ class SimulationWorkbench extends Disposable {
 		this.amlProvider = this._register(new AMLProvider(this.storage));
 		this.runnerOptions = new RunnerOptions(this.storage);
 		this.nesExternalOptions = new NesExternalOptions(this.storage);
-		this.runner = this._register(new SimulationRunner(this.storage, this.runnerOptions));
-		this.simulationRunsProvider = this._register(new SimulationRunsProvider(this.storage, this.runner));
-		this.tests = this._register(new SimulationTestsProvider(this.testSource, this.runner, this.simulationRunsProvider, this.amlProvider, this.nesExternalOptions));
+		this.runner = this._register(
+			new SimulationRunner(this.storage, this.runnerOptions),
+		);
+		this.simulationRunsProvider = this._register(
+			new SimulationRunsProvider(this.storage, this.runner),
+		);
+		this.tests = this._register(
+			new SimulationTestsProvider(
+				this.testSource,
+				this.runner,
+				this.simulationRunsProvider,
+				this.amlProvider,
+				this.nesExternalOptions,
+			),
+		);
 		this.displayOptions = new DisplayOptions(this.storage);
 	}
 
@@ -61,12 +72,13 @@ class SimulationWorkbench extends Disposable {
 				amlProvider={this.amlProvider}
 				displayOptions={this.displayOptions}
 			/>,
-			elt
+			elt,
 		);
 	}
 }
 
-let monacoPromise: Promise<typeof import('monaco-editor')> | undefined = undefined;
+let monacoPromise: Promise<typeof import('monaco-editor')> | undefined =
+	undefined;
 function loadMonaco(): Promise<typeof import('monaco-editor')> {
 	if (!monacoPromise) {
 		monacoPromise = doLoadMonaco();
@@ -87,12 +99,18 @@ function doLoadMonaco(): Promise<typeof import('monaco-editor')> {
 			return encodeURI('file://' + pathName);
 		}
 
-		const baseUrl = uriFromPath(path.join(REPO_ROOT, 'node_modules/monaco-editor/min'));
+		const baseUrl = uriFromPath(
+			path.join(REPO_ROOT, 'node_modules/monaco-editor/min'),
+		);
 		amdRequire.config({ baseUrl });
 
-		amdRequire(['vs/editor/editor.main'], function (monaco: typeof import('monaco-editor')) {
-			resolve(monaco);
-		}, reject);
+		amdRequire(
+			['vs/editor/editor.main'],
+			function (monaco: typeof import('monaco-editor')) {
+				resolve(monaco);
+			},
+			reject,
+		);
 	});
 }
 

@@ -26,8 +26,10 @@ export function createFilterer(predicates: FilterPredicate[]): TestFilterer {
 			}
 
 			// Combine all predicates with AND logic
-			return tests.filter(test => predicates.every(predicate => predicate(test)));
-		}
+			return tests.filter((test) =>
+				predicates.every((predicate) => predicate(test)),
+			);
+		},
 	};
 }
 
@@ -50,9 +52,10 @@ export function createGrepFilter(grep: string): FilterPredicate {
 	}
 	const grepRegex = grepStrToRegex(trimmedGrep);
 
-	return (test) => isSuiteNameSearch
-		? grepRegex.test(test.suiteName)
-		: grepRegex.test(test.name);
+	return (test) =>
+		isSuiteNameSearch
+			? grepRegex.test(test.suiteName)
+			: grepRegex.test(test.name);
 }
 
 /**
@@ -60,21 +63,24 @@ export function createGrepFilter(grep: string): FilterPredicate {
  */
 export function createBaselineChangedFilter(): FilterPredicate {
 	return (test) => {
-		if (test.runnerStatus === undefined || test.baselineJSON === undefined) {
+		if (
+			test.runnerStatus === undefined ||
+			test.baselineJSON === undefined
+		) {
 			return false;
 		}
 
-		const canCompareWithBaseline = test.runnerStatus.expectedRuns === (
+		const canCompareWithBaseline =
+			test.runnerStatus.expectedRuns ===
 			test.baselineJSON.passCount +
-			test.baselineJSON.failCount +
-			test.baselineJSON.contentFilterCount
-		);
+				test.baselineJSON.failCount +
+				test.baselineJSON.contentFilterCount;
 
 		if (!canCompareWithBaseline) {
 			return false;
 		}
 
-		const passCount = test.runnerStatus.runs.filter(r => r.pass).length;
+		const passCount = test.runnerStatus.runs.filter((r) => r.pass).length;
 		const changedByPassCount = passCount !== test.baselineJSON?.passCount;
 
 		if (changedByPassCount) {
@@ -82,12 +88,15 @@ export function createBaselineChangedFilter(): FilterPredicate {
 		}
 
 		// check if explicit score has changed
-		const explicitScoreBasedTest = test.runnerStatus.runs.at(0)?.explicitScore !== undefined;
+		const explicitScoreBasedTest =
+			test.runnerStatus.runs.at(0)?.explicitScore !== undefined;
 		if (explicitScoreBasedTest) {
 			const expectedScore = test.baselineJSON.score.toFixed(2);
 			const actualScore = (
-				test.runnerStatus.runs.reduce((acc, run) => acc + (run.explicitScore ?? 0), 0) /
-				test.runnerStatus.runs.length
+				test.runnerStatus.runs.reduce(
+					(acc, run) => acc + (run.explicitScore ?? 0),
+					0,
+				) / test.runnerStatus.runs.length
 			).toFixed(2);
 			return expectedScore !== actualScore;
 		}
@@ -101,8 +110,11 @@ export function createBaselineChangedFilter(): FilterPredicate {
  */
 export function createFailuresFilter(): FilterPredicate {
 	return (test) => {
-		return !!test.runnerStatus &&
-			test.runnerStatus.runs.filter(r => r.pass).length < test.runnerStatus.expectedRuns;
+		return (
+			!!test.runnerStatus &&
+			test.runnerStatus.runs.filter((r) => r.pass).length <
+				test.runnerStatus.expectedRuns
+		);
 	};
 }
 
@@ -110,7 +122,9 @@ export function createFailuresFilter(): FilterPredicate {
  * Filter tests with cache misses
  */
 export function createCacheMissesFilter(): FilterPredicate {
-	return (test) => !!test.runnerStatus && test.runnerStatus.runs.some(r => r.hasCacheMiss);
+	return (test) =>
+		!!test.runnerStatus &&
+		test.runnerStatus.runs.some((r) => r.hasCacheMiss);
 }
 
 /**
@@ -123,30 +137,42 @@ export function createRanTestsFilter(): FilterPredicate {
 /**
  * Filter tests by specific result types (failures, regressions, improvements, differences)
  */
-export function createResultTypeFilter(resultType: string | undefined): FilterPredicate {
+export function createResultTypeFilter(
+	resultType: string | undefined,
+): FilterPredicate {
 	if (!resultType) {
 		return () => true;
 	}
 
 	return (test) => {
-		const passRate = test.runnerStatus?.runs.map<number>(r => r.pass ? 1 : 0).reduce((a, b) => a + b, 0);
-		const baselinePassRate = test.baseline?.runs.map<number>(r => r.pass ? 1 : 0).reduce((a, b) => a + b, 0);
+		const passRate = test.runnerStatus?.runs
+			.map<number>((r) => (r.pass ? 1 : 0))
+			.reduce((a, b) => a + b, 0);
+		const baselinePassRate = test.baseline?.runs
+			.map<number>((r) => (r.pass ? 1 : 0))
+			.reduce((a, b) => a + b, 0);
 
 		switch (resultType) {
 			case 'failures':
-				return test.runnerStatus?.runs.some(r => !r.pass) ?? true;
+				return test.runnerStatus?.runs.some((r) => !r.pass) ?? true;
 			case 'regressions':
-				return baselinePassRate !== undefined &&
+				return (
+					baselinePassRate !== undefined &&
 					passRate !== undefined &&
-					passRate < baselinePassRate;
+					passRate < baselinePassRate
+				);
 			case 'improvements':
-				return baselinePassRate !== undefined &&
+				return (
+					baselinePassRate !== undefined &&
 					passRate !== undefined &&
-					passRate > baselinePassRate;
+					passRate > baselinePassRate
+				);
 			case 'differences':
-				return baselinePassRate !== undefined &&
+				return (
+					baselinePassRate !== undefined &&
 					passRate !== undefined &&
-					passRate !== baselinePassRate;
+					passRate !== baselinePassRate
+				);
 			default:
 				return true;
 		}
@@ -156,31 +182,39 @@ export function createResultTypeFilter(resultType: string | undefined): FilterPr
 /**
  * Filter tests by language ID
  */
-export function createLanguageFilter(languageId: string | undefined): FilterPredicate {
+export function createLanguageFilter(
+	languageId: string | undefined,
+): FilterPredicate {
 	if (!languageId) {
 		return () => true;
 	}
 
-	return (test) => test.activeEditorLangId !== undefined &&
+	return (test) =>
+		test.activeEditorLangId !== undefined &&
 		test.activeEditorLangId === languageId;
 }
 
 /**
  * Filter tests by annotations
  */
-export function createAnnotationFilter(selectedAnnotations: Set<string> | undefined): FilterPredicate {
+export function createAnnotationFilter(
+	selectedAnnotations: Set<string> | undefined,
+): FilterPredicate {
 	if (!selectedAnnotations || selectedAnnotations.size === 0) {
 		return () => true;
 	}
 
-	return (test) => test.runnerStatus?.runs.some(
-		r => r.annotations.some(a => selectedAnnotations.has(a.label))
-	) === true;
+	return (test) =>
+		test.runnerStatus?.runs.some((r) =>
+			r.annotations.some((a) => selectedAnnotations.has(a.label)),
+		) === true;
 }
 
 /**
  * Filter tests by test name
  */
-export function createTestNameFilter(testName: string | undefined): FilterPredicate {
+export function createTestNameFilter(
+	testName: string | undefined,
+): FilterPredicate {
 	return (test) => testName === undefined || test.name.includes(testName);
 }

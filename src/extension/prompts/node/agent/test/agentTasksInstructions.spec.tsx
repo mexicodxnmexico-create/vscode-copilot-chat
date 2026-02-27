@@ -3,11 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { BasePromptElementProps, PromptElement, UserMessage } from '@vscode/prompt-tsx';
+import {
+	BasePromptElementProps,
+	PromptElement,
+	UserMessage,
+} from '@vscode/prompt-tsx';
 import { expect, suite, test } from 'vitest';
 import type * as vscode from 'vscode';
 import { MockEndpoint } from '../../../../../platform/endpoint/test/node/mockEndpoint';
-import { IIgnoreService, NullIgnoreService } from '../../../../../platform/ignore/common/ignoreService';
+import {
+	IIgnoreService,
+	NullIgnoreService,
+} from '../../../../../platform/ignore/common/ignoreService';
 import { messageToMarkdown } from '../../../../../platform/log/common/messageStringify';
 import { ITasksService } from '../../../../../platform/tasks/common/tasksService';
 import { TestTasksService } from '../../../../../platform/tasks/common/testTasksService';
@@ -27,7 +34,9 @@ class TaskPrompt extends PromptElement<TaskPromptProps> {
 	render() {
 		return (
 			<UserMessage>
-				<AgentTasksInstructions availableTools={this.props.availableTools} />
+				<AgentTasksInstructions
+					availableTools={this.props.availableTools}
+				/>
 			</UserMessage>
 		);
 	}
@@ -42,7 +51,11 @@ class StaticTasksService extends TestTasksService {
 		const workspaceFolder = args[0] as URI | undefined;
 
 		if (workspaceFolder) {
-			const tasksForFolder = this.taskGroups.find(([folder]) => folder.toString() === workspaceFolder.toString())?.[1] ?? [];
+			const tasksForFolder =
+				this.taskGroups.find(
+					([folder]) =>
+						folder.toString() === workspaceFolder.toString(),
+				)?.[1] ?? [];
 			return tasksForFolder as unknown as [];
 		}
 
@@ -67,29 +80,47 @@ suite('AgentTasksInstructions', () => {
 		type: 'shell',
 		label: 'Build',
 		command: 'npm',
-		args: ['run', 'build']
+		args: ['run', 'build'],
 	};
 
 	const renderTaskPrompt = async (shouldIgnoreTasksFile: boolean) => {
 		const services = createExtensionUnitTestingServices();
-		services.define(ITasksService, new SyncDescriptor(StaticTasksService, [[[workspaceFolder, [taskDefinition]]]]));
-		services.define(IIgnoreService, new SyncDescriptor(TestIgnoreService, [new Set(shouldIgnoreTasksFile ? [tasksFile.toString()] : [])]));
+		services.define(
+			ITasksService,
+			new SyncDescriptor(StaticTasksService, [
+				[[workspaceFolder, [taskDefinition]]],
+			]),
+		);
+		services.define(
+			IIgnoreService,
+			new SyncDescriptor(TestIgnoreService, [
+				new Set(shouldIgnoreTasksFile ? [tasksFile.toString()] : []),
+			]),
+		);
 		const accessor = services.createTestingAccessor();
 		const instantiationService = accessor.get(IInstantiationService);
-		const endpoint = instantiationService.createInstance(MockEndpoint, undefined);
+		const endpoint = instantiationService.createInstance(
+			MockEndpoint,
+			undefined,
+		);
 		const taskTool: vscode.LanguageModelToolInformation = {
 			name: ToolName.CoreRunTask,
 			description: 'Run a workspace task',
 			source: undefined,
 			inputSchema: { type: 'object', properties: {} },
-			tags: []
+			tags: [],
 		};
 
-		const { messages } = await renderPromptElement(instantiationService, endpoint, TaskPrompt, {
-			priority: 1,
-			availableTools: [taskTool]
-		});
-		const output = messages.map(m => messageToMarkdown(m)).join('\n\n');
+		const { messages } = await renderPromptElement(
+			instantiationService,
+			endpoint,
+			TaskPrompt,
+			{
+				priority: 1,
+				availableTools: [taskTool],
+			},
+		);
+		const output = messages.map((m) => messageToMarkdown(m)).join('\n\n');
 		accessor.dispose();
 		return { messages, output };
 	};

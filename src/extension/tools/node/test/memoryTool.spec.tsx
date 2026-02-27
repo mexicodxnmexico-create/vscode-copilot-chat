@@ -3,12 +3,24 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { afterAll, beforeAll, beforeEach, describe, expect, suite, test } from 'vitest';
+import {
+	afterAll,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	suite,
+	test,
+} from 'vitest';
 import { IVSCodeExtensionContext } from '../../../../platform/extContext/common/extensionContext';
 import { IFileSystemService } from '../../../../platform/filesystem/common/fileSystemService';
 import { MockFileSystemService } from '../../../../platform/filesystem/node/test/mockFileSystemService';
 import { NullTelemetryService } from '../../../../platform/telemetry/common/nullTelemetryService';
-import { ITelemetryService, TelemetryEventMeasurements, TelemetryEventProperties } from '../../../../platform/telemetry/common/telemetry';
+import {
+	ITelemetryService,
+	TelemetryEventMeasurements,
+	TelemetryEventProperties,
+} from '../../../../platform/telemetry/common/telemetry';
 import { MockExtensionContext } from '../../../../platform/test/node/extensionContext';
 import { ITestingServicesAccessor } from '../../../../platform/test/node/services';
 import { CancellationToken } from '../../../../util/vs/base/common/cancellation';
@@ -16,16 +28,27 @@ import { URI } from '../../../../util/vs/base/common/uri';
 import { SyncDescriptor } from '../../../../util/vs/platform/instantiation/common/descriptors';
 import { IInstantiationService } from '../../../../util/vs/platform/instantiation/common/instantiation';
 import { createExtensionUnitTestingServices } from '../../../test/node/services';
-import { IAgentMemoryService, RepoMemoryEntry } from '../../common/agentMemoryService';
+import {
+	IAgentMemoryService,
+	RepoMemoryEntry,
+} from '../../common/agentMemoryService';
 import { MemoryTool } from '../memoryTool';
 
 /**
  * Capturing telemetry service that records all events for assertion.
  */
 class MockCapturingTelemetryService extends NullTelemetryService {
-	readonly events: { eventName: string; properties?: TelemetryEventProperties; measurements?: TelemetryEventMeasurements }[] = [];
+	readonly events: {
+		eventName: string;
+		properties?: TelemetryEventProperties;
+		measurements?: TelemetryEventMeasurements;
+	}[] = [];
 
-	override sendMSFTTelemetryEvent(eventName: string, properties?: TelemetryEventProperties, measurements?: TelemetryEventMeasurements): void {
+	override sendMSFTTelemetryEvent(
+		eventName: string,
+		properties?: TelemetryEventProperties,
+		measurements?: TelemetryEventMeasurements,
+	): void {
 		this.events.push({ eventName, properties, measurements });
 	}
 
@@ -34,7 +57,7 @@ class MockCapturingTelemetryService extends NullTelemetryService {
 	}
 
 	getEvents(name: string) {
-		return this.events.filter(e => e.eventName === name);
+		return this.events.filter((e) => e.eventName === name);
 	}
 }
 
@@ -49,7 +72,9 @@ class MockAgentMemoryService implements IAgentMemoryService {
 		return true;
 	}
 
-	async getRepoMemories(_limit?: number): Promise<RepoMemoryEntry[] | undefined> {
+	async getRepoMemories(
+		_limit?: number,
+	): Promise<RepoMemoryEntry[] | undefined> {
 		return this.storedMemories;
 	}
 
@@ -73,7 +98,9 @@ class DisabledMockAgentMemoryService implements IAgentMemoryService {
 		return false;
 	}
 
-	async getRepoMemories(_limit?: number): Promise<RepoMemoryEntry[] | undefined> {
+	async getRepoMemories(
+		_limit?: number,
+	): Promise<RepoMemoryEntry[] | undefined> {
 		return undefined;
 	}
 
@@ -89,8 +116,15 @@ function getResultText(result: { content: { value: string }[] }): string {
 const TEST_SESSION_RESOURCE = 'vscode-chat-session://local/session-abc123';
 const TEST_SESSION_ID = 'session-abc123';
 
-function invokeMemoryTool(tool: MemoryTool, input: object, chatSessionResource: string = TEST_SESSION_RESOURCE) {
-	return tool.invoke!({ input, chatSessionResource } as never, CancellationToken.None);
+function invokeMemoryTool(
+	tool: MemoryTool,
+	input: object,
+	chatSessionResource: string = TEST_SESSION_RESOURCE,
+) {
+	return tool.invoke!(
+		{ input, chatSessionResource } as never,
+		CancellationToken.None,
+	);
 }
 
 suite('MemoryTool', () => {
@@ -106,7 +140,14 @@ suite('MemoryTool', () => {
 		mockTelemetry = new MockCapturingTelemetryService();
 		services.define(IAgentMemoryService, mockMemoryService);
 		services.define(ITelemetryService, mockTelemetry);
-		services.define(IVSCodeExtensionContext, new SyncDescriptor(MockExtensionContext, ['/tmp/test-memory-global', undefined, '/tmp/test-memory']));
+		services.define(
+			IVSCodeExtensionContext,
+			new SyncDescriptor(MockExtensionContext, [
+				'/tmp/test-memory-global',
+				undefined,
+				'/tmp/test-memory',
+			]),
+		);
 		accessor = services.createTestingAccessor();
 	});
 
@@ -124,13 +165,21 @@ suite('MemoryTool', () => {
 	// --- Path validation ---
 
 	test('rejects paths not starting with /memories/', async () => {
-		const result = await invokeMemoryTool(tool, { command: 'view', path: '/other/path' });
+		const result = await invokeMemoryTool(tool, {
+			command: 'view',
+			path: '/other/path',
+		});
 		const text = getResultText(result as never);
-		expect(text).toContain('Error: All memory paths must start with /memories/');
+		expect(text).toContain(
+			'Error: All memory paths must start with /memories/',
+		);
 	});
 
 	test('rejects paths with traversal', async () => {
-		const result = await invokeMemoryTool(tool, { command: 'view', path: '/memories/../etc/passwd' });
+		const result = await invokeMemoryTool(tool, {
+			command: 'view',
+			path: '/memories/../etc/passwd',
+		});
 		const text = getResultText(result as never);
 		expect(text).toContain('Error: Path traversal is not allowed');
 	});
@@ -138,9 +187,14 @@ suite('MemoryTool', () => {
 	// --- Local view ---
 
 	test('view returns file not exist message for missing path', async () => {
-		const result = await invokeMemoryTool(tool, { command: 'view', path: '/memories/session/nonexistent.md' });
+		const result = await invokeMemoryTool(tool, {
+			command: 'view',
+			path: '/memories/session/nonexistent.md',
+		});
 		const text = getResultText(result as never);
-		expect(text).toContain('No memories found in /memories/session/nonexistent.md');
+		expect(text).toContain(
+			'No memories found in /memories/session/nonexistent.md',
+		);
 	});
 
 	test('view returns file content with line numbers', async () => {
@@ -148,10 +202,16 @@ suite('MemoryTool', () => {
 		if (!storageUri) {
 			return;
 		}
-		const fileUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/notes.md`);
+		const fileUri = URI.joinPath(
+			URI.from(storageUri),
+			`memory-tool/memories/${TEST_SESSION_ID}/notes.md`,
+		);
 		mockFs.mockFile(fileUri, 'line one\nline two\nline three');
 
-		const result = await invokeMemoryTool(tool, { command: 'view', path: '/memories/session/notes.md' });
+		const result = await invokeMemoryTool(tool, {
+			command: 'view',
+			path: '/memories/session/notes.md',
+		});
 		const text = getResultText(result as never);
 		expect(text).toContain('line one');
 		expect(text).toContain('line two');
@@ -164,28 +224,44 @@ suite('MemoryTool', () => {
 		if (!storageUri) {
 			return;
 		}
-		const dirUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}`);
+		const dirUri = URI.joinPath(
+			URI.from(storageUri),
+			`memory-tool/memories/${TEST_SESSION_ID}`,
+		);
 		mockFs.mockDirectory(dirUri, [['notes.md', 1 /* FileType.File */]]);
 
 		const childUri = URI.joinPath(dirUri, 'notes.md');
 		mockFs.mockFile(childUri, 'content');
 
-		const result = await invokeMemoryTool(tool, { command: 'view', path: '/memories/session/' });
+		const result = await invokeMemoryTool(tool, {
+			command: 'view',
+			path: '/memories/session/',
+		});
 		const text = getResultText(result as never);
 		expect(text).toContain('notes.md');
 	});
 
 	test('view /memories/ shows merged root with user files and session entry', async () => {
-		const globalStorageUri = accessor.get(IVSCodeExtensionContext).globalStorageUri;
+		const globalStorageUri = accessor.get(
+			IVSCodeExtensionContext,
+		).globalStorageUri;
 		if (!globalStorageUri) {
 			return;
 		}
-		const userDirUri = URI.joinPath(globalStorageUri, 'memory-tool/memories');
-		mockFs.mockDirectory(userDirUri, [['user-note.md', 1 /* FileType.File */]]);
+		const userDirUri = URI.joinPath(
+			globalStorageUri,
+			'memory-tool/memories',
+		);
+		mockFs.mockDirectory(userDirUri, [
+			['user-note.md', 1 /* FileType.File */],
+		]);
 		const childUri = URI.joinPath(userDirUri, 'user-note.md');
 		mockFs.mockFile(childUri, 'user content');
 
-		const result = await invokeMemoryTool(tool, { command: 'view', path: '/memories/' });
+		const result = await invokeMemoryTool(tool, {
+			command: 'view',
+			path: '/memories/',
+		});
 		const text = getResultText(result as never);
 		expect(text).toContain('/memories/user-note.md');
 		expect(text).toContain('/memories/session/');
@@ -196,10 +272,20 @@ suite('MemoryTool', () => {
 		if (!storageUri) {
 			return;
 		}
-		const fileUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/ranged.md`);
-		mockFs.mockFile(fileUri, 'line one\nline two\nline three\nline four\nline five');
+		const fileUri = URI.joinPath(
+			URI.from(storageUri),
+			`memory-tool/memories/${TEST_SESSION_ID}/ranged.md`,
+		);
+		mockFs.mockFile(
+			fileUri,
+			'line one\nline two\nline three\nline four\nline five',
+		);
 
-		const result = await invokeMemoryTool(tool, { command: 'view', path: '/memories/session/ranged.md', view_range: [2, 4] });
+		const result = await invokeMemoryTool(tool, {
+			command: 'view',
+			path: '/memories/session/ranged.md',
+			view_range: [2, 4],
+		});
 		const text = getResultText(result as never);
 		expect(text).toContain('line two');
 		expect(text).toContain('line three');
@@ -218,7 +304,9 @@ suite('MemoryTool', () => {
 			file_text: 'hello world',
 		});
 		const text = getResultText(result as never);
-		expect(text).toContain('File created successfully at: /memories/session/test.md');
+		expect(text).toContain(
+			'File created successfully at: /memories/session/test.md',
+		);
 	});
 
 	test('create fails if file already exists', async () => {
@@ -226,7 +314,10 @@ suite('MemoryTool', () => {
 		if (!storageUri) {
 			return;
 		}
-		const fileUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/existing.md`);
+		const fileUri = URI.joinPath(
+			URI.from(storageUri),
+			`memory-tool/memories/${TEST_SESSION_ID}/existing.md`,
+		);
 		mockFs.mockFile(fileUri, 'existing content');
 
 		const result = await invokeMemoryTool(tool, {
@@ -235,7 +326,9 @@ suite('MemoryTool', () => {
 			file_text: 'new content',
 		});
 		const text = getResultText(result as never);
-		expect(text).toContain('Error: File /memories/session/existing.md already exists');
+		expect(text).toContain(
+			'Error: File /memories/session/existing.md already exists',
+		);
 	});
 
 	// --- Local str_replace ---
@@ -245,7 +338,10 @@ suite('MemoryTool', () => {
 		if (!storageUri) {
 			return;
 		}
-		const fileUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/test.md`);
+		const fileUri = URI.joinPath(
+			URI.from(storageUri),
+			`memory-tool/memories/${TEST_SESSION_ID}/test.md`,
+		);
 		mockFs.mockFile(fileUri, 'Hello world\nfoo bar\nbaz');
 
 		const result = await invokeMemoryTool(tool, {
@@ -263,7 +359,10 @@ suite('MemoryTool', () => {
 		if (!storageUri) {
 			return;
 		}
-		const fileUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/test2.md`);
+		const fileUri = URI.joinPath(
+			URI.from(storageUri),
+			`memory-tool/memories/${TEST_SESSION_ID}/test2.md`,
+		);
 		mockFs.mockFile(fileUri, 'Hello world');
 
 		const result = await invokeMemoryTool(tool, {
@@ -281,7 +380,10 @@ suite('MemoryTool', () => {
 		if (!storageUri) {
 			return;
 		}
-		const fileUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/dup.md`);
+		const fileUri = URI.joinPath(
+			URI.from(storageUri),
+			`memory-tool/memories/${TEST_SESSION_ID}/dup.md`,
+		);
 		mockFs.mockFile(fileUri, 'foo\nbar\nfoo');
 
 		const result = await invokeMemoryTool(tool, {
@@ -301,7 +403,10 @@ suite('MemoryTool', () => {
 		if (!storageUri) {
 			return;
 		}
-		const fileUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/insert-test.md`);
+		const fileUri = URI.joinPath(
+			URI.from(storageUri),
+			`memory-tool/memories/${TEST_SESSION_ID}/insert-test.md`,
+		);
 		mockFs.mockFile(fileUri, 'line1\nline2\nline3');
 
 		const result = await invokeMemoryTool(tool, {
@@ -319,7 +424,10 @@ suite('MemoryTool', () => {
 		if (!storageUri) {
 			return;
 		}
-		const fileUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/insert-bad.md`);
+		const fileUri = URI.joinPath(
+			URI.from(storageUri),
+			`memory-tool/memories/${TEST_SESSION_ID}/insert-bad.md`,
+		);
 		mockFs.mockFile(fileUri, 'line1\nline2');
 
 		const result = await invokeMemoryTool(tool, {
@@ -339,7 +447,10 @@ suite('MemoryTool', () => {
 		if (!storageUri) {
 			return;
 		}
-		const fileUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/to-delete.md`);
+		const fileUri = URI.joinPath(
+			URI.from(storageUri),
+			`memory-tool/memories/${TEST_SESSION_ID}/to-delete.md`,
+		);
 		mockFs.mockFile(fileUri, 'content');
 
 		const result = await invokeMemoryTool(tool, {
@@ -347,7 +458,9 @@ suite('MemoryTool', () => {
 			path: '/memories/session/to-delete.md',
 		});
 		const text = getResultText(result as never);
-		expect(text).toContain('Successfully deleted /memories/session/to-delete.md');
+		expect(text).toContain(
+			'Successfully deleted /memories/session/to-delete.md',
+		);
 	});
 
 	test('delete fails on nonexistent path', async () => {
@@ -366,7 +479,10 @@ suite('MemoryTool', () => {
 		if (!storageUri) {
 			return;
 		}
-		const srcUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/old-name.md`);
+		const srcUri = URI.joinPath(
+			URI.from(storageUri),
+			`memory-tool/memories/${TEST_SESSION_ID}/old-name.md`,
+		);
 		mockFs.mockFile(srcUri, 'content');
 
 		const result = await invokeMemoryTool(tool, {
@@ -393,8 +509,14 @@ suite('MemoryTool', () => {
 		if (!storageUri) {
 			return;
 		}
-		const srcUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/src.md`);
-		const destUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/dest.md`);
+		const srcUri = URI.joinPath(
+			URI.from(storageUri),
+			`memory-tool/memories/${TEST_SESSION_ID}/src.md`,
+		);
+		const destUri = URI.joinPath(
+			URI.from(storageUri),
+			`memory-tool/memories/${TEST_SESSION_ID}/dest.md`,
+		);
 		mockFs.mockFile(srcUri, 'source');
 		mockFs.mockFile(destUri, 'destination');
 
@@ -414,33 +536,53 @@ suite('MemoryTool', () => {
 		const sessionB = 'vscode-chat-session://local/session-bbb';
 
 		// Create a file in session A
-		const resultA = await invokeMemoryTool(tool, {
-			command: 'create',
-			path: '/memories/session/shared-name.md',
-			file_text: 'session A content',
-		}, sessionA);
-		expect(getResultText(resultA as never)).toContain('File created successfully');
+		const resultA = await invokeMemoryTool(
+			tool,
+			{
+				command: 'create',
+				path: '/memories/session/shared-name.md',
+				file_text: 'session A content',
+			},
+			sessionA,
+		);
+		expect(getResultText(resultA as never)).toContain(
+			'File created successfully',
+		);
 
 		// Create a file with the same name in session B — should not conflict
-		const resultB = await invokeMemoryTool(tool, {
-			command: 'create',
-			path: '/memories/session/shared-name.md',
-			file_text: 'session B content',
-		}, sessionB);
-		expect(getResultText(resultB as never)).toContain('File created successfully');
+		const resultB = await invokeMemoryTool(
+			tool,
+			{
+				command: 'create',
+				path: '/memories/session/shared-name.md',
+				file_text: 'session B content',
+			},
+			sessionB,
+		);
+		expect(getResultText(resultB as never)).toContain(
+			'File created successfully',
+		);
 
 		// View from session A returns session A content
-		const viewA = await invokeMemoryTool(tool, {
-			command: 'view',
-			path: '/memories/session/shared-name.md',
-		}, sessionA);
+		const viewA = await invokeMemoryTool(
+			tool,
+			{
+				command: 'view',
+				path: '/memories/session/shared-name.md',
+			},
+			sessionA,
+		);
 		expect(getResultText(viewA as never)).toContain('session A content');
 
 		// View from session B returns session B content
-		const viewB = await invokeMemoryTool(tool, {
-			command: 'view',
-			path: '/memories/session/shared-name.md',
-		}, sessionB);
+		const viewB = await invokeMemoryTool(
+			tool,
+			{
+				command: 'view',
+				path: '/memories/session/shared-name.md',
+			},
+			sessionB,
+		);
 		expect(getResultText(viewB as never)).toContain('session B content');
 	});
 
@@ -477,7 +619,10 @@ suite('MemoryTool', () => {
 
 	describe('telemetry', () => {
 		test('emits memoryToolInvoked for session view', async () => {
-			await invokeMemoryTool(tool, { command: 'view', path: '/memories/session/nonexistent.md' });
+			await invokeMemoryTool(tool, {
+				command: 'view',
+				path: '/memories/session/nonexistent.md',
+			});
 			const events = mockTelemetry.getEvents('memoryToolInvoked');
 			expect(events.length).toBe(1);
 			expect(events[0].properties).toMatchObject({
@@ -522,7 +667,10 @@ suite('MemoryTool', () => {
 			if (!storageUri) {
 				return;
 			}
-			const fileUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/exists.md`);
+			const fileUri = URI.joinPath(
+				URI.from(storageUri),
+				`memory-tool/memories/${TEST_SESSION_ID}/exists.md`,
+			);
 			mockFs.mockFile(fileUri, 'existing');
 
 			await invokeMemoryTool(tool, {
@@ -558,7 +706,10 @@ suite('MemoryTool', () => {
 			if (!storageUri) {
 				return;
 			}
-			const fileUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/to-delete-tel.md`);
+			const fileUri = URI.joinPath(
+				URI.from(storageUri),
+				`memory-tool/memories/${TEST_SESSION_ID}/to-delete-tel.md`,
+			);
 			mockFs.mockFile(fileUri, 'content');
 
 			await invokeMemoryTool(tool, {
@@ -579,7 +730,10 @@ suite('MemoryTool', () => {
 			if (!storageUri) {
 				return;
 			}
-			const fileUri = URI.joinPath(URI.from(storageUri), `memory-tool/memories/${TEST_SESSION_ID}/str-tel.md`);
+			const fileUri = URI.joinPath(
+				URI.from(storageUri),
+				`memory-tool/memories/${TEST_SESSION_ID}/str-tel.md`,
+			);
 			mockFs.mockFile(fileUri, 'Hello world');
 
 			await invokeMemoryTool(tool, {
@@ -628,17 +782,32 @@ suite('MemoryTool', () => {
 			// Use the disabled service suite's approach inline
 			const services = createExtensionUnitTestingServices();
 			const disabledTelemetry = new MockCapturingTelemetryService();
-			services.define(IAgentMemoryService, new DisabledMockAgentMemoryService());
+			services.define(
+				IAgentMemoryService,
+				new DisabledMockAgentMemoryService(),
+			);
 			services.define(ITelemetryService, disabledTelemetry);
-			services.define(IVSCodeExtensionContext, new SyncDescriptor(MockExtensionContext, ['/tmp/test-disabled-tel-global', undefined, '/tmp/test-disabled-tel']));
+			services.define(
+				IVSCodeExtensionContext,
+				new SyncDescriptor(MockExtensionContext, [
+					'/tmp/test-disabled-tel-global',
+					undefined,
+					'/tmp/test-disabled-tel',
+				]),
+			);
 			const acc = services.createTestingAccessor();
 			try {
-				const disabledTool = acc.get(IInstantiationService).createInstance(MemoryTool);
+				const disabledTool = acc
+					.get(IInstantiationService)
+					.createInstance(MemoryTool);
 
 				await invokeMemoryTool(disabledTool, {
 					command: 'create',
 					path: '/memories/repo/fact.json',
-					file_text: JSON.stringify({ subject: 'test', fact: 'fact' }),
+					file_text: JSON.stringify({
+						subject: 'test',
+						fact: 'fact',
+					}),
 				});
 
 				const events = disabledTelemetry.getEvents('memoryToolInvoked');
@@ -656,49 +825,103 @@ suite('MemoryTool', () => {
 
 	describe('prepareInvocation', () => {
 		test('generates file widget with file: scheme for user-scoped str_replace', () => {
-			const result = tool.prepareInvocation({
-				input: { command: 'str_replace', path: '/memories/notes.md', old_str: 'a', new_str: 'b' },
-			} as never, CancellationToken.None);
+			const result = tool.prepareInvocation(
+				{
+					input: {
+						command: 'str_replace',
+						path: '/memories/notes.md',
+						old_str: 'a',
+						new_str: 'b',
+					},
+				} as never,
+				CancellationToken.None,
+			);
 			expect(result).toBeDefined();
-			const prepared = result as { invocationMessage: { value: string }; pastTenseMessage: { value: string } };
+			const prepared = result as {
+				invocationMessage: { value: string };
+				pastTenseMessage: { value: string };
+			};
 			expect(prepared.invocationMessage.value).toContain('[](file:///');
-			expect(prepared.invocationMessage.value).toContain('memory-tool/memories/notes.md');
+			expect(prepared.invocationMessage.value).toContain(
+				'memory-tool/memories/notes.md',
+			);
 			expect(prepared.pastTenseMessage.value).toContain('[](file:///');
 		});
 
 		test('generates file widget for user-scoped create', () => {
-			const result = tool.prepareInvocation({
-				input: { command: 'create', path: '/memories/plan.md', file_text: 'hello' },
-			} as never, CancellationToken.None);
-			const prepared = result as { invocationMessage: { value: string }; pastTenseMessage: { value: string } };
+			const result = tool.prepareInvocation(
+				{
+					input: {
+						command: 'create',
+						path: '/memories/plan.md',
+						file_text: 'hello',
+					},
+				} as never,
+				CancellationToken.None,
+			);
+			const prepared = result as {
+				invocationMessage: { value: string };
+				pastTenseMessage: { value: string };
+			};
 			expect(prepared.invocationMessage.value).toContain('[](');
-			expect(prepared.pastTenseMessage.value).toContain('Created memory file');
+			expect(prepared.pastTenseMessage.value).toContain(
+				'Created memory file',
+			);
 		});
 
 		test('generates file widget for session-scoped view', () => {
-			const sessionResource = URI.from({ scheme: 'vscode-chat-session', authority: 'local', path: '/session-abc123' });
-			const result = tool.prepareInvocation({
-				input: { command: 'view', path: '/memories/session/notes.md' },
-				chatSessionResource: sessionResource,
-			} as never, CancellationToken.None);
-			const prepared = result as { invocationMessage: { value: string }; pastTenseMessage: { value: string } };
+			const sessionResource = URI.from({
+				scheme: 'vscode-chat-session',
+				authority: 'local',
+				path: '/session-abc123',
+			});
+			const result = tool.prepareInvocation(
+				{
+					input: {
+						command: 'view',
+						path: '/memories/session/notes.md',
+					},
+					chatSessionResource: sessionResource,
+				} as never,
+				CancellationToken.None,
+			);
+			const prepared = result as {
+				invocationMessage: { value: string };
+				pastTenseMessage: { value: string };
+			};
 			expect(prepared.invocationMessage.value).toContain('[](');
 		});
 
 		test('returns plain text for directory paths', () => {
-			const result = tool.prepareInvocation({
-				input: { command: 'view', path: '/memories/' },
-			} as never, CancellationToken.None);
-			const prepared = result as { invocationMessage: string; pastTenseMessage: string };
+			const result = tool.prepareInvocation(
+				{
+					input: { command: 'view', path: '/memories/' },
+				} as never,
+				CancellationToken.None,
+			);
+			const prepared = result as {
+				invocationMessage: string;
+				pastTenseMessage: string;
+			};
 			expect(typeof prepared.invocationMessage).toBe('string');
 			expect(prepared.invocationMessage).toContain('Reading memory');
 		});
 
 		test('falls back to plain text for repo paths', () => {
-			const result = tool.prepareInvocation({
-				input: { command: 'create', path: '/memories/repo/fact.json', file_text: '{}' },
-			} as never, CancellationToken.None);
-			const prepared = result as { invocationMessage: string; pastTenseMessage: string };
+			const result = tool.prepareInvocation(
+				{
+					input: {
+						command: 'create',
+						path: '/memories/repo/fact.json',
+						file_text: '{}',
+					},
+				} as never,
+				CancellationToken.None,
+			);
+			const prepared = result as {
+				invocationMessage: string;
+				pastTenseMessage: string;
+			};
 			expect(typeof prepared.invocationMessage).toBe('string');
 			expect(prepared.invocationMessage).toContain('fact.json');
 		});
@@ -713,9 +936,19 @@ suite('MemoryTool when CAPI disabled', () => {
 	beforeAll(() => {
 		const services = createExtensionUnitTestingServices();
 		mockTelemetry = new MockCapturingTelemetryService();
-		services.define(IAgentMemoryService, new DisabledMockAgentMemoryService());
+		services.define(
+			IAgentMemoryService,
+			new DisabledMockAgentMemoryService(),
+		);
 		services.define(ITelemetryService, mockTelemetry);
-		services.define(IVSCodeExtensionContext, new SyncDescriptor(MockExtensionContext, ['/tmp/test-memory-disabled-global', undefined, '/tmp/test-memory-disabled']));
+		services.define(
+			IVSCodeExtensionContext,
+			new SyncDescriptor(MockExtensionContext, [
+				'/tmp/test-memory-disabled-global',
+				undefined,
+				'/tmp/test-memory-disabled',
+			]),
+		);
 		accessor = services.createTestingAccessor();
 	});
 

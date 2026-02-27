@@ -6,10 +6,17 @@
 /** @jsxImportSource ../../../../prompt/jsx-runtime/ */
 
 import { Position } from 'vscode-languageserver-protocol';
-import { ComponentContext, PromptElementProps, Text } from '../../../../prompt/src/components/components';
+import {
+	ComponentContext,
+	PromptElementProps,
+	Text,
+} from '../../../../prompt/src/components/components';
 import { DEFAULT_SUFFIX_MATCH_THRESHOLD } from '../../../../prompt/src/prompt';
 import { findEditDistanceScore } from '../../../../prompt/src/suffixMatchCriteria';
-import { getTokenizer, TokenizerName } from '../../../../prompt/src/tokenization';
+import {
+	getTokenizer,
+	TokenizerName,
+} from '../../../../prompt/src/tokenization';
 import {
 	CompletionRequestDocument,
 	isCompletionRequestData,
@@ -27,16 +34,24 @@ function approximateMaxCharacters(maxPromptLength: number): number {
 /**
  * A required component for the CompletionsPromptRenderer. It represents the document and position where completions should be shown.
  */
-export function CurrentFile(_props: PromptElementProps, context: ComponentContext) {
-	const [document, setDocument] = context.useState<CompletionRequestDocument>();
+export function CurrentFile(
+	_props: PromptElementProps,
+	context: ComponentContext,
+) {
+	const [document, setDocument] =
+		context.useState<CompletionRequestDocument>();
 	const [position, setPosition] = context.useState<Position>();
 	const [maxPromptLength, setMaxPromptLength] = context.useState<number>(0);
-	const [suffixMatchThreshold, setSuffixMatchThreshold] = context.useState<number>();
+	const [suffixMatchThreshold, setSuffixMatchThreshold] =
+		context.useState<number>();
 	const [tokenizer, setTokenizer] = context.useState<TokenizerName>();
 
-	context.useData(isCompletionRequestData, request => {
+	context.useData(isCompletionRequestData, (request) => {
 		const requestDocument = request.document;
-		if (request.document.uri !== document?.uri || requestDocument.getText() !== document?.getText()) {
+		if (
+			request.document.uri !== document?.uri ||
+			requestDocument.getText() !== document?.getText()
+		) {
 			setDocument(requestDocument);
 		}
 
@@ -60,7 +75,11 @@ export function CurrentFile(_props: PromptElementProps, context: ComponentContex
 	const maxCharacters = approximateMaxCharacters(maxPromptLength);
 	return (
 		<>
-			<BeforeCursor document={document} position={position} maxCharacters={maxCharacters} />
+			<BeforeCursor
+				document={document}
+				position={position}
+				maxCharacters={maxCharacters}
+			/>
 			<AfterCursor
 				document={document}
 				position={position}
@@ -81,7 +100,10 @@ export function BeforeCursor(props: {
 		return <Text />;
 	}
 
-	let text = props.document.getText({ start: { line: 0, character: 0 }, end: props.position });
+	let text = props.document.getText({
+		start: { line: 0, character: 0 },
+		end: props.position,
+	});
 	if (text.length > props.maxCharacters) {
 		text = text.slice(-props.maxCharacters);
 	}
@@ -96,7 +118,7 @@ export function AfterCursor(
 		suffixMatchThreshold?: number;
 		tokenizer?: TokenizerName;
 	},
-	context: ComponentContext
+	context: ComponentContext,
 ) {
 	const [cachedSuffix, setCachedSuffix] = context.useState<string>('');
 
@@ -126,26 +148,38 @@ export function AfterCursor(
 	let suffixToUse = trimmedSuffix;
 	if (cachedSuffix !== '') {
 		const tokenizer = getTokenizer(props.tokenizer);
-		const firstSuffixTokens = tokenizer.takeFirstTokens(trimmedSuffix, MAX_EDIT_DISTANCE_LENGTH);
-		const cachedSuffixTokens = tokenizer.takeFirstTokens(cachedSuffix, MAX_EDIT_DISTANCE_LENGTH);
+		const firstSuffixTokens = tokenizer.takeFirstTokens(
+			trimmedSuffix,
+			MAX_EDIT_DISTANCE_LENGTH,
+		);
+		const cachedSuffixTokens = tokenizer.takeFirstTokens(
+			cachedSuffix,
+			MAX_EDIT_DISTANCE_LENGTH,
+		);
 		// Check if the suffix is similar to the cached suffix.
 		// See docs/suffix_caching.md for some background about why we do this.
 		// This tries to avoid cases of incorrect suffix captured in https://github.com/microsoft/vscode/issues/295450
-		if (firstSuffixTokens.tokens.length > 0 && cachedSuffixTokens.tokens.length > 0) {
+		if (
+			firstSuffixTokens.tokens.length > 0 &&
+			cachedSuffixTokens.tokens.length > 0
+		) {
 			// Require the first token to match to prevent using a stale cached suffix
 			// whose beginning has structurally changed (e.g., when content like a comment
 			// opener `/**` shifts from the suffix into the prefix as the user types).
-			const firstTokensMatch = firstSuffixTokens.tokens[0] === cachedSuffixTokens.tokens[0];
+			const firstTokensMatch =
+				firstSuffixTokens.tokens[0] === cachedSuffixTokens.tokens[0];
 			if (firstTokensMatch) {
 				// Calculate the distance between the computed and cached suffixed using Levenshtein distance.
 				// Only compare the first MAX_EDIT_DISTANCE_LENGTH tokens to speed up.
 				const dist = findEditDistanceScore(
 					firstSuffixTokens.tokens,
-					cachedSuffixTokens.tokens
+					cachedSuffixTokens.tokens,
 				)?.score;
 				if (
 					100 * dist <
-					(props.suffixMatchThreshold ?? DEFAULT_SUFFIX_MATCH_THRESHOLD) * firstSuffixTokens.tokens.length
+					(props.suffixMatchThreshold ??
+						DEFAULT_SUFFIX_MATCH_THRESHOLD) *
+						firstSuffixTokens.tokens.length
 				) {
 					suffixToUse = cachedSuffix;
 				}
@@ -161,14 +195,21 @@ export function AfterCursor(
 	return <Text>{suffixToUse}</Text>;
 }
 
-export function DocumentPrefix(_props: PromptElementProps, context: ComponentContext) {
-	const [document, setDocument] = context.useState<CompletionRequestDocument>();
+export function DocumentPrefix(
+	_props: PromptElementProps,
+	context: ComponentContext,
+) {
+	const [document, setDocument] =
+		context.useState<CompletionRequestDocument>();
 	const [position, setPosition] = context.useState<Position>();
 	const [maxPromptLength, setMaxPromptLength] = context.useState<number>(0);
 
-	context.useData(isCompletionRequestData, request => {
+	context.useData(isCompletionRequestData, (request) => {
 		const requestDocument = request.document;
-		if (request.document.uri !== document?.uri || requestDocument.getText() !== document?.getText()) {
+		if (
+			request.document.uri !== document?.uri ||
+			requestDocument.getText() !== document?.getText()
+		) {
 			setDocument(requestDocument);
 		}
 
@@ -183,19 +224,33 @@ export function DocumentPrefix(_props: PromptElementProps, context: ComponentCon
 
 	const maxCharacters = approximateMaxCharacters(maxPromptLength);
 
-	return <BeforeCursor document={document} position={position} maxCharacters={maxCharacters} />;
+	return (
+		<BeforeCursor
+			document={document}
+			position={position}
+			maxCharacters={maxCharacters}
+		/>
+	);
 }
 
-export function DocumentSuffix(_props: PromptElementProps, context: ComponentContext) {
-	const [document, setDocument] = context.useState<CompletionRequestDocument>();
+export function DocumentSuffix(
+	_props: PromptElementProps,
+	context: ComponentContext,
+) {
+	const [document, setDocument] =
+		context.useState<CompletionRequestDocument>();
 	const [position, setPosition] = context.useState<Position>();
 	const [maxPromptLength, setMaxPromptLength] = context.useState<number>(0);
-	const [suffixMatchThreshold, setSuffixMatchThreshold] = context.useState<number>();
+	const [suffixMatchThreshold, setSuffixMatchThreshold] =
+		context.useState<number>();
 	const [tokenizer, setTokenizer] = context.useState<TokenizerName>();
 
-	context.useData(isCompletionRequestData, request => {
+	context.useData(isCompletionRequestData, (request) => {
 		const requestDocument = request.document;
-		if (request.document.uri !== document?.uri || requestDocument.getText() !== document?.getText()) {
+		if (
+			request.document.uri !== document?.uri ||
+			requestDocument.getText() !== document?.getText()
+		) {
 			setDocument(requestDocument);
 		}
 

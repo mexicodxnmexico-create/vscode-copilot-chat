@@ -25,28 +25,40 @@ suite('Completions Prompt Renderer', function () {
 	test('uses full before cursor if within limit', async function () {
 		const snapshot = await createSnapshot(1000);
 
-		const value = querySnapshot(snapshot.snapshot!, 'CurrentFile[0].f[0].BeforeCursor[0].Text') as string;
+		const value = querySnapshot(
+			snapshot.snapshot!,
+			'CurrentFile[0].f[0].BeforeCursor[0].Text',
+		) as string;
 		assert.deepStrictEqual(value, 'const a = 1;\nfunction f');
 	});
 
 	test('trims before cursor if exceeding limit', async function () {
 		const snapshot = await createSnapshot(2);
 
-		const value = querySnapshot(snapshot.snapshot!, 'CurrentFile[0].f[0].BeforeCursor[0].Text') as string;
+		const value = querySnapshot(
+			snapshot.snapshot!,
+			'CurrentFile[0].f[0].BeforeCursor[0].Text',
+		) as string;
 		assert.deepStrictEqual(value, 'nction f');
 	});
 
 	test('uses full after cursor if within limit', async function () {
 		const snapshot = await createSnapshot(1000);
 
-		const value = querySnapshot(snapshot.snapshot!, 'CurrentFile[0].f[1].AfterCursor[0].Text') as string;
+		const value = querySnapshot(
+			snapshot.snapshot!,
+			'CurrentFile[0].f[1].AfterCursor[0].Text',
+		) as string;
 		assert.deepStrictEqual(value, 'const b = 2;');
 	});
 
 	test('trims after cursor if exceeding limit', async function () {
 		const snapshot = await createSnapshot(2);
 
-		const value = querySnapshot(snapshot.snapshot!, 'CurrentFile[0].f[1].AfterCursor[0].Text') as string;
+		const value = querySnapshot(
+			snapshot.snapshot!,
+			'CurrentFile[0].f[1].AfterCursor[0].Text',
+		) as string;
 		assert.deepStrictEqual(value, 'const ');
 	});
 
@@ -59,9 +71,11 @@ suite('Completions Prompt Renderer', function () {
 				const a = 1;
 				function f|
 				const b = 2;
-			`
+			`,
 		);
-		const position = textDocument.positionAt(textDocument.getText().indexOf('|'));
+		const position = textDocument.positionAt(
+			textDocument.getText().indexOf('|'),
+		);
 		const virtualPrompt = new VirtualPrompt(<CurrentFile />);
 		const pipe = virtualPrompt.createPipe();
 		const data = createCompletionRequestData(
@@ -72,7 +86,7 @@ suite('Completions Prompt Renderer', function () {
 			undefined,
 			false,
 			undefined,
-			maxPromptTokens
+			maxPromptTokens,
 		);
 
 		await pipe.pump(data);

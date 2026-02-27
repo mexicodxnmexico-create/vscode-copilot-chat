@@ -10,7 +10,10 @@ interface DraggableBottomBorderProps {
 	setHeight: React.Dispatch<React.SetStateAction<number>>;
 }
 
-export const DraggableBottomBorder: React.FC<DraggableBottomBorderProps> = ({ height, setHeight }) => {
+export const DraggableBottomBorder: React.FC<DraggableBottomBorderProps> = ({
+	height,
+	setHeight,
+}) => {
 	const handleMouseDown = (e: React.MouseEvent) => {
 		const startY = e.clientY;
 		const startHeight = height;
@@ -31,7 +34,7 @@ export const DraggableBottomBorder: React.FC<DraggableBottomBorderProps> = ({ he
 
 	return (
 		<div
-			className='file-editor-draggable-border'
+			className="file-editor-draggable-border"
 			onMouseDown={handleMouseDown}
 		></div>
 	);

@@ -3,7 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { PromptElement, PromptElementProps, PromptReference, PromptSizing } from '@vscode/prompt-tsx';
+import {
+	PromptElement,
+	PromptElementProps,
+	PromptReference,
+	PromptSizing,
+} from '@vscode/prompt-tsx';
 import type { Progress } from 'vscode';
 import { TextDocumentSnapshot } from '../../../platform/editing/common/textDocumentSnapshot';
 import { IParserService } from '../../../platform/parser/node/parserService';
@@ -30,22 +35,28 @@ type Props = PromptElementProps<TestExampleFile>;
  * @remark Does NOT respected copilot-ignore. Parent element must make sure the URI is not copilot-ignored.
  */
 export class TestExample extends PromptElement<Props> {
-
 	constructor(
 		props: Props,
 		@IParserService private readonly parserService: IParserService,
-		@IWorkspaceService private readonly workspaceService: IWorkspaceService
+		@IWorkspaceService private readonly workspaceService: IWorkspaceService,
 	) {
 		super(props);
 	}
 
-	override async render(state: void, sizing: PromptSizing, progress?: Progress<ChatResponseProgressPart> | undefined, token?: CancellationToken | undefined) {
-
+	override async render(
+		state: void,
+		sizing: PromptSizing,
+		progress?: Progress<ChatResponseProgressPart> | undefined,
+		token?: CancellationToken | undefined,
+	) {
 		const { kind, testExampleFile } = this.props;
 
 		let testDocument: TextDocumentSnapshot;
 		try {
-			testDocument = await this.workspaceService.openTextDocumentAndSnapshot(testExampleFile);
+			testDocument =
+				await this.workspaceService.openTextDocumentAndSnapshot(
+					testExampleFile,
+				);
 		} catch (e) {
 			return undefined;
 		}
@@ -55,15 +66,20 @@ export class TestExample extends PromptElement<Props> {
 			testDocument,
 			undefined,
 			new Range(0, 0, 0, 0),
-			sizing.tokenBudget
+			sizing.tokenBudget,
 		);
 
 		const references = [new PromptReference(testExampleFile)];
 
-		const workspaceOfTestFile = this.workspaceService.getWorkspaceFolders().find(folder => testExampleFile.path.startsWith(folder.path));
+		const workspaceOfTestFile = this.workspaceService
+			.getWorkspaceFolders()
+			.find((folder) => testExampleFile.path.startsWith(folder.path));
 		let pathToTestFile: string = testExampleFile.path;
 		if (workspaceOfTestFile !== undefined) {
-			pathToTestFile = path.relative(workspaceOfTestFile.path, testExampleFile.path);
+			pathToTestFile = path.relative(
+				workspaceOfTestFile.path,
+				testExampleFile.path,
+			);
 			// Convert the path separator to be platform-independent
 			pathToTestFile = pathToTestFile.split(path.sep).join('/');
 		}
@@ -71,21 +87,34 @@ export class TestExample extends PromptElement<Props> {
 		switch (kind) {
 			case 'candidateTestFile': {
 				return (
-					<Tag name='testExample' priority={this.props.priority}>
+					<Tag name="testExample" priority={this.props.priority}>
 						<references value={references} />
-						Excerpt of the existing test file at `{pathToTestFile}`:<br />
-						<CodeBlock uri={testExampleFile} code={codeExcerpt.text} languageId={codeExcerpt.languageId} /><br />
+						Excerpt of the existing test file at `{pathToTestFile}`:
+						<br />
+						<CodeBlock
+							uri={testExampleFile}
+							code={codeExcerpt.text}
+							languageId={codeExcerpt.languageId}
+						/>
+						<br />
 						Because a test file exists: <br />
-						- Do not generate preambles, like imports, copyright headers etc.<br />
-						- Do generate code that can be appended to the existing test file.
+						- Do not generate preambles, like imports, copyright<br />
+						headers etc.<br />
+						<br />- Do generate code that can be appended to the<br />
+						existing test file.<br />
 					</Tag>
 				);
 			}
 			case 'anyTestFile': {
 				return (
-					<Tag name='testExample' priority={this.props.priority}>
-						This is a sample test file:<br />
-						<CodeBlock uri={testExampleFile} code={codeExcerpt.text} languageId={codeExcerpt.languageId} />
+					<Tag name="testExample" priority={this.props.priority}>
+						This is a sample test file:
+						<br />
+						<CodeBlock
+							uri={testExampleFile}
+							code={codeExcerpt.text}
+							languageId={codeExcerpt.languageId}
+						/>
 					</Tag>
 				);
 			}

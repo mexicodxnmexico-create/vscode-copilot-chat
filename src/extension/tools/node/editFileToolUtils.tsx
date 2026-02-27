@@ -25,7 +25,10 @@ import * as glob from '../../../util/vs/base/common/glob';
 import { ResourceMap, ResourceSet } from '../../../util/vs/base/common/map';
 import { Schemas } from '../../../util/vs/base/common/network';
 import { isMacintosh, isWindows } from '../../../util/vs/base/common/platform';
-import { extUriBiasedIgnorePathCase, normalizePath } from '../../../util/vs/base/common/resources';
+import {
+	extUriBiasedIgnorePathCase,
+	normalizePath,
+} from '../../../util/vs/base/common/resources';
 import { isFalsyOrWhitespace } from '../../../util/vs/base/common/strings';
 import { isDefined } from '../../../util/vs/base/common/types';
 import { URI } from '../../../util/vs/base/common/uri';
@@ -48,7 +51,10 @@ interface Hunk {
  * Base class for edit errors
  */
 export class EditError extends Error {
-	constructor(message: string, public readonly kindForTelemetry: string) {
+	constructor(
+		message: string,
+		public readonly kindForTelemetry: string,
+	) {
 		super(message);
 	}
 }
@@ -57,7 +63,10 @@ export class EditError extends Error {
  * Error thrown when no match is found for a string replacement
  */
 export class NoMatchError extends EditError {
-	constructor(message: string, public readonly file: string) {
+	constructor(
+		message: string,
+		public readonly file: string,
+	) {
 		super(message, 'noMatchFound');
 	}
 }
@@ -66,7 +75,10 @@ export class NoMatchError extends EditError {
  * Error thrown when multiple matches are found for a string replacement
  */
 export class MultipleMatchesError extends EditError {
-	constructor(message: string, public readonly file: string) {
+	constructor(
+		message: string,
+		public readonly file: string,
+	) {
 		super(message, 'multipleMatchesFound');
 	}
 }
@@ -75,7 +87,10 @@ export class MultipleMatchesError extends EditError {
  * Error thrown when the edit would result in no changes
  */
 export class NoChangeError extends EditError {
-	constructor(message: string, public readonly file: string) {
+	constructor(
+		message: string,
+		public readonly file: string,
+	) {
 		super(message, 'noChange');
 	}
 }
@@ -84,7 +99,10 @@ export class NoChangeError extends EditError {
  * Error thrown when there are issues with the content format
  */
 export class ContentFormatError extends EditError {
-	constructor(message: string, public readonly file: string) {
+	constructor(
+		message: string,
+		public readonly file: string,
+	) {
 		super(message, 'contentFormatError');
 	}
 }
@@ -102,7 +120,12 @@ function escapeRegex(str: string): string {
  * Context lines (unchanged) are prefixed with a space.
  * This outputs the entire file with all changes marked.
  */
-export async function formatDiffAsUnified(accessor: ServicesAccessor, uri: URI, oldContent: string, newContent: string): Promise<string> {
+export async function formatDiffAsUnified(
+	accessor: ServicesAccessor,
+	uri: URI,
+	oldContent: string,
+	newContent: string,
+): Promise<string> {
 	if (oldContent.trim() === newContent.trim()) {
 		return '```\n<' + t('contents are identical') + '>\n```';
 	}
@@ -116,7 +139,7 @@ export async function formatDiffAsUnified(accessor: ServicesAccessor, uri: URI, 
 
 	const result: string[] = [
 		'```diff:' + getLanguageId(uri),
-		`<vscode_codeblock_uri>${uri.toString()}</vscode_codeblock_uri>`
+		`<vscode_codeblock_uri>${uri.toString()}</vscode_codeblock_uri>`,
 	];
 	const oldLines = oldContent.split('\n');
 	const newLines = newContent.split('\n');
@@ -165,9 +188,15 @@ export async function formatDiffAsUnified(accessor: ServicesAccessor, uri: URI, 
  * Returns a value between 0 (completely different) and 1 (identical).
  */
 function calculateSimilarity(str1: string, str2: string): number {
-	if (str1 === str2) { return 1.0; }
-	if (str1.length === 0) { return 0.0; }
-	if (str2.length === 0) { return 0.0; }
+	if (str1 === str2) {
+		return 1.0;
+	}
+	if (str1.length === 0) {
+		return 0.0;
+	}
+	if (str2.length === 0) {
+		return 0.0;
+	}
 
 	// Calculate Levenshtein distance
 	const matrix: number[][] = [];
@@ -184,7 +213,7 @@ function calculateSimilarity(str1: string, str2: string): number {
 			matrix[i][j] = Math.min(
 				matrix[i - 1][j] + 1, // deletion
 				matrix[i][j - 1] + 1, // insertion
-				matrix[i - 1][j - 1] + cost // substitution
+				matrix[i - 1][j - 1] + cost, // substitution
 			);
 		}
 	}
@@ -208,14 +237,26 @@ interface MatchResultCommon {
 /**
  * Type-safe union type for match results with discriminated unions
  */
-type MatchResult = MatchResultCommon & (
-	| { text: string; type: 'none'; suggestion?: string }
-	| { text: string; type: 'exact' }
-	| { text: string; type: 'fuzzy' }
-	| { text: string; type: 'whitespace' }
-	| { text: string; type: 'similarity'; suggestion: string; similarity: number }
-	| { text: string; type: 'multiple'; suggestion: string; matchPositions: number[]; strategy: 'exact' | 'fuzzy' | 'whitespace' }
-);
+type MatchResult = MatchResultCommon &
+	(
+		| { text: string; type: 'none'; suggestion?: string }
+		| { text: string; type: 'exact' }
+		| { text: string; type: 'fuzzy' }
+		| { text: string; type: 'whitespace' }
+		| {
+				text: string;
+				type: 'similarity';
+				suggestion: string;
+				similarity: number;
+		  }
+		| {
+				text: string;
+				type: 'multiple';
+				suggestion: string;
+				matchPositions: number[];
+				strategy: 'exact' | 'fuzzy' | 'whitespace';
+		  }
+	);
 
 /**
  * Enhanced version of findAndReplaceOne with more robust matching strategies
@@ -239,7 +280,12 @@ export function findAndReplaceOne(
 	}
 
 	// Strategy 2: Try whitespace-flexible matching
-	const whitespaceResult = tryWhitespaceFlexibleMatch(text, oldStr, newStr, eol);
+	const whitespaceResult = tryWhitespaceFlexibleMatch(
+		text,
+		oldStr,
+		newStr,
+		eol,
+	);
 	if (whitespaceResult.type !== 'none') {
 		return whitespaceResult;
 	}
@@ -261,18 +307,24 @@ export function findAndReplaceOne(
 		text,
 		type: 'none',
 		editPosition: [],
-		suggestion: `Try making your search string more specific or checking for whitespace/formatting differences.`
+		suggestion: `Try making your search string more specific or checking for whitespace/formatting differences.`,
 	};
 }
 
 /**
  * Tries to find an exact match of oldStr in text.
  */
-function tryExactMatch(text: string, oldStr: string, newStr: string): MatchResult {
+function tryExactMatch(
+	text: string,
+	oldStr: string,
+	newStr: string,
+): MatchResult {
 	const matchPositions: number[] = [];
-	for (let searchIdx = 0; ;) {
+	for (let searchIdx = 0; ; ) {
 		const idx = text.indexOf(oldStr, searchIdx);
-		if (idx === -1) { break; }
+		if (idx === -1) {
+			break;
+		}
 		matchPositions.push(idx);
 		searchIdx = idx + oldStr.length;
 	}
@@ -281,10 +333,13 @@ function tryExactMatch(text: string, oldStr: string, newStr: string): MatchResul
 	}
 
 	const identical = getIdenticalChars(oldStr, newStr);
-	const editPosition = matchPositions.map(idx => ({
+	const editPosition = matchPositions.map((idx) => ({
 		start: idx + identical.leading,
 		end: idx + oldStr.length - identical.trailing,
-		text: newStr.slice(identical.leading, newStr.length - identical.trailing)
+		text: newStr.slice(
+			identical.leading,
+			newStr.length - identical.trailing,
+		),
 	}));
 
 	// Check for multiple exact occurrences.
@@ -295,12 +350,16 @@ function tryExactMatch(text: string, oldStr: string, newStr: string): MatchResul
 			editPosition,
 			strategy: 'exact',
 			matchPositions,
-			suggestion: 'Multiple exact matches found. Make your search string more specific.'
+			suggestion:
+				'Multiple exact matches found. Make your search string more specific.',
 		};
 	}
 	// Exactly one exact match found.
 	const firstExactIdx = matchPositions[0];
-	const replaced = text.slice(0, firstExactIdx) + newStr + text.slice(firstExactIdx + oldStr.length);
+	const replaced =
+		text.slice(0, firstExactIdx) +
+		newStr +
+		text.slice(firstExactIdx + oldStr.length);
 	return {
 		text: replaced,
 		type: 'exact',
@@ -311,16 +370,24 @@ function tryExactMatch(text: string, oldStr: string, newStr: string): MatchResul
 /**
  * Tries to match using flexible whitespace handling.
  */
-function tryWhitespaceFlexibleMatch(text: string, oldStr: string, newStr: string, eol: string): MatchResult {
-	const haystack = text.split(eol).map(line => line.trim());
+function tryWhitespaceFlexibleMatch(
+	text: string,
+	oldStr: string,
+	newStr: string,
+	eol: string,
+): MatchResult {
+	const haystack = text.split(eol).map((line) => line.trim());
 	const oldLines = oldStr.trim().split(eol);
-	const needle = oldLines.map(line => line.trim());
+	const needle = oldLines.map((line) => line.trim());
 	needle.push(''); // trailing newline to match until the end of a line
 
 	const convert = new OffsetLineColumnConverter(text);
 	const matchedLines: number[] = [];
 	for (let i = 0; i <= haystack.length - needle.length; i++) {
-		if (haystack.slice(i, i + needle.length).join('\n') === needle.join('\n')) {
+		if (
+			haystack.slice(i, i + needle.length).join('\n') ===
+			needle.join('\n')
+		) {
 			matchedLines.push(i);
 			i += needle.length - 1;
 		}
@@ -330,14 +397,13 @@ function tryWhitespaceFlexibleMatch(text: string, oldStr: string, newStr: string
 			text,
 			editPosition: [],
 			type: 'none',
-			suggestion: 'No whitespace-flexible match found.'
+			suggestion: 'No whitespace-flexible match found.',
 		};
 	}
 
-
 	const newLines = newStr.trim().split(eol);
 	const identical = getIndenticalLines(oldLines, newLines);
-	const positions = matchedLines.map(match => {
+	const positions = matchedLines.map((match) => {
 		const start = new EditorPosition(match + identical.leading + 1, 1);
 		const end = start.delta(oldLines.length - identical.trailing);
 		return { start, end };
@@ -348,8 +414,11 @@ function tryWhitespaceFlexibleMatch(text: string, oldStr: string, newStr: string
 			text,
 			type: 'multiple',
 			editPosition: [],
-			matchPositions: positions.map(p => convert.positionToOffset(p.start)),
-			suggestion: 'Multiple matches found with flexible whitespace. Make your search string more unique.',
+			matchPositions: positions.map((p) =>
+				convert.positionToOffset(p.start),
+			),
+			suggestion:
+				'Multiple matches found with flexible whitespace. Make your search string more unique.',
 			strategy: 'whitespace',
 		};
 	}
@@ -358,8 +427,11 @@ function tryWhitespaceFlexibleMatch(text: string, oldStr: string, newStr: string
 	const startIdx = convert.positionToOffset(start);
 	const endIdx = convert.positionToOffset(end) - 1; // -1 to include the last EOL
 
-	const minimizedNewStr = newLines.slice(identical.leading, newLines.length - identical.trailing).join(eol);
-	const replaced = text.slice(0, startIdx) + minimizedNewStr + text.slice(endIdx);
+	const minimizedNewStr = newLines
+		.slice(identical.leading, newLines.length - identical.trailing)
+		.join(eol);
+	const replaced =
+		text.slice(0, startIdx) + minimizedNewStr + text.slice(endIdx);
 	return {
 		text: replaced,
 		editPosition: [{ start: startIdx, end: endIdx, text: minimizedNewStr }],
@@ -370,7 +442,12 @@ function tryWhitespaceFlexibleMatch(text: string, oldStr: string, newStr: string
 /**
  * Tries to match using the traditional fuzzy approach with line-by-line matching.
  */
-function tryFuzzyMatch(text: string, oldStr: string, newStr: string, eol: string): MatchResult {
+function tryFuzzyMatch(
+	text: string,
+	oldStr: string,
+	newStr: string,
+	eol: string,
+): MatchResult {
 	// Handle trailing newlines
 	const hasTrailingLF = oldStr.endsWith(eol);
 	if (hasTrailingLF) {
@@ -396,7 +473,7 @@ function tryFuzzyMatch(text: string, oldStr: string, newStr: string, eol: string
 			text,
 			editPosition: [],
 			type: 'none',
-			suggestion: 'No fuzzy match found.'
+			suggestion: 'No fuzzy match found.',
 		};
 	}
 	if (matches.length > 1) {
@@ -404,9 +481,10 @@ function tryFuzzyMatch(text: string, oldStr: string, newStr: string, eol: string
 			text,
 			type: 'multiple',
 			editPosition: [],
-			suggestion: 'Multiple fuzzy matches found. Try including more context in your search string.',
+			suggestion:
+				'Multiple fuzzy matches found. Try including more context in your search string.',
 			strategy: 'fuzzy',
-			matchPositions: matches.map(match => match.index || 0),
+			matchPositions: matches.map((match) => match.index || 0),
 		};
 	}
 
@@ -434,7 +512,13 @@ export function setSimilarityMatchThresholdForTests(threshold: number) {
  * Tries to match based on overall string similarity as a last resort.
  * Only works for relatively small strings to avoid performance issues.
  */
-function trySimilarityMatch(text: string, oldStr: string, newStr: string, eol: string, threshold: number = defaultSimilaryMatchThreshold): MatchResult {
+function trySimilarityMatch(
+	text: string,
+	oldStr: string,
+	newStr: string,
+	eol: string,
+	threshold: number = defaultSimilaryMatchThreshold,
+): MatchResult {
 	// Skip similarity matching for very large strings or too many lines
 	if (oldStr.length > 1000 || oldStr.split(eol).length > 20) {
 		return { text, editPosition: [], type: 'none' };
@@ -451,7 +535,12 @@ function trySimilarityMatch(text: string, oldStr: string, newStr: string, eol: s
 	const newLines = newStr.split(eol);
 	const identical = getIndenticalLines(oldLines, newLines);
 
-	let bestMatch = { startLine: -1, startOffset: 0, oldLength: 0, similarity: 0 };
+	let bestMatch = {
+		startLine: -1,
+		startOffset: 0,
+		oldLength: 0,
+		similarity: 0,
+	};
 	let startOffset = 0;
 
 	// Sliding window approach to find the best matching section
@@ -481,7 +570,11 @@ function trySimilarityMatch(text: string, oldStr: string, newStr: string, eol: s
 				startLine: i + identical.leading,
 				startOffset: startOffset + startOffsetIdenticalIncr,
 				similarity: avgSimilarity,
-				oldLength: oldLength + (oldLines.length - 1) * eol.length - startOffsetIdenticalIncr - endOffsetIdenticalIncr,
+				oldLength:
+					oldLength +
+					(oldLines.length - 1) * eol.length -
+					startOffsetIdenticalIncr -
+					endOffsetIdenticalIncr,
 			};
 		}
 
@@ -493,53 +586,74 @@ function trySimilarityMatch(text: string, oldStr: string, newStr: string, eol: s
 	}
 
 	// Replace the matched section
-	const newStrMinimized = newLines.slice(identical.leading, newLines.length - identical.trailing).join(eol);
+	const newStrMinimized = newLines
+		.slice(identical.leading, newLines.length - identical.trailing)
+		.join(eol);
 	const matchStart = bestMatch.startLine - identical.leading;
 	const afterIdx = matchStart + oldLines.length - identical.trailing;
 
 	const newText = [
 		...lines.slice(0, bestMatch.startLine),
-		...newLines.slice(identical.leading, newLines.length - identical.trailing),
+		...newLines.slice(
+			identical.leading,
+			newLines.length - identical.trailing,
+		),
 		...lines.slice(afterIdx),
 	].join(eol);
 
 	return {
 		text: newText,
 		type: 'similarity',
-		editPosition: [{
-			start: bestMatch.startOffset,
-			end: bestMatch.startOffset + bestMatch.oldLength,
-			text: newStrMinimized,
-		}],
+		editPosition: [
+			{
+				start: bestMatch.startOffset,
+				end: bestMatch.startOffset + bestMatch.oldLength,
+				text: newStrMinimized,
+			},
+		],
 		similarity: bestMatch.similarity,
-		suggestion: `Used similarity matching (${(bestMatch.similarity * 100).toFixed(1)}% similar). Verify the replacement.`
+		suggestion: `Used similarity matching (${(bestMatch.similarity * 100).toFixed(1)}% similar). Verify the replacement.`,
 	};
 }
 
 // Function to generate a simple patch
-function getPatch({ fileContents, oldStr, newStr }: { fileContents: string; oldStr: string; newStr: string }): Hunk[] {
+function getPatch({
+	fileContents,
+	oldStr,
+	newStr,
+}: {
+	fileContents: string;
+	oldStr: string;
+	newStr: string;
+}): Hunk[] {
 	// Simplified patch generation - in a real implementation this would generate proper diff hunks
-	return [{
-		oldStart: 1,
-		oldLines: (oldStr.match(/\n/g) || []).length + 1,
-		newStart: 1,
-		newLines: (newStr.match(/\n/g) || []).length + 1,
-		lines: []
-	}];
+	return [
+		{
+			oldStart: 1,
+			oldLines: (oldStr.match(/\n/g) || []).length + 1,
+			newStart: 1,
+			newLines: (newStr.match(/\n/g) || []).length + 1,
+			lines: [],
+		},
+	];
 }
 
 /** Gets the number of identical leading and trailing lines between two arrays of strings */
 function getIndenticalLines(a: string[], b: string[]) {
 	let leading = 0;
 	let trailing = 0;
-	while (leading < a.length &&
+	while (
+		leading < a.length &&
 		leading < b.length &&
-		a[leading] === b[leading]) {
+		a[leading] === b[leading]
+	) {
 		leading++;
 	}
-	while (trailing + leading < a.length &&
+	while (
+		trailing + leading < a.length &&
 		trailing + leading < b.length &&
-		a[a.length - 1 - trailing] === b[b.length - 1 - trailing]) {
+		a[a.length - 1 - trailing] === b[b.length - 1 - trailing]
+	) {
 		trailing++;
 	}
 
@@ -551,11 +665,19 @@ function getIdenticalChars(oldString: string, newString: string) {
 	let leading = 0;
 	let trailing = 0;
 
-	while (leading < oldString.length && leading < newString.length && oldString[leading] === newString[leading]) {
+	while (
+		leading < oldString.length &&
+		leading < newString.length &&
+		oldString[leading] === newString[leading]
+	) {
 		leading++;
 	}
-	while (trailing + leading < oldString.length && trailing + leading < newString.length &&
-		oldString[oldString.length - trailing - 1] === newString[newString.length - trailing - 1]) {
+	while (
+		trailing + leading < oldString.length &&
+		trailing + leading < newString.length &&
+		oldString[oldString.length - trailing - 1] ===
+			newString[newString.length - trailing - 1]
+	) {
 		trailing++;
 	}
 	return { leading, trailing };
@@ -579,22 +701,35 @@ export async function applyEdit(
 
 	try {
 		// Use VS Code workspace API to get the document content
-		const document = notebookService.hasSupportedNotebooks(uri) ?
-			await workspaceService.openNotebookDocumentAndSnapshot(uri, alternativeNotebookContent.getFormat(languageModel)) :
-			await workspaceService.openTextDocumentAndSnapshot(uri);
+		const document = notebookService.hasSupportedNotebooks(uri)
+			? await workspaceService.openNotebookDocumentAndSnapshot(
+				uri,
+				alternativeNotebookContent.getFormat(languageModel),
+			)
+			: await workspaceService.openTextDocumentAndSnapshot(uri);
 		originalFile = document.getText();
 
-		const eol = document instanceof TextDocumentSnapshot && document.eol === EndOfLine.CRLF ? '\r\n' : '\n';
+		const eol =
+			document instanceof TextDocumentSnapshot &&
+			document.eol === EndOfLine.CRLF
+				? '\r\n'
+				: '\n';
 		old_string = old_string.replace(/\r?\n/g, eol);
 		new_string = new_string.replace(/\r?\n/g, eol);
 
-		if (isFalsyOrWhitespace(originalFile) && isFalsyOrWhitespace(old_string)) {
+		if (
+			isFalsyOrWhitespace(originalFile) &&
+			isFalsyOrWhitespace(old_string)
+		) {
 			updatedFile = new_string;
 			edits.push(TextEdit.insert(new Position(0, 0), new_string));
 		} else if (old_string === '') {
 			if (originalFile !== '') {
 				// If the file already exists and we're creating a new file with empty old_string
-				throw new ContentFormatError('File already exists. Please provide a non-empty old_string for replacement.', filePath);
+				throw new ContentFormatError(
+					'File already exists. Please provide a non-empty old_string for replacement.',
+					filePath,
+				);
 			}
 			// Create new file case
 			updatedFile = new_string;
@@ -603,65 +738,100 @@ export async function applyEdit(
 			// Edit existing file case
 			if (new_string === '') {
 				// For empty new string, handle special deletion case
-				const result = findAndReplaceOne(originalFile, old_string, new_string, eol);
+				const result = findAndReplaceOne(
+					originalFile,
+					old_string,
+					new_string,
+					eol,
+				);
 				if (result.type === 'none') {
 					// Try with newline appended if the original doesn't end with newline
-					if (!old_string.endsWith(eol) && originalFile.includes(old_string + eol)) {
-						updatedFile = originalFile.replace(old_string + eol, new_string);
+					if (
+						!old_string.endsWith(eol) &&
+						originalFile.includes(old_string + eol)
+					) {
+						updatedFile = originalFile.replace(
+							old_string + eol,
+							new_string,
+						);
 
 						if (result.editPosition.length) {
 							const { start, end } = result.editPosition[0];
-							const range = new Range(document.positionAt(start), document.positionAt(end));
+							const range = new Range(
+								document.positionAt(start),
+								document.positionAt(end),
+							);
 							edits.push(TextEdit.delete(range));
 						}
 					} else {
-						const suggestion = result?.suggestion || 'The string to replace must match exactly.';
+						const suggestion =
+							result?.suggestion ||
+							'The string to replace must match exactly.';
 						throw new NoMatchError(
 							`Could not find matching text to replace. ${suggestion}`,
-							filePath
+							filePath,
 						);
 					}
 				} else if (result.type === 'multiple' && !opts?.replaceAll) {
-					const suggestion = result?.suggestion || 'Please provide a more specific string.';
+					const suggestion =
+						result?.suggestion ||
+						'Please provide a more specific string.';
 					throw new MultipleMatchesError(
 						`Multiple matches found for the text to replace. ${suggestion}`,
-						filePath
+						filePath,
 					);
 				} else {
 					updatedFile = result.text;
 
 					for (const { start, end } of result.editPosition) {
-						const range = new Range(document.positionAt(start), document.positionAt(end));
+						const range = new Range(
+							document.positionAt(start),
+							document.positionAt(end),
+						);
 						edits.push(TextEdit.delete(range));
 					}
 				}
 			} else {
 				// Normal replacement case using the enhanced matcher
-				const result = findAndReplaceOne(originalFile, old_string, new_string, eol);
+				const result = findAndReplaceOne(
+					originalFile,
+					old_string,
+					new_string,
+					eol,
+				);
 
 				if (result.type === 'none') {
-					const suggestion = result?.suggestion || 'The string to replace must match exactly or be a valid fuzzy match.';
+					const suggestion =
+						result?.suggestion ||
+						'The string to replace must match exactly or be a valid fuzzy match.';
 					throw new NoMatchError(
 						`Could not find matching text to replace. ${suggestion}`,
-						filePath
+						filePath,
 					);
 				} else if (result.type === 'multiple' && !opts?.replaceAll) {
-					const suggestion = result?.suggestion || 'Please provide a more specific string.';
+					const suggestion =
+						result?.suggestion ||
+						'Please provide a more specific string.';
 					throw new MultipleMatchesError(
 						`Multiple matches found for the text to replace. ${suggestion}`,
-						filePath
+						filePath,
 					);
 				} else {
 					updatedFile = result.text;
 
 					for (const { start, end, text } of result.editPosition) {
-						const range = new Range(document.positionAt(start), document.positionAt(end));
+						const range = new Range(
+							document.positionAt(start),
+							document.positionAt(end),
+						);
 						edits.push(TextEdit.replace(range, text));
 					}
 
 					// If we used similarity matching, add a warning
 					if (result.type === 'similarity' && result?.similarity) {
-						console.warn(`Used similarity matching with ${(result.similarity * 100).toFixed(1)}% confidence. Verify the result is correct.`);
+						console.warn(
+							`Used similarity matching with ${(result.similarity * 100).toFixed(1)}% confidence. Verify the result is correct.`,
+						);
 					}
 				}
 			}
@@ -669,7 +839,7 @@ export async function applyEdit(
 			if (updatedFile === originalFile) {
 				throw new NoChangeError(
 					'Original and edited file match exactly. Failed to apply edit. Use the ${ToolName.ReadFile} tool to re-read the file and and determine the correct edit.',
-					filePath
+					filePath,
 				);
 			}
 		}
@@ -701,7 +871,10 @@ export async function applyEdit(
 		if (error instanceof EditError) {
 			throw error;
 		} else {
-			throw new EditError(`Failed to edit file: ${error.stack || error.message}`, 'unknownError');
+			throw new EditError(
+				`Failed to edit file: ${error.stack || error.message}`,
+				'unknownError',
+			);
 		}
 	}
 }
@@ -723,7 +896,9 @@ const specializedPatterns: (glob.ParsedPattern | string | undefined)[] =
 			: [];
 
 // Path prefixes under which confirmation is unconditionally required
-const platformConfirmationRequiredPaths = specializedPatterns.filter(isDefined).concat(allPlatformPatterns);
+const platformConfirmationRequiredPaths = specializedPatterns
+	.filter(isDefined)
+	.concat(allPlatformPatterns);
 
 /**
  * Validates that a path doesn't contain suspicious characters that could be used
@@ -742,7 +917,9 @@ export function assertPathIsSafe(fsPath: string, _isWindows = isWindows): void {
 	// Check for NTFS Alternate Data Streams (ADS)
 	const colonIndex = fsPath.indexOf(':', 2);
 	if (colonIndex !== -1) {
-		throw new Error(`Path contains invalid characters (alternate data stream): ${fsPath}`);
+		throw new Error(
+			`Path contains invalid characters (alternate data stream): ${fsPath}`,
+		);
 	}
 
 	// Check for invalid Windows filename characters
@@ -773,7 +950,9 @@ export function assertPathIsSafe(fsPath: string, _isWindows = isWindows): void {
 
 		// Check for trailing dots or spaces
 		if (part.endsWith('.') || part.endsWith(' ')) {
-			throw new Error(`Path contains invalid trailing characters: ${fsPath}`);
+			throw new Error(
+				`Path contains invalid trailing characters: ${fsPath}`,
+			);
 		}
 
 		// Check for 8.3 short filename pattern
@@ -781,7 +960,9 @@ export function assertPathIsSafe(fsPath: string, _isWindows = isWindows): void {
 		if (tildeIndex !== -1) {
 			const afterTilde = part.substring(tildeIndex + 1);
 			if (afterTilde.length > 0 && /^\d/.test(afterTilde)) {
-				throw new Error(`Path appears to use short filename format (8.3 names): ${fsPath}. Please use the full path.`);
+				throw new Error(
+					`Path appears to use short filename format (8.3 names): ${fsPath}. Please use the full path.`,
+				);
 			}
 		}
 	}
@@ -795,14 +976,21 @@ export const enum ConfirmationCheckResult {
 	OutsideWorkspace,
 }
 
-
 /**
  * Returns a function that returns whether a URI is approved for editing without
  * further user confirmation.
  */
-export function makeUriConfirmationChecker(configuration: IConfigurationService, getWorkspaceFolder: (resource: URI) => URI | undefined, customInstructionsService: ICustomInstructionsService) {
-	const patterns = configuration.getNonExtensionConfig<Record<string, boolean>>('chat.tools.edits.autoApprove');
-	const hookFilesLocations = configuration.getNonExtensionConfig<Record<string, boolean>>('chat.hookFilesLocations');
+export function makeUriConfirmationChecker(
+	configuration: IConfigurationService,
+	getWorkspaceFolder: (resource: URI) => URI | undefined,
+	customInstructionsService: ICustomInstructionsService,
+) {
+	const patterns = configuration.getNonExtensionConfig<
+		Record<string, boolean>
+	>('chat.tools.edits.autoApprove');
+	const hookFilesLocations = configuration.getNonExtensionConfig<
+		Record<string, boolean>
+	>('chat.hookFilesLocations');
 
 	// Convert hook files locations to require confirmation (isApproved: false)
 	const hookFilesPatterns: Record<string, boolean> = {};
@@ -811,19 +999,27 @@ export function makeUriConfirmationChecker(configuration: IConfigurationService,
 			// Skip home directory patterns as they are handled separately
 			if (!pattern.startsWith('~/')) {
 				// Ensure patterns have proper glob prefix to match within workspace
-				const normalizedPattern = pattern.startsWith('**/') || pattern.startsWith('/') ? pattern : '**/' + pattern;
+				const normalizedPattern =
+					pattern.startsWith('**/') || pattern.startsWith('/')
+						? pattern
+						: '**/' + pattern;
 				hookFilesPatterns[normalizedPattern] = false;
 				// If the pattern looks like a folder (no file extension), also match JSON files within it
 				const lastSegment = normalizedPattern.split('/').pop() || '';
 				if (!lastSegment.includes('.')) {
-					const folderJsonPattern = normalizedPattern.endsWith('/') ? normalizedPattern + '*.json' : normalizedPattern + '/*.json';
+					const folderJsonPattern = normalizedPattern.endsWith('/')
+						? normalizedPattern + '*.json'
+						: normalizedPattern + '/*.json';
 					hookFilesPatterns[folderJsonPattern] = false;
 				}
 			}
 		}
 	}
 
-	const checks = new ResourceMap<{ patterns: { pattern: glob.ParsedPattern; isApproved: boolean }[]; ignoreCasing: boolean }>();
+	const checks = new ResourceMap<{
+		patterns: { pattern: glob.ParsedPattern; isApproved: boolean }[];
+		ignoreCasing: boolean;
+	}>();
 	const getPatterns = (wf: URI) => {
 		let arr = checks.get(wf);
 		if (arr) {
@@ -832,10 +1028,22 @@ export function makeUriConfirmationChecker(configuration: IConfigurationService,
 
 		const ignoreCasing = extUriBiasedIgnorePathCase.ignorePathCasing(wf);
 		arr = { patterns: [], ignoreCasing };
-		for (const obj of [patterns, ALWAYS_CHECKED_EDIT_PATTERNS, hookFilesPatterns]) {
+		for (const obj of [
+			patterns,
+			ALWAYS_CHECKED_EDIT_PATTERNS,
+			hookFilesPatterns,
+		]) {
 			if (obj) {
 				for (const [pattern, isApproved] of Object.entries(obj)) {
-					arr.patterns.push({ pattern: glob.parse({ base: wf.fsPath, pattern: ignoreCasing ? pattern.toLowerCase() : pattern }), isApproved });
+					arr.patterns.push({
+						pattern: glob.parse({
+							base: wf.fsPath,
+							pattern: ignoreCasing
+								? pattern.toLowerCase()
+								: pattern,
+						}),
+						isApproved,
+					});
 				}
 			}
 		}
@@ -847,7 +1055,8 @@ export function makeUriConfirmationChecker(configuration: IConfigurationService,
 	function checkUri(uri: URI) {
 		const normalizedUri = normalizePath(uri);
 		const workspaceFolder = getWorkspaceFolder(normalizedUri);
-		if (!workspaceFolder && uri.scheme !== Schemas.untitled) { // don't allow to edit external instruction files
+		if (!workspaceFolder && uri.scheme !== Schemas.untitled) {
+			// don't allow to edit external instruction files
 			return ConfirmationCheckResult.OutsideWorkspace;
 		}
 
@@ -856,25 +1065,37 @@ export function makeUriConfirmationChecker(configuration: IConfigurationService,
 
 		assertPathIsSafe(fsPath);
 
-		const platformCheckFailed = platformConfirmationRequiredPaths.some(p => {
-			if (typeof p === 'function') {
-				return p(fsPath);
-			}
+		const platformCheckFailed = platformConfirmationRequiredPaths.some(
+			(p) => {
+				if (typeof p === 'function') {
+					return p(fsPath);
+				}
 
-			const parentURI = URI.file(p);
-			if (extUriBiasedIgnorePathCase.isEqualOrParent(uri, parentURI)) {
-				// If the workspace is opened in the restricted folder, still allow edits within that workspace
-				return workspaceFolder && extUriBiasedIgnorePathCase.isEqualOrParent(workspaceFolder, parentURI) ? false : true;
-			}
+				const parentURI = URI.file(p);
+				if (
+					extUriBiasedIgnorePathCase.isEqualOrParent(uri, parentURI)
+				) {
+					// If the workspace is opened in the restricted folder, still allow edits within that workspace
+					return workspaceFolder &&
+						extUriBiasedIgnorePathCase.isEqualOrParent(
+							workspaceFolder,
+							parentURI,
+						)
+						? false
+						: true;
+				}
 
-			return false;
-		});
+				return false;
+			},
+		);
 
 		if (platformCheckFailed) {
 			return ConfirmationCheckResult.SystemFile;
 		}
 
-		const { patterns, ignoreCasing } = getPatterns(workspaceFolder || URI.file('/'));
+		const { patterns, ignoreCasing } = getPatterns(
+			workspaceFolder || URI.file('/'),
+		);
 		if (ignoreCasing) {
 			fsPath = fsPath.toLowerCase();
 		}
@@ -885,7 +1106,9 @@ export function makeUriConfirmationChecker(configuration: IConfigurationService,
 			}
 		}
 
-		return ok ? ConfirmationCheckResult.NoConfirmation : ConfirmationCheckResult.Sensitive;
+		return ok
+			? ConfirmationCheckResult.NoConfirmation
+			: ConfirmationCheckResult.Sensitive;
 	}
 
 	return async (uri: URI) => {
@@ -910,7 +1133,16 @@ export function makeUriConfirmationChecker(configuration: IConfigurationService,
 	};
 }
 
-export async function createEditConfirmation(accessor: ServicesAccessor, uris: readonly URI[], allowedUris: ResourceSet | undefined, detailMessage?: (urisNeedingConfirmation: readonly URI[]) => Promise<string>, forceConfirmationReason?: string, getWorkspaceFolder?: (resource: URI) => URI | undefined): Promise<PreparedToolInvocation> {
+export async function createEditConfirmation(
+	accessor: ServicesAccessor,
+	uris: readonly URI[],
+	allowedUris: ResourceSet | undefined,
+	detailMessage?: (
+		urisNeedingConfirmation: readonly URI[],
+	) => Promise<string>,
+	forceConfirmationReason?: string,
+	getWorkspaceFolder?: (resource: URI) => URI | undefined,
+): Promise<PreparedToolInvocation> {
 	// If forceConfirmationReason is provided, require confirmation for all URIs
 	if (forceConfirmationReason) {
 		const details = detailMessage ? await detailMessage(uris) : undefined;
@@ -918,72 +1150,129 @@ export async function createEditConfirmation(accessor: ServicesAccessor, uris: r
 		return {
 			confirmationMessages: {
 				title: t('Allow edits?'),
-				message: forceConfirmationReason + '\n\n' + t`Do you want to allow this?` + (details ? '\n\n' + details : ''),
+				message:
+					forceConfirmationReason +
+					'\n\n' +
+					t`Do you want to allow this?` +
+					(details ? '\n\n' + details : ''),
 			},
-			presentation: 'hiddenAfterComplete'
+			presentation: 'hiddenAfterComplete',
 		};
 	}
 
 	const workspaceService = accessor.get(IWorkspaceService);
-	getWorkspaceFolder = getWorkspaceFolder ?? workspaceService.getWorkspaceFolder.bind(workspaceService);
-	const checker = makeUriConfirmationChecker(accessor.get(IConfigurationService), getWorkspaceFolder, accessor.get(ICustomInstructionsService));
-	const needsConfirmation = (await Promise.all(uris
-		.map(async uri => ({ uri, reason: await checker(uri) }))
-	)).filter(r => r.reason !== ConfirmationCheckResult.NoConfirmation && !allowedUris?.has(r.uri));
+	getWorkspaceFolder =
+		getWorkspaceFolder ??
+		workspaceService.getWorkspaceFolder.bind(workspaceService);
+	const checker = makeUriConfirmationChecker(
+		accessor.get(IConfigurationService),
+		getWorkspaceFolder,
+		accessor.get(ICustomInstructionsService),
+	);
+	const needsConfirmation = (
+		await Promise.all(
+			uris.map(async (uri) => ({ uri, reason: await checker(uri) })),
+		)
+	).filter(
+		(r) =>
+			r.reason !== ConfirmationCheckResult.NoConfirmation &&
+			!allowedUris?.has(r.uri),
+	);
 
 	if (!needsConfirmation.length) {
 		return { presentation: 'hidden' };
 	}
 
-	const fileParts = needsConfirmation.map(({ uri }) => formatUriForFileWidget(uri)).join(', ');
+	const fileParts = needsConfirmation
+		.map(({ uri }) => formatUriForFileWidget(uri))
+		.join(', ');
 
 	let message: string;
-	if (needsConfirmation.some(r => r.reason === ConfirmationCheckResult.NoPermissions)) {
+	if (
+		needsConfirmation.some(
+			(r) => r.reason === ConfirmationCheckResult.NoPermissions,
+		)
+	) {
 		message = t`The model wants to edit files you don't have permission to modify (${fileParts}).`;
-	} else if (needsConfirmation.some(r => r.reason === ConfirmationCheckResult.Sensitive)) {
+	} else if (
+		needsConfirmation.some(
+			(r) => r.reason === ConfirmationCheckResult.Sensitive,
+		)
+	) {
 		message = t`The model wants to edit sensitive files (${fileParts}).`;
-	} else if (needsConfirmation.some(r => r.reason === ConfirmationCheckResult.OutsideWorkspace)) {
+	} else if (
+		needsConfirmation.some(
+			(r) => r.reason === ConfirmationCheckResult.OutsideWorkspace,
+		)
+	) {
 		message = t`The model wants to edit files outside of your workspace (${fileParts}).`;
 	} else {
 		message = t`The model wants to edit system files (${fileParts}).`;
 	}
 
-	const urisNeedingConfirmation = needsConfirmation.map(c => c.uri);
-	const details = detailMessage ? await detailMessage(urisNeedingConfirmation) : undefined;
+	const urisNeedingConfirmation = needsConfirmation.map((c) => c.uri);
+	const details = detailMessage
+		? await detailMessage(urisNeedingConfirmation)
+		: undefined;
 
 	return {
 		confirmationMessages: {
 			title: t('Allow edits to sensitive files?'),
-			message: message + ' ' + t`Do you want to allow this?` + (details ? '\n\n' + details : ''),
+			message:
+				message +
+				' ' +
+				t`Do you want to allow this?` +
+				(details ? '\n\n' + details : ''),
 		},
-		presentation: 'hiddenAfterComplete'
+		presentation: 'hiddenAfterComplete',
 	};
 }
 
 /** Returns whether the file can be edited. This is true if the file exists or it's opened (e.g. untitled files) */
-export function canExistingFileBeEdited(accessor: ServicesAccessor, uri: URI): Promise<boolean> {
+export function canExistingFileBeEdited(
+	accessor: ServicesAccessor,
+	uri: URI,
+): Promise<boolean> {
 	const workspace = accessor.get(IWorkspaceService);
-	if (workspace.textDocuments.some(d => extUriBiasedIgnorePathCase.isEqual(d.uri, uri))) {
+	if (
+		workspace.textDocuments.some((d) =>
+			extUriBiasedIgnorePathCase.isEqual(d.uri, uri),
+		)
+	) {
 		return Promise.resolve(true);
 	}
-	if (workspace.notebookDocuments.some(d => extUriBiasedIgnorePathCase.isEqual(d.uri, uri))) {
+	if (
+		workspace.notebookDocuments.some((d) =>
+			extUriBiasedIgnorePathCase.isEqual(d.uri, uri),
+		)
+	) {
 		return Promise.resolve(true);
 	}
 
 	const fileSystemService = accessor.get(IFileSystemService);
-	return fileSystemService.stat(uri).then(() => true, () => false);
+	return fileSystemService.stat(uri).then(
+		() => true,
+		() => false,
+	);
 }
 
-
-export function logEditToolResult(logService: ILogService, requestId: string | undefined, ...opts: {
-	input: unknown;
-	success: boolean;
-	healed?: unknown | undefined;
-}[]) {
+export function logEditToolResult(
+	logService: ILogService,
+	requestId: string | undefined,
+	...opts: {
+		input: unknown;
+		success: boolean;
+		healed?: unknown | undefined;
+	}[]
+) {
 	logService.debug(`[edit-tool:${requestId}] ${JSON.stringify(opts)}`);
 }
 
-export function getDisallowedEditUriError(uri: URI, allowedUris: ResourceSet | undefined, promptPathRepresentationService: IPromptPathRepresentationService): string | undefined {
+export function getDisallowedEditUriError(
+	uri: URI,
+	allowedUris: ResourceSet | undefined,
+	promptPathRepresentationService: IPromptPathRepresentationService,
+): string | undefined {
 	if (!allowedUris || allowedUris.has(uri)) {
 		return undefined;
 	}
@@ -991,10 +1280,16 @@ export function getDisallowedEditUriError(uri: URI, allowedUris: ResourceSet | u
 	return `File ${promptPathRepresentationService.getFilePath(uri)} is not in the set of allowed files for this edit request.`;
 }
 
-export async function openDocumentAndSnapshot(accessor: ServicesAccessor, promptContext: IBuildPromptContext | undefined, uri: URI): Promise<NotebookDocumentSnapshot | TextDocumentSnapshot> {
+export async function openDocumentAndSnapshot(
+	accessor: ServicesAccessor,
+	promptContext: IBuildPromptContext | undefined,
+	uri: URI,
+): Promise<NotebookDocumentSnapshot | TextDocumentSnapshot> {
 	const notebookService = accessor.get(INotebookService);
 	const workspaceService = accessor.get(IWorkspaceService);
-	const alternativeNotebookContent = accessor.get(IAlternativeNotebookContentService);
+	const alternativeNotebookContent = accessor.get(
+		IAlternativeNotebookContentService,
+	);
 
 	const previouslyEdited = promptContext?.turnEditedDocuments?.get(uri);
 	if (previouslyEdited) {
@@ -1005,7 +1300,12 @@ export async function openDocumentAndSnapshot(accessor: ServicesAccessor, prompt
 	if (isNotebook) {
 		uri = findNotebook(uri, workspaceService.notebookDocuments)?.uri || uri;
 	}
-	return isNotebook ?
-		await workspaceService.openNotebookDocumentAndSnapshot(uri, alternativeNotebookContent.getFormat(promptContext?.request?.model)) :
-		await workspaceService.openTextDocumentAndSnapshot(uri);
+	return isNotebook
+		? await workspaceService.openNotebookDocumentAndSnapshot(
+			uri,
+			alternativeNotebookContent.getFormat(
+				promptContext?.request?.model,
+			),
+		)
+		: await workspaceService.openTextDocumentAndSnapshot(uri);
 }

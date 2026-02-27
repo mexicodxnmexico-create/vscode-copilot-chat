@@ -19,8 +19,15 @@ import { TestTextDocumentManager } from '../../../test/textDocument';
 import { ICompletionsTextDocumentManagerService } from '../../../textDocumentManager';
 import { CompletionRequestDocument } from '../../completionsPromptFactory/componentsCompletionsPromptFactory';
 import { CompletionsMutableObservableWorkspace } from '../../completionsPromptFactory/test/completionsPromptFactory.test';
-import { FullRecentEditsProvider, ICompletionsRecentEditsProviderService } from '../../recentEdits/recentEditsProvider';
-import { DiffHunk, RecentEdit, summarizeEdit } from '../../recentEdits/recentEditsReducer';
+import {
+	FullRecentEditsProvider,
+	ICompletionsRecentEditsProviderService,
+} from '../../recentEdits/recentEditsProvider';
+import {
+	DiffHunk,
+	RecentEdit,
+	summarizeEdit,
+} from '../../recentEdits/recentEditsReducer';
 import { RecentEdits, editIsTooCloseToCursor } from '../recentEdits';
 
 class MockRecentEditsProvider extends FullRecentEditsProvider {
@@ -38,20 +45,34 @@ suite('Recent Edits Component', function () {
 
 	setup(function () {
 		const serviceCollection = createLibTestingContext();
-		serviceCollection.define(ICompletionsObservableWorkspace, new CompletionsMutableObservableWorkspace());
-		serviceCollection.define(ICompletionsRecentEditsProviderService, new SyncDescriptor(MockRecentEditsProvider, [undefined]));
+		serviceCollection.define(
+			ICompletionsObservableWorkspace,
+			new CompletionsMutableObservableWorkspace(),
+		);
+		serviceCollection.define(
+			ICompletionsRecentEditsProviderService,
+			new SyncDescriptor(MockRecentEditsProvider, [undefined]),
+		);
 		serviceCollection.define(IIgnoreService, new MockIgnoreService());
 		accessor = serviceCollection.createTestingAccessor();
 
 		ignoreService = accessor.get(IIgnoreService) as MockIgnoreService;
-		mockRecentEditsProvider = accessor.get(ICompletionsRecentEditsProviderService) as MockRecentEditsProvider;
+		mockRecentEditsProvider = accessor.get(
+			ICompletionsRecentEditsProviderService,
+		) as MockRecentEditsProvider;
 	});
 
 	test('renders nothing when recent edits are disabled', async function () {
 		mockRecentEditsProvider.isEnabled = () => false;
 
-		const tdm = accessor.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager;
-		const doc = tdm.setTextDocument('file:///foo.ts', 'typescript', 'const x = |;');
+		const tdm = accessor.get(
+			ICompletionsTextDocumentManagerService,
+		) as TestTextDocumentManager;
+		const doc = tdm.setTextDocument(
+			'file:///foo.ts',
+			'typescript',
+			'const x = |;',
+		);
 
 		const snapshot = await createSnapshot(accessor, doc, '|');
 		assert.throws(() => querySnapshot(snapshot, 'RecentEdits'));
@@ -64,12 +85,14 @@ suite('Recent Edits Component', function () {
 		mockRecentEditsProvider.config.summarizationFormat = 'diff';
 		mockRecentEditsProvider.config.maxFiles = 5;
 
-		const tdm = accessor.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager;
+		const tdm = accessor.get(
+			ICompletionsTextDocumentManagerService,
+		) as TestTextDocumentManager;
 		tdm.init([{ uri: 'file:///root/' }]);
 		const doc = tdm.setTextDocument(
 			'file:///root/relative/main.ts',
 			'typescript',
-			'function hello() {\n  return "world";\n}\n|'
+			'function hello() {\n  return "world";\n}\n|',
 		);
 
 		const fakeHunk: RecentEdit = {
@@ -92,9 +115,16 @@ suite('Recent Edits Component', function () {
 		mockRecentEditsProvider.getRecentEdits = () => [fakeHunk];
 
 		const snapshot = await createSnapshot(accessor, doc, '|');
-		const text = querySnapshot(snapshot, 'RecentEdits.Chunk.Text') as string;
+		const text = querySnapshot(
+			snapshot,
+			'RecentEdits.Chunk.Text',
+		) as string;
 
-		assert.ok(text.includes('These are recently edited files. Do not suggest code that has been deleted.'));
+		assert.ok(
+			text.includes(
+				'These are recently edited files. Do not suggest code that has been deleted.',
+			),
+		);
 		assert.ok(text.includes('File: relative/main.ts'));
 		assert.ok(text.includes('@@ -2,1 +2,1 @@'));
 		assert.ok(text.includes('-  return "world";'));
@@ -110,12 +140,14 @@ suite('Recent Edits Component', function () {
 		mockRecentEditsProvider.config.maxFiles = 5;
 		mockRecentEditsProvider.config.removeDeletedLines = true;
 
-		const tdm = accessor.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager;
+		const tdm = accessor.get(
+			ICompletionsTextDocumentManagerService,
+		) as TestTextDocumentManager;
 		tdm.init([{ uri: 'file:///root/' }]);
 		const doc = tdm.setTextDocument(
 			'file:///root/relative/main.ts',
 			'typescript',
-			'function hello() {\n  return "world";\n}\n|'
+			'function hello() {\n  return "world";\n}\n|',
 		);
 
 		const fakeHunk: RecentEdit = {
@@ -138,7 +170,10 @@ suite('Recent Edits Component', function () {
 		mockRecentEditsProvider.getRecentEdits = () => [fakeHunk];
 
 		const snapshot = await createSnapshot(accessor, doc, '|');
-		const text = querySnapshot(snapshot, 'RecentEdits.Chunk.Text') as string;
+		const text = querySnapshot(
+			snapshot,
+			'RecentEdits.Chunk.Text',
+		) as string;
 
 		assert.strictEqual(
 			text,
@@ -148,7 +183,7 @@ File: relative/main.ts
 +++ b/file:///root/relative/main.ts
 @@ -2,1 +2,1 @@
 +  return "hello";
-End of recent edits\n`.replace(/\n {12}/g, '\n')
+End of recent edits\n`.replace(/\n {12}/g, '\n'),
 		);
 	});
 
@@ -158,14 +193,24 @@ End of recent edits\n`.replace(/\n {12}/g, '\n')
 		mockRecentEditsProvider.config.summarizationFormat = 'diff';
 		mockRecentEditsProvider.config.maxFiles = 2;
 
-		const tdm = accessor.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager;
+		const tdm = accessor.get(
+			ICompletionsTextDocumentManagerService,
+		) as TestTextDocumentManager;
 		tdm.init([{ uri: 'file:///root/' }]);
 
-		const fileUris = ['file:///root/file-1', 'file:///root/file-2', 'file:///root/file-3'];
+		const fileUris = [
+			'file:///root/file-1',
+			'file:///root/file-2',
+			'file:///root/file-3',
+		];
 		for (const uri of fileUris) {
 			tdm.setTextDocument(uri, 'typescript', 'dummy\n|');
 		}
-		const doc = tdm.setTextDocument('file:///root/relative/main.ts', 'typescript', 'dummy\n|');
+		const doc = tdm.setTextDocument(
+			'file:///root/relative/main.ts',
+			'typescript',
+			'dummy\n|',
+		);
 
 		const fakeHunks: RecentEdit[] = fileUris.map((uri, idx) => ({
 			file: uri,
@@ -187,7 +232,10 @@ End of recent edits\n`.replace(/\n {12}/g, '\n')
 		mockRecentEditsProvider.getRecentEdits = () => fakeHunks;
 
 		const snapshot = await createSnapshot(accessor, doc, '|');
-		const text = querySnapshot(snapshot, 'RecentEdits.Chunk.Text') as string;
+		const text = querySnapshot(
+			snapshot,
+			'RecentEdits.Chunk.Text',
+		) as string;
 
 		assert.strictEqual(
 			text,
@@ -202,7 +250,7 @@ File: file-3
 +++ b/file:///root/file-3
 @@ -1,0 +1,1 @@
 +edit-3
-End of recent edits\n`.replace(/\n {12}/g, '\n')
+End of recent edits\n`.replace(/\n {12}/g, '\n'),
 		);
 	});
 
@@ -214,14 +262,24 @@ End of recent edits\n`.replace(/\n {12}/g, '\n')
 		mockRecentEditsProvider.config.removeDeletedLines = true;
 		mockRecentEditsProvider.config.maxLinesPerEdit = 1;
 
-		const tdm = accessor.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager;
+		const tdm = accessor.get(
+			ICompletionsTextDocumentManagerService,
+		) as TestTextDocumentManager;
 		tdm.init([{ uri: 'file:///root/' }]);
 
-		const fileUris = ['file:///root/file-1', 'file:///root/file-2', 'file:///root/file-3'];
+		const fileUris = [
+			'file:///root/file-1',
+			'file:///root/file-2',
+			'file:///root/file-3',
+		];
 		for (const uri of fileUris) {
 			tdm.setTextDocument(uri, 'typescript', 'dummy\n|');
 		}
-		const doc = tdm.setTextDocument('file:///root/relative/main.ts', 'typescript', 'dummy\n|');
+		const doc = tdm.setTextDocument(
+			'file:///root/relative/main.ts',
+			'typescript',
+			'dummy\n|',
+		);
 
 		const fakeHunks: RecentEdit[] = fileUris.map((uri, idx) => ({
 			file: uri,
@@ -241,11 +299,16 @@ End of recent edits\n`.replace(/\n {12}/g, '\n')
 			timestamp: idx + 1,
 		}));
 
-		fakeHunks[0].diff.added.push('a second edit that breaks the 1 line limit');
+		fakeHunks[0].diff.added.push(
+			'a second edit that breaks the 1 line limit',
+		);
 		mockRecentEditsProvider.getRecentEdits = () => fakeHunks;
 
 		const snapshot = await createSnapshot(accessor, doc, '|');
-		const text = querySnapshot(snapshot, 'RecentEdits.Chunk.Text') as string;
+		const text = querySnapshot(
+			snapshot,
+			'RecentEdits.Chunk.Text',
+		) as string;
 
 		assert.strictEqual(
 			text,
@@ -260,7 +323,7 @@ File: file-3
 +++ b/file:///root/file-3
 @@ -1,0 +1,1 @@
 +edit-3
-End of recent edits\n`.replace(/\n {12}/g, '\n')
+End of recent edits\n`.replace(/\n {12}/g, '\n'),
 		);
 	});
 
@@ -272,12 +335,14 @@ End of recent edits\n`.replace(/\n {12}/g, '\n')
 		mockRecentEditsProvider.config.maxFiles = 5;
 		mockRecentEditsProvider.config.activeDocDistanceLimitFromCursor = 3;
 
-		const tdm = accessor.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager;
+		const tdm = accessor.get(
+			ICompletionsTextDocumentManagerService,
+		) as TestTextDocumentManager;
 		tdm.init([{ uri: 'file:///root/' }]);
 		const doc = tdm.setTextDocument(
 			'file:///root/relative/main.ts',
 			'typescript',
-			'function hello() {\n  return "world";\n}\n|'
+			'function hello() {\n  return "world";\n}\n|',
 		);
 
 		const fakeHunk: RecentEdit = {
@@ -315,7 +380,7 @@ End of recent edits\n`.replace(/\n {12}/g, '\n')
 			edit,
 			filterByCursorLine,
 			cursorLine,
-			activeDocDistanceLimitFromCursor
+			activeDocDistanceLimitFromCursor,
 		);
 		assert.strictEqual(editTooClose, true);
 
@@ -325,14 +390,19 @@ End of recent edits\n`.replace(/\n {12}/g, '\n')
 			edit,
 			filterByCursorLine,
 			cursorLine,
-			activeDocDistanceLimitFromCursor
+			activeDocDistanceLimitFromCursor,
 		);
 		assert.strictEqual(editTooClose2, true);
 
 		filterByCursorLine = false;
 		assert.strictEqual(
-			editIsTooCloseToCursor(edit, filterByCursorLine, cursorLine, activeDocDistanceLimitFromCursor),
-			false
+			editIsTooCloseToCursor(
+				edit,
+				filterByCursorLine,
+				cursorLine,
+				activeDocDistanceLimitFromCursor,
+			),
+			false,
 		);
 	});
 
@@ -343,18 +413,20 @@ End of recent edits\n`.replace(/\n {12}/g, '\n')
 		mockRecentEditsProvider.config.summarizationFormat = 'diff';
 		mockRecentEditsProvider.config.maxFiles = 5;
 
-		const tdm = accessor.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager;
+		const tdm = accessor.get(
+			ICompletionsTextDocumentManagerService,
+		) as TestTextDocumentManager;
 		tdm.init([{ uri: 'file:///root/' }]);
 
 		const doc = tdm.setTextDocument(
 			'file:///root/relative/main.ts',
 			'typescript',
-			'function hello() {\n  return "world";\n}\n|'
+			'function hello() {\n  return "world";\n}\n|',
 		);
 		const excludedDoc = tdm.setTextDocument(
 			'file:///root/relative/excluded.ts',
 			'typescript',
-			'function excluded() {\n  return "excluded";\n}\n|'
+			'function excluded() {\n  return "excluded";\n}\n|',
 		);
 
 		ignoreService.setBlockListUris([excludedDoc.uri]);
@@ -398,18 +470,36 @@ End of recent edits\n`.replace(/\n {12}/g, '\n')
 		mockRecentEditsProvider.getRecentEdits = () => fakeEdits;
 
 		const snapshot = await createSnapshot(accessor, doc, '|');
-		const text = querySnapshot(snapshot, 'RecentEdits.Chunk.Text') as string;
+		const text = querySnapshot(
+			snapshot,
+			'RecentEdits.Chunk.Text',
+		) as string;
 
-		assert.ok(text.includes('These are recently edited files. Do not suggest code that has been deleted.'));
+		assert.ok(
+			text.includes(
+				'These are recently edited files. Do not suggest code that has been deleted.',
+			),
+		);
 		assert.ok(text.includes('File: relative/main.ts'));
 		assert.ok(!text.includes('File: relative/excluded.ts'));
 	});
 
-	async function createSnapshot(accessor: ServicesAccessor, doc: CompletionRequestDocument, marker: string) {
+	async function createSnapshot(
+		accessor: ServicesAccessor,
+		doc: CompletionRequestDocument,
+		marker: string,
+	) {
 		const position = doc.positionAt(doc.getText().indexOf(marker));
 		const tdms = accessor.get(ICompletionsTextDocumentManagerService);
-		const recentEditsProvider = accessor.get(ICompletionsRecentEditsProviderService);
-		const virtualPrompt = new VirtualPrompt(<RecentEdits tdms={tdms} recentEditsProvider={recentEditsProvider} />);
+		const recentEditsProvider = accessor.get(
+			ICompletionsRecentEditsProviderService,
+		);
+		const virtualPrompt = new VirtualPrompt(
+			<RecentEdits
+				tdms={tdms}
+				recentEditsProvider={recentEditsProvider}
+			/>,
+		);
 		const pipe = virtualPrompt.createPipe();
 		await pipe.pump(createCompletionRequestData(accessor, doc, position));
 		return virtualPrompt.snapshot().snapshot!;

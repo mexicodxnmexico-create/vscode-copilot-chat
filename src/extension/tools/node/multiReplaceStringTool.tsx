@@ -13,7 +13,10 @@ import { CellOrNotebookEdit } from '../../prompts/node/codeMapper/codeMapper';
 import { ToolName } from '../common/toolNames';
 import { ToolRegistry } from '../common/toolsRegistry';
 import { formatUriForFileWidget } from '../common/toolUtils';
-import { AbstractReplaceStringTool, IAbstractReplaceStringInput } from './abstractReplaceStringTool';
+import {
+	AbstractReplaceStringTool,
+	IAbstractReplaceStringInput,
+} from './abstractReplaceStringTool';
 
 export interface IMultiReplaceStringToolParams {
 	explanation: string;
@@ -23,22 +26,33 @@ export interface IMultiReplaceStringToolParams {
 export class MultiReplaceStringTool extends AbstractReplaceStringTool<IMultiReplaceStringToolParams> {
 	public static toolName = ToolName.MultiReplaceString;
 
-	protected extractReplaceInputs(input: IMultiReplaceStringToolParams): IAbstractReplaceStringInput[] {
-		return input.replacements.map(r => ({
+	protected extractReplaceInputs(
+		input: IMultiReplaceStringToolParams,
+	): IAbstractReplaceStringInput[] {
+		return input.replacements.map((r) => ({
 			filePath: r.filePath,
 			oldString: r.oldString,
 			newString: r.newString,
 		}));
 	}
 
-	async handleToolStream(options: vscode.LanguageModelToolInvocationStreamOptions<IMultiReplaceStringToolParams>, _token: vscode.CancellationToken): Promise<vscode.LanguageModelToolStreamResult> {
-		const partialInput = options.rawInput as Partial<IMultiReplaceStringToolParams> | undefined;
+	async handleToolStream(
+		options: vscode.LanguageModelToolInvocationStreamOptions<IMultiReplaceStringToolParams>,
+		_token: vscode.CancellationToken,
+	): Promise<vscode.LanguageModelToolStreamResult> {
+		const partialInput = options.rawInput as
+			| Partial<IMultiReplaceStringToolParams>
+			| undefined;
 
 		let invocationMessage: MarkdownString;
-		if (partialInput && typeof partialInput === 'object' && Array.isArray(partialInput.replacements)) {
+		if (
+			partialInput &&
+			typeof partialInput === 'object' &&
+			Array.isArray(partialInput.replacements)
+		) {
 			// Filter to valid replacements that have at least oldString
 			const validReplacements = partialInput.replacements.filter(
-				r => r && typeof r === 'object' && r.oldString !== undefined
+				(r) => r && typeof r === 'object' && r.oldString !== undefined,
 			);
 
 			if (validReplacements.length > 0) {
@@ -53,22 +67,39 @@ export class MultiReplaceStringTool extends AbstractReplaceStringTool<IMultiRepl
 						hasNewString = true;
 						totalNewLines += count(r.newString, '\n') + 1;
 					}
-					const uri = r.filePath && this.promptPathRepresentationService.resolveFilePath(r.filePath);
+					const uri =
+						r.filePath &&
+						this.promptPathRepresentationService.resolveFilePath(
+							r.filePath,
+						);
 					if (uri) {
 						fileNames.add(uri);
 					}
 				}
 
-				const fileList = fileNames.size > 0 ? Array.from(fileNames, n => formatUriForFileWidget(n)).join(', ') : undefined;
+				const fileList =
+					fileNames.size > 0
+						? Array.from(fileNames, (n) =>
+								formatUriForFileWidget(n),
+						).join(', ')
+						: undefined;
 
 				if (hasNewString && fileList) {
-					invocationMessage = new MarkdownString(l10n.t`Replacing ${totalOldLines} lines with ${totalNewLines} lines in ${fileList}`);
+					invocationMessage = new MarkdownString(
+						l10n.t`Replacing ${totalOldLines} lines with ${totalNewLines} lines in ${fileList}`,
+					);
 				} else if (hasNewString) {
-					invocationMessage = new MarkdownString(l10n.t`Replacing ${totalOldLines} lines with ${totalNewLines} lines`);
+					invocationMessage = new MarkdownString(
+						l10n.t`Replacing ${totalOldLines} lines with ${totalNewLines} lines`,
+					);
 				} else if (fileList) {
-					invocationMessage = new MarkdownString(l10n.t`Replacing ${totalOldLines} lines in ${fileList}`);
+					invocationMessage = new MarkdownString(
+						l10n.t`Replacing ${totalOldLines} lines in ${fileList}`,
+					);
 				} else {
-					invocationMessage = new MarkdownString(l10n.t`Replacing ${totalOldLines} lines`);
+					invocationMessage = new MarkdownString(
+						l10n.t`Replacing ${totalOldLines} lines`,
+					);
 				}
 			} else {
 				invocationMessage = new MarkdownString(l10n.t`Editing files`);
@@ -80,8 +111,14 @@ export class MultiReplaceStringTool extends AbstractReplaceStringTool<IMultiRepl
 		return { invocationMessage };
 	}
 
-	async invoke(options: vscode.LanguageModelToolInvocationOptions<IMultiReplaceStringToolParams>, token: vscode.CancellationToken) {
-		if (!options.input.replacements || !Array.isArray(options.input.replacements)) {
+	async invoke(
+		options: vscode.LanguageModelToolInvocationOptions<IMultiReplaceStringToolParams>,
+		token: vscode.CancellationToken,
+	) {
+		if (
+			!options.input.replacements ||
+			!Array.isArray(options.input.replacements)
+		) {
 			throw new Error('Invalid input, no replacements array');
 		}
 
@@ -113,16 +150,19 @@ export class MultiReplaceStringTool extends AbstractReplaceStringTool<IMultiRepl
 				"individualEdits": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "The number of individual text edits made.", "isMeasurement": true }
 			}
 		*/
-		this.telemetryService.sendMSFTTelemetryEvent('multiStringReplaceCall', {
-			requestId: this._promptContext?.requestId,
-			model: await this.modelForTelemetry(options),
-		}, {
-			successes,
-			failures,
-			individualEdits,
-			uniqueUris: uniqueUris.size,
-		});
-
+		this.telemetryService.sendMSFTTelemetryEvent(
+			'multiStringReplaceCall',
+			{
+				requestId: this._promptContext?.requestId,
+				model: await this.modelForTelemetry(options),
+			},
+			{
+				successes,
+				failures,
+				individualEdits,
+				uniqueUris: uniqueUris.size,
+			},
+		);
 
 		for (let i = 0; i < prepared.length; i++) {
 			const e1 = prepared[i];
@@ -138,7 +178,12 @@ export class MultiReplaceStringTool extends AbstractReplaceStringTool<IMultiRepl
 				const e2 = prepared[k];
 				// Merge successful edits of the same type and URI so that edits come in
 				// a single correct batch and positions aren't later clobbered.
-				if (!e2.generatedEdit.success || e2.uri.toString() !== e1.uri.toString() || (!!e2.generatedEdit.notebookEdits !== !!e1.generatedEdit.notebookEdits)) {
+				if (
+					!e2.generatedEdit.success ||
+					e2.uri.toString() !== e1.uri.toString() ||
+					!!e2.generatedEdit.notebookEdits !==
+						!!e1.generatedEdit.notebookEdits
+				) {
 					continue;
 				}
 
@@ -146,9 +191,15 @@ export class MultiReplaceStringTool extends AbstractReplaceStringTool<IMultiRepl
 				k--;
 
 				if (e2.generatedEdit.notebookEdits) {
-					e1.generatedEdit.notebookEdits = mergeNotebookAndTextEdits(e1.generatedEdit.notebookEdits!, e2.generatedEdit.notebookEdits);
+					e1.generatedEdit.notebookEdits = mergeNotebookAndTextEdits(
+						e1.generatedEdit.notebookEdits!,
+						e2.generatedEdit.notebookEdits,
+					);
 				} else {
-					e1.generatedEdit.textEdits = e1.generatedEdit.textEdits.concat(e2.generatedEdit.textEdits);
+					e1.generatedEdit.textEdits =
+						e1.generatedEdit.textEdits.concat(
+							e2.generatedEdit.textEdits,
+						);
 					e1.generatedEdit.textEdits.sort(textEditSorter);
 				}
 			}
@@ -165,14 +216,20 @@ export class MultiReplaceStringTool extends AbstractReplaceStringTool<IMultiRepl
 ToolRegistry.registerTool(MultiReplaceStringTool);
 
 function textEditSorter(a: vscode.TextEdit, b: vscode.TextEdit) {
-	return b.range.end.compareTo(a.range.end) || b.range.start.compareTo(a.range.start);
+	return (
+		b.range.end.compareTo(a.range.end) ||
+		b.range.start.compareTo(a.range.start)
+	);
 }
 
 /**
  * Merge two arrays of notebook edits or text edits grouped by URI.
  * Text edits for the same URI are concatenated and sorted in reverse file order (descending by start position).
  */
-function mergeNotebookAndTextEdits(left: CellOrNotebookEdit[], right: CellOrNotebookEdit[]): CellOrNotebookEdit[] {
+function mergeNotebookAndTextEdits(
+	left: CellOrNotebookEdit[],
+	right: CellOrNotebookEdit[],
+): CellOrNotebookEdit[] {
 	const notebookEdits: vscode.NotebookEdit[] = [];
 	const textEditsByUri = new ResourceMap<vscode.TextEdit[]>();
 

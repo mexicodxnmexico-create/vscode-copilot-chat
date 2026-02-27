@@ -96,7 +96,11 @@ const EditForm: React.FC<EditFormProps> = ({ storyUid, edit: initialEdit }) => {
 					placeholder="Enter your prompt here..."
 					disabled={isLoading}
 				/>
-				<button type="submit" className={`mt-2 p-2 text-white rounded ${isLoading ? 'bg-gray-400' : 'bg-blue-500'}`} disabled={isLoading}>
+				<button
+					type="submit"
+					className={`mt-2 p-2 text-white rounded ${isLoading ? 'bg-gray-400' : 'bg-blue-500'}`}
+					disabled={isLoading}
+				>
 					{isLoading ? 'Submitting...' : 'Submit'}
 				</button>
 			</form>
@@ -105,10 +109,18 @@ const EditForm: React.FC<EditFormProps> = ({ storyUid, edit: initialEdit }) => {
 					<div className="flex justify-between items-baseline mt-4">
 						<h2 className="text-xl font-bold">Suggestions</h2>
 						<div className="flex space-x-2">
-							<button onClick={handleAcceptEdits} className={`px-2 text-white rounded ${isAccepting ? 'bg-gray-400' : 'bg-green-500'}`} disabled={isAccepting}>
+							<button
+								onClick={handleAcceptEdits}
+								className={`px-2 text-white rounded ${isAccepting ? 'bg-gray-400' : 'bg-green-500'}`}
+								disabled={isAccepting}
+							>
 								{isAccepting ? 'Accepting...' : 'Accept'}
 							</button>
-							<button onClick={handleDiscardEdits} className={`px-2 text-white rounded ${isDiscarding ? 'bg-gray-400' : 'bg-red-500'}`} disabled={isDiscarding}>
+							<button
+								onClick={handleDiscardEdits}
+								className={`px-2 text-white rounded ${isDiscarding ? 'bg-gray-400' : 'bg-red-500'}`}
+								disabled={isDiscarding}
+							>
 								{isDiscarding ? 'Discarding...' : 'Discard'}
 							</button>
 						</div>
@@ -117,29 +129,53 @@ const EditForm: React.FC<EditFormProps> = ({ storyUid, edit: initialEdit }) => {
 						<ul className="list-disc ml-4">
 							{edit.operations.map((suggestion, idx) => (
 								<li key={idx} className="mt-1">
-									<a href={`#edit-${idx}`} onMouseOver={() => {
-										const element = document.querySelector(`[name=edit-${idx}]`);
-										console.log(element);
+									<a
+										href={`#edit-${idx}`}
+										onMouseOver={() => {
+											const element =
+												document.querySelector(
+													`[name=edit-${idx}]`,
+												);
+											console.log(element);
 
-										element?.classList.add('bg-red-100');
-										element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-									}}
-										onMouseOut={() => {
-											document.querySelector(`[name=edit-${idx}]`)?.classList.remove('bg-red-100');
+											element?.classList.add(
+												'bg-red-100',
+											);
+											element?.scrollIntoView({
+												behavior: 'smooth',
+												block: 'center',
+											});
 										}}
-										className="font-medium">{suggestion.type}</a> at line {suggestion.line + 1}
+										onMouseOut={() => {
+											document
+												.querySelector(
+													`[name=edit-${idx}]`,
+												)
+												?.classList.remove(
+													'bg-red-100',
+												);
+										}}
+										className="font-medium"
+									>
+										{suggestion.type}
+									</a>{' '}
+									at line {suggestion.line + 1}
 									{suggestion.text && (
 										<span>: {suggestion.text}</span>
 									)}
 								</li>
 							))}
 						</ul>
-						<h3 className="mt-4 text-lg font-bold">Follow-up Suggestions</h3>
+						<h3 className="mt-4 text-lg font-bold">
+							Follow-up Suggestions
+						</h3>
 						<ul className="ml-4">
 							{edit.followup.map((followup, idx) => (
 								<li key={idx} className="mt-1">
 									<button
-										onClick={() => handleFollowupClick(followup)}
+										onClick={() =>
+											handleFollowupClick(followup)
+										}
 										className="text-white text-sm rounded-full"
 									>
 										{followup}

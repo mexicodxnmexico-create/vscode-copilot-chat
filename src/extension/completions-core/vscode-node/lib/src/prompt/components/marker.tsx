@@ -5,8 +5,15 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource ../../../../prompt/jsx-runtime/ */
 
-import { ComponentContext, PromptElementProps, Text } from '../../../../prompt/src/components/components';
-import { getLanguageMarker, getPathMarker } from '../../../../prompt/src/languageMarker';
+import {
+	ComponentContext,
+	PromptElementProps,
+	Text,
+} from '../../../../prompt/src/components/components';
+import {
+	getLanguageMarker,
+	getPathMarker,
+} from '../../../../prompt/src/languageMarker';
 import { DocumentInfo } from '../../../../prompt/src/prompt';
 import { ICompletionsTextDocumentManagerService } from '../../textDocumentManager';
 import {
@@ -18,10 +25,14 @@ type DocumentMarkerProps = {
 	tdms: ICompletionsTextDocumentManagerService;
 } & PromptElementProps;
 
-export const DocumentMarker = (props: DocumentMarkerProps, context: ComponentContext) => {
-	const [document, setDocument] = context.useState<CompletionRequestDocument>();
+export const DocumentMarker = (
+	props: DocumentMarkerProps,
+	context: ComponentContext,
+) => {
+	const [document, setDocument] =
+		context.useState<CompletionRequestDocument>();
 
-	context.useData(isCompletionRequestData, request => {
+	context.useData(isCompletionRequestData, (request) => {
 		if (request.document.uri !== document?.uri) {
 			setDocument(request.document);
 		}

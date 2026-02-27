@@ -24,10 +24,16 @@ type Props = {
 
 const LINE_HEIGHT = 19;
 
-export const DiffEditor = (({ original, modified, languageId, diagnostics, selections }: Props) => {
-
+export const DiffEditor = ({
+	original,
+	modified,
+	languageId,
+	diagnostics,
+	selections,
+}: Props) => {
 	const containerRef = React.useRef<HTMLDivElement | null>(null);
-	const [diffEditor, setDiffEditor] = React.useState<monaco.editor.IStandaloneDiffEditor | null>(null);
+	const [diffEditor, setDiffEditor] =
+		React.useState<monaco.editor.IStandaloneDiffEditor | null>(null);
 	const [height, setHeight] = React.useState<number>(300);
 	const [altPressed, setAltPressed] = React.useState(false);
 
@@ -50,7 +56,7 @@ export const DiffEditor = (({ original, modified, languageId, diagnostics, selec
 			diffWordWrap: 'off',
 			scrollbar: {
 				alwaysConsumeMouseWheel: true, // setting to false allows scrolling in window when scroll reaches end of the editor
-			}
+			},
 		});
 		setDiffEditor(myEditor);
 
@@ -69,7 +75,8 @@ export const DiffEditor = (({ original, modified, languageId, diagnostics, selec
 		if (diffEditor) {
 			let model = diffEditor.getModel();
 			if (model) {
-				const { original: originalModel, modified: modifiedModel } = model;
+				const { original: originalModel, modified: modifiedModel } =
+					model;
 				originalModel.setValue(original);
 				monaco.editor.setModelLanguage(originalModel, languageId);
 				modifiedModel.setValue(modified);
@@ -82,8 +89,24 @@ export const DiffEditor = (({ original, modified, languageId, diagnostics, selec
 			}
 
 			if (diagnostics) {
-				diffEditor.getModifiedEditor().createDecorationsCollection().set(createDiagnosticDecorations(diagnostics.after, model.modified));
-				diffEditor.getOriginalEditor().createDecorationsCollection().set(createDiagnosticDecorations(diagnostics.before, model.original));
+				diffEditor
+					.getModifiedEditor()
+					.createDecorationsCollection()
+					.set(
+						createDiagnosticDecorations(
+							diagnostics.after,
+							model.modified,
+						),
+					);
+				diffEditor
+					.getOriginalEditor()
+					.createDecorationsCollection()
+					.set(
+						createDiagnosticDecorations(
+							diagnostics.before,
+							model.original,
+						),
+					);
 			}
 
 			if (selections) {
@@ -99,7 +122,9 @@ export const DiffEditor = (({ original, modified, languageId, diagnostics, selec
 
 			// Navigate to first diff
 			diffEditor.onDidUpdateDiff(() => {
-				if (diffEditor === null) { return; }
+				if (diffEditor === null) {
+					return;
+				}
 
 				const changes = diffEditor.getLineChanges();
 				if (changes === null || changes.length === 0) {
@@ -107,7 +132,12 @@ export const DiffEditor = (({ original, modified, languageId, diagnostics, selec
 				}
 
 				const change = changes[0];
-				diffEditor.getModifiedEditor().revealLinesInCenter(change.modifiedStartLineNumber, change.modifiedEndLineNumber);
+				diffEditor
+					.getModifiedEditor()
+					.revealLinesInCenter(
+						change.modifiedStartLineNumber,
+						change.modifiedEndLineNumber,
+					);
 			});
 		}
 	}, [diffEditor, original, modified, languageId, diagnostics, selections]);
@@ -142,14 +172,22 @@ export const DiffEditor = (({ original, modified, languageId, diagnostics, selec
 
 	return (
 		<div>
-			<div className='file-editor-container' style={{ height: `${height}px`, position: 'relative' }} ref={containerRef}>
+			<div
+				className="file-editor-container"
+				style={{ height: `${height}px`, position: 'relative' }}
+				ref={containerRef}
+			>
 				<div
-					className='overlay'
+					className="overlay"
 					style={{
-						position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+						position: 'absolute',
+						top: 0,
+						left: 0,
+						right: 0,
+						bottom: 0,
 						pointerEvents: altPressed ? 'auto' : 'none',
 						backgroundColor: 'transparent',
-						zIndex: 1000
+						zIndex: 1000,
 					}}
 					onWheel={handleWheel}
 				/>
@@ -157,4 +195,4 @@ export const DiffEditor = (({ original, modified, languageId, diagnostics, selec
 			<DraggableBottomBorder height={height} setHeight={setHeight} />
 		</div>
 	);
-});
+};

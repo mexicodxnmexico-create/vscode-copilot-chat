@@ -18,11 +18,21 @@ export class GitChanges extends PromptElement<GitChangesProps> {
 			<>
 				{this.props.diffs.map((diff) => (
 					<>
-						<FileVariable passPriority={true} variableName={basename(diff.uri.toString())} variableValue={diff.uri} filePathMode={FilePathMode.AsComment} omitReferences />
-						<UnsafeCodeBlock passPriority={true} code={diff.diff} languageId='diff' /><br />
+						<FileVariable
+							passPriority={true}
+							variableName={basename(diff.uri.toString())}
+							variableValue={diff.uri}
+							filePathMode={FilePathMode.AsComment}
+							omitReferences
+						/>
+						<UnsafeCodeBlock
+							passPriority={true}
+							code={diff.diff}
+							languageId="diff"
+						/>
+						<br />
 					</>
 				))}
-
 			</>
 		);
 	}

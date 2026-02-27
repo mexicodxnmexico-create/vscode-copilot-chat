@@ -3,8 +3,23 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Badge, BadgeProps, CounterBadge, Text, Tooltip, Tree, TreeItem, TreeItemLayout } from '@fluentui/react-components';
-import { ArrowRight16Regular, Checkmark20Filled, DatabaseWarning20Regular, Dismiss20Filled, FluentIconsProps } from '@fluentui/react-icons';
+import {
+	Badge,
+	BadgeProps,
+	CounterBadge,
+	Text,
+	Tooltip,
+	Tree,
+	TreeItem,
+	TreeItemLayout,
+} from '@fluentui/react-components';
+import {
+	ArrowRight16Regular,
+	Checkmark20Filled,
+	DatabaseWarning20Regular,
+	Dismiss20Filled,
+	FluentIconsProps,
+} from '@fluentui/react-icons';
 import * as mobx from 'mobx';
 import * as mobxlite from 'mobx-react-lite';
 import * as React from 'react';
@@ -29,154 +44,245 @@ type Props = {
 	readonly displayOptions: DisplayOptions;
 };
 
-export const TestView = mobxlite.observer(({ test, runner, runnerOptions, nesExternalOptions, testSource, displayOptions }: Props) => {
+export const TestView = mobxlite.observer(
+	({
+		test,
+		runner,
+		runnerOptions,
+		nesExternalOptions,
+		testSource,
+		displayOptions,
+	}: Props) => {
+		// Set the default open status for test runs. If there is is only one test run, the open status is `true`.
+		// Otherwise, they are `false`.
+		const [isTestRunOpen, setIsTestRunOpen] = React.useState(
+			new Array(test.runnerStatus?.runs.length).fill(
+				test.runnerStatus?.runs.length === 1 ? true : false,
+			),
+		);
+		const [highlightedIndices, setHighlightedIndices] = React.useState<
+			boolean[]
+		>(new Array(test.runnerStatus?.runs.length).fill(false));
 
-	// Set the default open status for test runs. If there is is only one test run, the open status is `true`.
-	// Otherwise, they are `false`.
-	const [isTestRunOpen, setIsTestRunOpen] = React.useState(new Array(test.runnerStatus?.runs.length).fill(test.runnerStatus?.runs.length === 1 ? true : false));
-	const [highlightedIndices, setHighlightedIndices] = React.useState<boolean[]>(new Array(test.runnerStatus?.runs.length).fill(false));
+		const { showMenu } = useContextMenu();
 
-	const { showMenu } = useContextMenu();
+		// Add a ref to store the test item elements
+		const testItemRefs = React.useRef<HTMLDivElement[]>([]);
 
-	// Add a ref to store the test item elements
-	const testItemRefs = React.useRef<HTMLDivElement[]>([]);
+		const updateNth = (n: number, value: boolean) => {
+			const copy = Array.from(isTestRunOpen);
+			copy[n] = value;
+			setIsTestRunOpen(copy);
+		};
 
-	const updateNth = (n: number, value: boolean) => {
-		const copy = Array.from(isTestRunOpen);
-		copy[n] = value;
-		setIsTestRunOpen(copy);
-	};
+		const closeTestRunView = (idx: number) => {
+			updateNth(idx, false);
+			const copy = Array.from(highlightedIndices);
+			copy[idx] = true;
+			setHighlightedIndices(copy);
+		};
 
-	const closeTestRunView = (idx: number) => {
-		updateNth(idx, false);
-		const copy = Array.from(highlightedIndices);
-		copy[idx] = true;
-		setHighlightedIndices(copy);
-	};
+		React.useEffect(() => {
+			const timeoutId = highlightedIndices.includes(true)
+				? setTimeout(() => {
+						setHighlightedIndices(
+							new Array(test.runnerStatus?.runs.length).fill(
+								false,
+							),
+						);
+					}, 1000)
+				: undefined;
 
-	React.useEffect(() => {
-		const timeoutId = highlightedIndices.includes(true)
-			? setTimeout(() => {
-				setHighlightedIndices(new Array(test.runnerStatus?.runs.length).fill(false));
-			}, 1000)
-			: undefined;
+			return () => timeoutId && clearTimeout(timeoutId);
+		}, [highlightedIndices, test.runnerStatus?.runs.length]);
 
-		return () => timeoutId && clearTimeout(timeoutId);
-	}, [highlightedIndices, test.runnerStatus?.runs.length]);
-
-	const testNameContextMenuEntries = (testName: string) => [
-		{
-			label: `Run test`,
-			onClick: () => runner.startRunning({
-				grep: `${testName}`,
-				cacheMode: runnerOptions.cacheMode.value,
-				n: parseInt(runnerOptions.n.value),
-				noFetch: runnerOptions.noFetch.value,
-				additionalArgs: runnerOptions.additionalArgs.value,
-				nesExternalScenariosPath: testSource.value === TestSource.NesExternal ? nesExternalOptions.externalScenariosPath.value || undefined : undefined,
-			}),
-		},
-		{
-			label: `Run test (grep update)`,
-			onClick: () => {
-				mobx.runInAction(() => runnerOptions.grep.value = testName);
-				runner.startRunning({
-					grep: testName,
-					cacheMode: runnerOptions.cacheMode.value,
-					n: parseInt(runnerOptions.n.value),
-					noFetch: runnerOptions.noFetch.value,
-					additionalArgs: runnerOptions.additionalArgs.value,
-					nesExternalScenariosPath: testSource.value === TestSource.NesExternal ? nesExternalOptions.externalScenariosPath.value || undefined : undefined,
-				});
+		const testNameContextMenuEntries = (testName: string) => [
+			{
+				label: `Run test`,
+				onClick: () =>
+					runner.startRunning({
+						grep: `${testName}`,
+						cacheMode: runnerOptions.cacheMode.value,
+						n: parseInt(runnerOptions.n.value),
+						noFetch: runnerOptions.noFetch.value,
+						additionalArgs: runnerOptions.additionalArgs.value,
+						nesExternalScenariosPath:
+							testSource.value === TestSource.NesExternal
+								? nesExternalOptions.externalScenariosPath
+									.value || undefined
+								: undefined,
+					}),
 			},
-		},
-		{
-			label: `Run test once`,
-			onClick: () => runner.startRunning({
-				grep: `${testName}`,
-				cacheMode: runnerOptions.cacheMode.value,
-				n: 1,
-				noFetch: runnerOptions.noFetch.value,
-				additionalArgs: runnerOptions.additionalArgs.value,
-				nesExternalScenariosPath: testSource.value === TestSource.NesExternal ? nesExternalOptions.externalScenariosPath.value || undefined : undefined,
-			}),
-		},
-		{
-			label: 'Copy full test name',
-			onClick: () => navigator.clipboard.writeText(testName),
-		}
-	];
+			{
+				label: `Run test (grep update)`,
+				onClick: () => {
+					mobx.runInAction(
+						() => (runnerOptions.grep.value = testName),
+					);
+					runner.startRunning({
+						grep: testName,
+						cacheMode: runnerOptions.cacheMode.value,
+						n: parseInt(runnerOptions.n.value),
+						noFetch: runnerOptions.noFetch.value,
+						additionalArgs: runnerOptions.additionalArgs.value,
+						nesExternalScenariosPath:
+							testSource.value === TestSource.NesExternal
+								? nesExternalOptions.externalScenariosPath
+									.value || undefined
+								: undefined,
+					});
+				},
+			},
+			{
+				label: `Run test once`,
+				onClick: () =>
+					runner.startRunning({
+						grep: `${testName}`,
+						cacheMode: runnerOptions.cacheMode.value,
+						n: 1,
+						noFetch: runnerOptions.noFetch.value,
+						additionalArgs: runnerOptions.additionalArgs.value,
+						nesExternalScenariosPath:
+							testSource.value === TestSource.NesExternal
+								? nesExternalOptions.externalScenariosPath
+									.value || undefined
+								: undefined,
+					}),
+			},
+			{
+				label: 'Copy full test name',
+				onClick: () => navigator.clipboard.writeText(testName),
+			},
+		];
 
-	return (
-		<TreeItem itemType={'branch'} className='test-runs-container'>
-			<TreeItemLayout className='test-renderer'
-				iconBefore={<StatusIcon runner={runner} runnerOptions={runnerOptions} test={test} />}
-				iconAfter={test.runnerStatus && <RunsSummaryBadge runs={test.runnerStatus.runs} />}
-				onAuxClick={(e) => showMenu(e, testNameContextMenuEntries(test.name))}
-			>
-				<Score test={test} />
-				{displayOptions.testsKind.value === 'suiteList' ? null : <Text weight='semibold'>{test.suiteName}</Text>}
-				<Text>{test.suiteName ? test.name.replace(test.suiteName, '') : test.name}</Text>
-			</TreeItemLayout>
-			<Tree>
-				{
-					test.runnerStatus === undefined
-						? (
-							<TreeItem itemType='leaf'>
-								<TreeItemLayout> Test doesn't have run info. Have you run the test? </TreeItemLayout>
-							</TreeItem>
+		return (
+			<TreeItem itemType={'branch'} className="test-runs-container">
+				<TreeItemLayout
+					className="test-renderer"
+					iconBefore={
+						<StatusIcon
+							runner={runner}
+							runnerOptions={runnerOptions}
+							test={test}
+						/>
+					}
+					iconAfter={
+						test.runnerStatus && (
+							<RunsSummaryBadge runs={test.runnerStatus.runs} />
 						)
-						: <>
-							{test.activeEditorLangId &&
-								<TreeItem itemType='leaf'>
+					}
+					onAuxClick={(e) =>
+						showMenu(e, testNameContextMenuEntries(test.name))
+					}
+				>
+					<Score test={test} />
+					{displayOptions.testsKind.value === 'suiteList' ? null : (
+						<Text weight="semibold">{test.suiteName}</Text>
+					)}
+					<Text>
+						{test.suiteName
+							? test.name.replace(test.suiteName, '')
+							: test.name}
+					</Text>
+				</TreeItemLayout>
+				<Tree>
+					{test.runnerStatus === undefined ? (
+						<TreeItem itemType="leaf">
+							<TreeItemLayout>
+								{' '}
+								Test doesn't have run info. Have you run the
+								test?{' '}
+							</TreeItemLayout>
+						</TreeItem>
+					) : (
+						<>
+							{test.activeEditorLangId && (
+								<TreeItem itemType="leaf">
 									<TreeItemLayout>
 										Language: {test.activeEditorLangId}
 									</TreeItemLayout>
 								</TreeItem>
-							}
-							{test.runnerStatus.runs.map(
-								(run, idx) => {
-									const key = `${test.name}-${idx}`;
-									const baseline = test.baseline?.runs[idx];
-									return (
-										// Wrap each TreeItem in a div and assign a ref
-										<div key={key} ref={el => testItemRefs.current[idx] = el!}>
-											<TreeItem
-												itemType='branch'
-												open={isTestRunOpen[idx]}
-												onOpenChange={() => updateNth(idx, !isTestRunOpen[idx])}
-											>
-												<TreeItemLayout
-													className={highlightedIndices[idx] ? 'fade-out-background' : undefined}
-													iconBefore={run.explicitScore === undefined ? undefined : <Badge title='Test Run Score (range [0, 1])' color='informative' size='small'>{run.explicitScore}</Badge>}
-													iconAfter={<RunSummaryBadge run={run} baseline={baseline} />}
-												>
-													Test Run # {idx + 1}
-												</TreeItemLayout>
-												<Tree>
-													<TreeItem itemType='leaf'>
-														<OpenInVSCodeButton test={test} />
-														<TestRunView
-															key={key}
-															test={test}
-															run={run}
-															baseline={baseline}
-															displayOptions={displayOptions}
-															closeTestRunView={() => closeTestRunView(idx)}
-														/>
-													</TreeItem>
-												</Tree>
-											</TreeItem>
-										</div>
-									);
-								}
 							)}
+							{test.runnerStatus.runs.map((run, idx) => {
+								const key = `${test.name}-${idx}`;
+								const baseline = test.baseline?.runs[idx];
+								return (
+									// Wrap each TreeItem in a div and assign a ref
+									<div
+										key={key}
+										ref={(el) =>
+											(testItemRefs.current[idx] = el!)
+										}
+									>
+										<TreeItem
+											itemType="branch"
+											open={isTestRunOpen[idx]}
+											onOpenChange={() =>
+												updateNth(
+													idx,
+													!isTestRunOpen[idx],
+												)
+											}
+										>
+											<TreeItemLayout
+												className={
+													highlightedIndices[idx]
+														? 'fade-out-background'
+														: undefined
+												}
+												iconBefore={
+													run.explicitScore ===
+													undefined ? undefined : (
+															<Badge
+																title="Test Run Score (range [0, 1])"
+																color="informative"
+																size="small"
+															>
+																{run.explicitScore}
+															</Badge>
+														)
+												}
+												iconAfter={
+													<RunSummaryBadge
+														run={run}
+														baseline={baseline}
+													/>
+												}
+											>
+												Test Run # {idx + 1}
+											</TreeItemLayout>
+											<Tree>
+												<TreeItem itemType="leaf">
+													<OpenInVSCodeButton
+														test={test}
+													/>
+													<TestRunView
+														key={key}
+														test={test}
+														run={run}
+														baseline={baseline}
+														displayOptions={
+															displayOptions
+														}
+														closeTestRunView={() =>
+															closeTestRunView(
+																idx,
+															)
+														}
+													/>
+												</TreeItem>
+											</Tree>
+										</TreeItem>
+									</div>
+								);
+							})}
 						</>
-				}
-			</Tree>
-		</TreeItem >
-	);
-});
+					)}
+				</Tree>
+			</TreeItem>
+		);
+	},
+);
 
 const redIconStyleProps: FluentIconsProps = {
 	primaryFill: 'red',
@@ -186,34 +292,59 @@ const greenIconStyleProps: FluentIconsProps = {
 	primaryFill: 'green',
 };
 
-const RunSummaryBadge = ({ run, baseline }: { run: TestRun; baseline: TestRun | undefined }) => (
+const RunSummaryBadge = ({
+	run,
+	baseline,
+}: {
+	run: TestRun;
+	baseline: TestRun | undefined;
+}) => (
 	<>
-		<RunAndBaselineOutcomeBadge run={run} baseline={baseline} /> {/* show a "X" icon if run validation function failed */}
-		<CacheMisses cacheMissCount={run.hasCacheMiss ? 1 : 0} /> {/* shows a "cache miss" icon if a cache miss happens */}
-		<TotalDuration title='Total request run duration' timeInMs={run.averageRequestDuration && run.requestCount ? run.averageRequestDuration * run.requestCount : undefined} />
+		<RunAndBaselineOutcomeBadge run={run} baseline={baseline} />{' '}
+		{/* show a "X" icon if run validation function failed */}
+		<CacheMisses cacheMissCount={run.hasCacheMiss ? 1 : 0} />{' '}
+		{/* shows a "cache miss" icon if a cache miss happens */}
+		<TotalDuration
+			title="Total request run duration"
+			timeInMs={
+				run.averageRequestDuration && run.requestCount
+					? run.averageRequestDuration * run.requestCount
+					: undefined
+			}
+		/>
 		<AnnotationBadges annotations={run.annotations} />
 	</>
 );
 
 const RunOutcomeBadge = ({ testRun }: { testRun: TestRun }) => {
-
 	let tooltipContent: string | undefined;
 
 	if (testRun.pass) {
 		tooltipContent = 'Test passed';
 	} else {
 		const errorFirstLine = testRun.error?.split('\n')[0];
-		tooltipContent = (errorFirstLine ?? testRun.error) ?? 'Error info missing';
+		tooltipContent =
+			errorFirstLine ?? testRun.error ?? 'Error info missing';
 	}
 
 	return (
 		<Tooltip content={tooltipContent} relationship={'description'}>
-			{testRun.pass ? <Checkmark20Filled {...greenIconStyleProps} /> : <Dismiss20Filled {...redIconStyleProps} />}
+			{testRun.pass ? (
+				<Checkmark20Filled {...greenIconStyleProps} />
+			) : (
+				<Dismiss20Filled {...redIconStyleProps} />
+			)}
 		</Tooltip>
 	);
 };
 
-const RunAndBaselineOutcomeBadge = ({ run, baseline }: { run: TestRun; baseline: TestRun | undefined }) => {
+const RunAndBaselineOutcomeBadge = ({
+	run,
+	baseline,
+}: {
+	run: TestRun;
+	baseline: TestRun | undefined;
+}) => {
 	if (baseline === undefined) {
 		if (run.pass) {
 			return null; // if test is passing, we don't need to show anything
@@ -231,7 +362,12 @@ const RunAndBaselineOutcomeBadge = ({ run, baseline }: { run: TestRun; baseline:
 			return (
 				<>
 					<RunOutcomeBadge testRun={baseline} />
-					<Tooltip content={'Left - outcome of "Compare against" run | Right - outcome of "Current run"'} relationship={'description'}>
+					<Tooltip
+						content={
+							'Left - outcome of "Compare against" run | Right - outcome of "Current run"'
+						}
+						relationship={'description'}
+					>
 						<ArrowRight16Regular />
 					</Tooltip>
 					<RunOutcomeBadge testRun={run} />
@@ -242,7 +378,9 @@ const RunAndBaselineOutcomeBadge = ({ run, baseline }: { run: TestRun; baseline:
 };
 
 const RunsSummaryBadge = ({ runs }: { runs: TestRun[] }) => {
-	let failingRunsCount = 0, cacheMissCount = 0, totalDurations = 0;
+	let failingRunsCount = 0,
+		cacheMissCount = 0,
+		totalDurations = 0;
 	const infos: OutputAnnotation[] = [];
 	for (const run of runs) {
 		if (!run.pass) {
@@ -251,7 +389,10 @@ const RunsSummaryBadge = ({ runs }: { runs: TestRun[] }) => {
 		if (run.hasCacheMiss) {
 			cacheMissCount++;
 		}
-		if (run.averageRequestDuration !== undefined && run.requestCount !== undefined) {
+		if (
+			run.averageRequestDuration !== undefined &&
+			run.requestCount !== undefined
+		) {
 			const totalDuration = run.averageRequestDuration * run.requestCount;
 			totalDurations += totalDuration;
 		}
@@ -260,28 +401,58 @@ const RunsSummaryBadge = ({ runs }: { runs: TestRun[] }) => {
 		}
 	}
 
-	return <>
-		{failingRunsCount ? <Dismiss20Filled {...redIconStyleProps} /> : null}
-		{failingRunsCount ? <CounterBadge count={failingRunsCount} color='danger' size='small' /> : null}
-		<CacheMisses cacheMissCount={cacheMissCount} />
-		{runs.length ? <TotalDuration title='Average request duration' timeInMs={totalDurations / runs.length} /> : null}
-		<AnnotationBadges annotations={infos} />
-	</>;
+	return (
+		<>
+			{failingRunsCount ? (
+				<Dismiss20Filled {...redIconStyleProps} />
+			) : null}
+			{failingRunsCount ? (
+				<CounterBadge
+					count={failingRunsCount}
+					color="danger"
+					size="small"
+				/>
+			) : null}
+			<CacheMisses cacheMissCount={cacheMissCount} />
+			{runs.length ? (
+				<TotalDuration
+					title="Average request duration"
+					timeInMs={totalDurations / runs.length}
+				/>
+			) : null}
+			<AnnotationBadges annotations={infos} />
+		</>
+	);
 };
 
-const AnnotationBadges = ({ annotations }: { annotations: OutputAnnotation[] }) => {
+const AnnotationBadges = ({
+	annotations,
+}: {
+	annotations: OutputAnnotation[];
+}) => {
 	if (annotations.length) {
 		const colors: Record<string, BadgeProps['color']> = {
-			'error': 'severe',
-			'warning': 'warning',
-			'info': 'informative',
+			error: 'severe',
+			warning: 'warning',
+			info: 'informative',
 		};
 		const annotationCounts = new Set<string>();
 		const badges: JSX.Element[] = [];
 		for (const info of annotations) {
 			if (!annotationCounts.has(info.label)) {
 				annotationCounts.add(info.label);
-				badges.push(<Badge key={info.label} title={info.message} color={colors[info.severity] ?? 'informative'} shape='square' appearance='outline' size='small'>{info.label}</Badge>);
+				badges.push(
+					<Badge
+						key={info.label}
+						title={info.message}
+						color={colors[info.severity] ?? 'informative'}
+						shape="square"
+						appearance="outline"
+						size="small"
+					>
+						{info.label}
+					</Badge>,
+				);
 			}
 		}
 		return <>{badges}</>;
@@ -291,14 +462,29 @@ const AnnotationBadges = ({ annotations }: { annotations: OutputAnnotation[] }) 
 
 const CacheMisses = ({ cacheMissCount }: { cacheMissCount: number }) => {
 	if (cacheMissCount > 0) {
-		return <DatabaseWarning20Regular primaryFill={'orange'} title={`${cacheMissCount} cache misses`} />;
+		return (
+			<DatabaseWarning20Regular
+				primaryFill={'orange'}
+				title={`${cacheMissCount} cache misses`}
+			/>
+		);
 	}
 	return null;
 };
 
-const TotalDuration = ({ timeInMs: timeInMillis, title }: { timeInMs: number | undefined; title: string }) => {
+const TotalDuration = ({
+	timeInMs: timeInMillis,
+	title,
+}: {
+	timeInMs: number | undefined;
+	title: string;
+}) => {
 	if (timeInMillis !== undefined) {
-		return <Badge title={title} color='informative' size='small'>{+((timeInMillis / 1000).toFixed(2))}s</Badge>;
+		return (
+			<Badge title={title} color="informative" size="small">
+				{+(timeInMillis / 1000).toFixed(2)}s
+			</Badge>
+		);
 	}
 	return null;
 };
@@ -315,8 +501,12 @@ const Score = mobxlite.observer(({ test }: { test: ISimulationTest }) => {
 
 	if (test.runnerStatus.runs.length < test.runnerStatus.expectedRuns) {
 		return (
-			<div className='test-score' title='# of runs completed (regardless of result) / # of total runs'>
-				{test.runnerStatus.runs.length} / {test.runnerStatus.expectedRuns}
+			<div
+				className="test-score"
+				title="# of runs completed (regardless of result) / # of total runs"
+			>
+				{test.runnerStatus.runs.length} /{' '}
+				{test.runnerStatus.expectedRuns}
 			</div>
 		);
 	}
@@ -328,22 +518,28 @@ const Score = mobxlite.observer(({ test }: { test: ISimulationTest }) => {
 	let explicitScoreTitle = 'Score set by test itself on some rubric';
 
 	if (runs.length > 0 && runs[0].explicitScore !== undefined) {
-
-		const testRunsScore = runs.reduce((acc, run) => (acc + (run.explicitScore ?? 0)), 0) / runs.length;
-		const scoreToString = (passes: number) => `${String(passes.toFixed(2)).padStart(2, ' ')}`;
+		const testRunsScore =
+			runs.reduce((acc, run) => acc + (run.explicitScore ?? 0), 0) /
+			runs.length;
+		const scoreToString = (passes: number) =>
+			`${String(passes.toFixed(2)).padStart(2, ' ')}`;
 
 		const testRunsScoreAsString = scoreToString(testRunsScore);
 
 		if (test.baselineJSON === undefined) {
 			explicitScoreRendering = testRunsScoreAsString;
 		} else {
-
-			const baselineJsonScoreAsString = scoreToString(test.baselineJSON.score);
+			const baselineJsonScoreAsString = scoreToString(
+				test.baselineJSON.score,
+			);
 
 			explicitScoreColor =
 				testRunsScoreAsString === baselineJsonScoreAsString
 					? 'gray'
-					: (parseFloat(testRunsScoreAsString) > parseFloat(baselineJsonScoreAsString) ? 'green' : 'red');
+					: parseFloat(testRunsScoreAsString) >
+						  parseFloat(baselineJsonScoreAsString)
+						? 'green'
+						: 'red';
 
 			if (testRunsScoreAsString === baselineJsonScoreAsString) {
 				explicitScoreRendering = `= ${scoreToString(testRunsScore)}`;
@@ -354,14 +550,15 @@ const Score = mobxlite.observer(({ test }: { test: ISimulationTest }) => {
 		}
 	}
 
-	const passCount = runs.filter(r => r.pass).length;
+	const passCount = runs.filter((r) => r.pass).length;
 	const hasBaseline = test.baselineJSON || test.baseline;
 
 	if (!hasBaseline) {
 		const title = `${passCount} runs passing`;
-		const scoreToString = (passes: number) => `${String(passes.toFixed(0)).padStart(3, ' ')}`;
+		const scoreToString = (passes: number) =>
+			`${String(passes.toFixed(0)).padStart(3, ' ')}`;
 		return (
-			<div className='test-score' title={title}>
+			<div className="test-score" title={title}>
 				{scoreToString(passCount)} ({explicitScoreRendering})
 			</div>
 		);
@@ -374,20 +571,27 @@ const Score = mobxlite.observer(({ test }: { test: ISimulationTest }) => {
 
 	const baselinePassCount = test.baselineJSON
 		? test.baselineJSON.passCount
-		: (test.baseline ? test.baseline.runs.filter(r => r.pass).length : 0);
+		: test.baseline
+			? test.baseline.runs.filter((r) => r.pass).length
+			: 0;
 
 	const baselineTotal = test.baselineJSON
 		? test.baselineJSON.passCount + test.baselineJSON.failCount
-		: (test.baseline ? test.baseline.runs.length : 0);
+		: test.baseline
+			? test.baseline.runs.length
+			: 0;
 
 	const baselinePercentage = baselinePassCount / baselineTotal;
 
 	const color =
 		passPercentage === baselinePercentage
 			? 'gray'
-			: (passPercentage > baselinePercentage ? 'green' : 'red');
+			: passPercentage > baselinePercentage
+				? 'green'
+				: 'red';
 
-	const scoreToString = (passes: number) => `${String(passes).padStart(2, ' ')}`;
+	const scoreToString = (passes: number) =>
+		`${String(passes).padStart(2, ' ')}`;
 
 	const title = [
 		`Runs: ${runs.length}`,
@@ -403,47 +607,81 @@ const Score = mobxlite.observer(({ test }: { test: ISimulationTest }) => {
 
 	return (
 		<>
-			<span className='test-score' style={{ color }} title={title}>
+			<span className="test-score" style={{ color }} title={title}>
 				{`${renderedScore} | `}
 			</span>
-			{explicitScoreRendering === ''
-				? null
-				: <span className='test-score' style={{ color: explicitScoreColor }} title={explicitScoreTitle}>
+			{explicitScoreRendering === '' ? null : (
+				<span
+					className="test-score"
+					style={{ color: explicitScoreColor }}
+					title={explicitScoreTitle}
+				>
 					{`${explicitScoreRendering} | `}
-				</span>}
+				</span>
+			)}
 		</>
 	);
 });
 
-const StatusIcon = mobxlite.observer(({ runner, runnerOptions, test }: { runner: SimulationRunner; runnerOptions: RunnerOptions; test: ISimulationTest }) => {
-	const runTest = mobx.action(async () => {
-		if (runner.state.kind !== StateKind.Running) {
-			runner.startRunning({
-				grep: test.name,
-				cacheMode: runnerOptions.cacheMode.value,
-				n: parseInt(runnerOptions.n.value),
-				noFetch: runnerOptions.noFetch.value,
-				additionalArgs: runnerOptions.additionalArgs.value,
-			});
-			await mobx.when(() => runner.state.kind === StateKind.Stopped);
+const StatusIcon = mobxlite.observer(
+	({
+		runner,
+		runnerOptions,
+		test,
+	}: {
+		runner: SimulationRunner;
+		runnerOptions: RunnerOptions;
+		test: ISimulationTest;
+	}) => {
+		const runTest = mobx.action(async () => {
+			if (runner.state.kind !== StateKind.Running) {
+				runner.startRunning({
+					grep: test.name,
+					cacheMode: runnerOptions.cacheMode.value,
+					n: parseInt(runnerOptions.n.value),
+					noFetch: runnerOptions.noFetch.value,
+					additionalArgs: runnerOptions.additionalArgs.value,
+				});
+				await mobx.when(() => runner.state.kind === StateKind.Stopped);
+			}
+		});
+
+		const runnerStatus = test.runnerStatus;
+
+		if (runnerStatus) {
+			if (runnerStatus.isSkipped) {
+				return <span title="Test is skipped">⏭️</span>;
+			} else if (runnerStatus.isCancelled) {
+				return (
+					<span
+						title="Test is cancelled, click to run again."
+						onClick={runTest}
+					>
+						⭕️
+					</span>
+				);
+			} else if (runnerStatus.isNowRunning > 0) {
+				return <span title="Test is currently running">🏃</span>;
+			} else if (runnerStatus.runs.length < runnerStatus.expectedRuns) {
+				return <span title="Test is queued to be run">⏳</span>;
+			} else {
+				return (
+					<span
+						title="Test is complete, click to run again."
+						onClick={runTest}
+					>
+						🏁
+					</span>
+				);
+			}
 		}
-	});
-
-	const runnerStatus = test.runnerStatus;
-
-	if (runnerStatus) {
-		if (runnerStatus.isSkipped) {
-			return <span title='Test is skipped'>⏭️</span>;
-		} else if (runnerStatus.isCancelled) {
-			return <span title='Test is cancelled, click to run again.' onClick={runTest}>⭕️</span>;
-		} else if (runnerStatus.isNowRunning > 0) {
-			return <span title='Test is currently running'>🏃</span>;
-		} else if (runnerStatus.runs.length < runnerStatus.expectedRuns) {
-			return <span title='Test is queued to be run'>⏳</span>;
-		} else {
-			return <span title='Test is complete, click to run again.' onClick={runTest}>🏁</span>;
-		}
-	}
-	return <span title='Test has not been run, click to run.' onClick={runTest}>🔘</span>;
-});
-
+		return (
+			<span
+				title="Test has not been run, click to run."
+				onClick={runTest}
+			>
+				🔘
+			</span>
+		);
+	},
+);
