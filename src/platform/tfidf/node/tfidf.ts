@@ -57,9 +57,6 @@ function* splitTerms(input: string): Iterable<string> {
 			continue;
 		}
 
-		const parts = new Set<string>();
-		parts.add(normalize(word));
-
 		const subParts: string[] = [];
 		if (CamelCasePattern.test(word)) {
 			const camelParts = word.split(CamelSplitPattern);
@@ -81,6 +78,14 @@ function* splitTerms(input: string): Iterable<string> {
 				subParts.push(nonDigitPrefixMatch[1]);
 			}
 		}
+
+		if (subParts.length === 0) {
+			yield normalize(word);
+			continue;
+		}
+
+		const parts = new Set<string>();
+		parts.add(normalize(word));
 
 		for (const part of subParts) {
 			// Require at least 3 letters in the sub parts
