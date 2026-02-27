@@ -2,7 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { BasePromptElementProps, PromptElement, PromptMetadata, PromptPiece, PromptSizing } from '@vscode/prompt-tsx';
+import {
+	BasePromptElementProps,
+	PromptElement,
+	PromptMetadata,
+	PromptPiece,
+	PromptSizing,
+} from '@vscode/prompt-tsx';
 import type * as vscode from 'vscode';
 import { IPromptPathRepresentationService } from '../../../../../platform/prompts/common/promptPathRepresentationService';
 import { IWorkspaceService } from '../../../../../platform/workspace/common/workspaceService';
@@ -19,39 +25,65 @@ type WorkspaceStructureProps = BasePromptElementProps & {
 	readonly availableTools?: readonly vscode.LanguageModelToolInformation[];
 };
 
-export class WorkspaceStructure extends PromptElement<WorkspaceStructureProps, IFileTreeData | undefined> {
-
+export class WorkspaceStructure extends PromptElement<
+	WorkspaceStructureProps,
+	IFileTreeData | undefined
+> {
 	constructor(
 		props: WorkspaceStructureProps,
-		@IInstantiationService private readonly instantiationService: IInstantiationService,
+		@IInstantiationService
+		private readonly instantiationService: IInstantiationService,
 		@IWorkspaceService private readonly workspaceService: IWorkspaceService,
 	) {
 		super(props);
 	}
 
-	override async prepare(sizing: PromptSizing, progress: vscode.Progress<vscode.ChatResponseProgressPart> | undefined, token?: vscode.CancellationToken): Promise<IFileTreeData | undefined> {
+	override async prepare(
+		sizing: PromptSizing,
+		progress: vscode.Progress<vscode.ChatResponseProgressPart> | undefined,
+		token?: vscode.CancellationToken,
+	): Promise<IFileTreeData | undefined> {
 		const root = this.workspaceService.getWorkspaceFolders().at(0);
 		if (!root) {
 			return;
 		}
 
-		return this.instantiationService.invokeFunction(accessor => workspaceVisualFileTree(accessor, root, { maxLength: this.props.maxSize, excludeDotFiles: this.props.excludeDotFiles }, token ?? CancellationToken.None));
+		return this.instantiationService.invokeFunction((accessor) =>
+			workspaceVisualFileTree(
+				accessor,
+				root,
+				{
+					maxLength: this.props.maxSize,
+					excludeDotFiles: this.props.excludeDotFiles,
+				},
+				token ?? CancellationToken.None,
+			),
+		);
 	}
 
-	override render(state: IFileTreeData | undefined, sizing: PromptSizing): PromptPiece<any, any> | undefined {
+	override render(
+		state: IFileTreeData | undefined,
+		sizing: PromptSizing,
+	): PromptPiece<any, any> | undefined {
 		if (!state) {
 			return;
 		}
 
-		return <>
-			I am working in a workspace that has the following structure:<br />
-			<br />
-			{createFencedCodeBlock('', state.tree)}
-		</>;
+		return (
+			<>
+				I am working in a workspace that has the following structure:
+				<br />
+				<br />
+				{createFencedCodeBlock('', state.tree)}
+			</>
+		);
 	}
 }
 
-export interface IMultirootWorkspaceTrees { label: string; tree: IFileTreeData }
+export interface IMultirootWorkspaceTrees {
+	label: string;
+	tree: IFileTreeData;
+}
 
 export class WorkspaceStructureMetadata extends PromptMetadata {
 	constructor(public readonly value: IMultirootWorkspaceTrees[]) {
@@ -63,7 +95,10 @@ export class WorkspaceStructureMetadata extends PromptMetadata {
  * Similar to {@link WorkspaceStructure}, but for multiroot workspaces it
  * prefixes each path with the workspace label.
  */
-export class MultirootWorkspaceStructure extends PromptElement<WorkspaceStructureProps, { label: string; tree: IFileTreeData }[]> {
+export class MultirootWorkspaceStructure extends PromptElement<
+	WorkspaceStructureProps,
+	{ label: string; tree: IFileTreeData }[]
+> {
 	/**
 	 * Takes a list of relative file paths referenced in a multiroot workspace
 	 * response and returns their URIs.
@@ -74,8 +109,14 @@ export class MultirootWorkspaceStructure extends PromptElement<WorkspaceStructur
 			return [];
 		}
 
-		const labels = folders.map(f => workspaceService.getWorkspaceFolderName(f));
-		const result: { file: URI; workspaceFolder: URI; relativePath: string }[] = [];
+		const labels = folders.map((f) =>
+			workspaceService.getWorkspaceFolderName(f),
+		);
+		const result: {
+			file: URI;
+			workspaceFolder: URI;
+			relativePath: string;
+		}[] = [];
 		for (let relativePath of files) {
 			const segments = relativePath.split(/[\\/]/g);
 
@@ -89,28 +130,53 @@ export class MultirootWorkspaceStructure extends PromptElement<WorkspaceStructur
 				}
 			}
 
-			result.push({ file: URI.joinPath(workspaceFolder, ...segments), workspaceFolder, relativePath });
+			result.push({
+				file: URI.joinPath(workspaceFolder, ...segments),
+				workspaceFolder,
+				relativePath,
+			});
 		}
 
 		return result;
 	}
 
-	constructor(props: WorkspaceStructureProps,
-		@IInstantiationService private readonly instantiationService: IInstantiationService,
+	constructor(
+		props: WorkspaceStructureProps,
+		@IInstantiationService
+		private readonly instantiationService: IInstantiationService,
 		@IWorkspaceService private readonly workspaceService: IWorkspaceService,
 	) {
 		super(props);
 	}
 
-	override async prepare(sizing: PromptSizing, progress: vscode.Progress<vscode.ChatResponseProgressPart> | undefined, token?: vscode.CancellationToken): Promise<{ label: string; tree: IFileTreeData }[]> {
+	override async prepare(
+		sizing: PromptSizing,
+		progress: vscode.Progress<vscode.ChatResponseProgressPart> | undefined,
+		token?: vscode.CancellationToken,
+	): Promise<{ label: string; tree: IFileTreeData }[]> {
 		const folders = this.workspaceService.getWorkspaceFolders();
-		return this.instantiationService.invokeFunction(accessor => Promise.all(folders.map(async folder => ({
-			label: this.workspaceService.getWorkspaceFolderName(folder),
-			tree: await workspaceVisualFileTree(accessor, folder, { maxLength: this.props.maxSize / folders.length, excludeDotFiles: this.props.excludeDotFiles }, token ?? CancellationToken.None)
-		}))));
+		return this.instantiationService.invokeFunction((accessor) =>
+			Promise.all(
+				folders.map(async (folder) => ({
+					label: this.workspaceService.getWorkspaceFolderName(folder),
+					tree: await workspaceVisualFileTree(
+						accessor,
+						folder,
+						{
+							maxLength: this.props.maxSize / folders.length,
+							excludeDotFiles: this.props.excludeDotFiles,
+						},
+						token ?? CancellationToken.None,
+					),
+				})),
+			),
+		);
 	}
 
-	override render(state: { label: string; tree: IFileTreeData }[], sizing: PromptSizing): PromptPiece<any, any> | undefined {
+	override render(
+		state: { label: string; tree: IFileTreeData }[],
+		sizing: PromptSizing,
+	): PromptPiece<any, any> | undefined {
 		if (!state.length) {
 			return;
 		}
@@ -128,40 +194,60 @@ export class MultirootWorkspaceStructure extends PromptElement<WorkspaceStructur
 			}
 		}
 
-		return <>
-			I am working in a workspace that has the following structure:<br />
-			<meta value={new WorkspaceStructureMetadata(state)} local />
-			{createFencedCodeBlock('', str)}
-		</>;
+		return (
+			<>
+				I am working in a workspace that has the following structure:
+				<br />
+				<meta value={new WorkspaceStructureMetadata(state)} local />
+				{createFencedCodeBlock('', str)}
+			</>
+		);
 	}
 }
 
 export class AgentMultirootWorkspaceStructure extends MultirootWorkspaceStructure {
-	constructor(props: WorkspaceStructureProps,
+	constructor(
+		props: WorkspaceStructureProps,
 		@IInstantiationService instantiationService: IInstantiationService,
 		@IWorkspaceService workspaceService: IWorkspaceService,
 	) {
 		super(props, instantiationService, workspaceService);
 	}
 
-	override async prepare(sizing: PromptSizing, progress: vscode.Progress<vscode.ChatResponseProgressPart> | undefined, token?: vscode.CancellationToken): Promise<{ label: string; tree: IFileTreeData }[]> {
-		if (!this.props.availableTools?.find(tool => tool.name === ToolName.ListDirectory)) {
+	override async prepare(
+		sizing: PromptSizing,
+		progress: vscode.Progress<vscode.ChatResponseProgressPart> | undefined,
+		token?: vscode.CancellationToken,
+	): Promise<{ label: string; tree: IFileTreeData }[]> {
+		if (
+			!this.props.availableTools?.find(
+				(tool) => tool.name === ToolName.ListDirectory,
+			)
+		) {
 			return [];
 		}
 
 		return super.prepare(sizing, progress, token);
 	}
 
-	override render(state: { label: string; tree: IFileTreeData }[], sizing: PromptSizing): PromptPiece<any, any> | undefined {
+	override render(
+		state: { label: string; tree: IFileTreeData }[],
+		sizing: PromptSizing,
+	): PromptPiece<any, any> | undefined {
 		const base = super.render(state, sizing);
 		if (!base) {
 			return;
 		}
 
-		return <>
-			{base}<br />
-			This is the state of the context at this point in the conversation. The view of the workspace structure may be truncated. You can use tools to collect more context if needed.
-		</>;
+		return (
+			<>
+				{base}
+				<br />
+				This is the state of the context at this point in the<br />
+				conversation. The view of the workspace structure may be<br />
+				truncated. You can use tools to collect more context if needed.<br />
+			</>
+		);
 	}
 }
 
@@ -170,29 +256,54 @@ type DirectoryStructureProps = BasePromptElementProps & {
 	directory: URI;
 };
 
-export class DirectoryStructure extends PromptElement<DirectoryStructureProps, IFileTreeData> {
-
+export class DirectoryStructure extends PromptElement<
+	DirectoryStructureProps,
+	IFileTreeData
+> {
 	constructor(
 		props: DirectoryStructureProps,
-		@IInstantiationService private readonly _instantiationService: IInstantiationService,
-		@IPromptPathRepresentationService private readonly _promptPathRepresentationService: IPromptPathRepresentationService,
+		@IInstantiationService
+		private readonly _instantiationService: IInstantiationService,
+		@IPromptPathRepresentationService
+		private readonly _promptPathRepresentationService: IPromptPathRepresentationService,
 	) {
 		super(props);
 	}
 
-	override async prepare(sizing: PromptSizing, progress: vscode.Progress<vscode.ChatResponseProgressPart> | undefined, token?: vscode.CancellationToken): Promise<IFileTreeData> {
-		return this._instantiationService.invokeFunction(accessor => workspaceVisualFileTree(accessor, this.props.directory, { maxLength: this.props.maxSize }, token ?? CancellationToken.None));
+	override async prepare(
+		sizing: PromptSizing,
+		progress: vscode.Progress<vscode.ChatResponseProgressPart> | undefined,
+		token?: vscode.CancellationToken,
+	): Promise<IFileTreeData> {
+		return this._instantiationService.invokeFunction((accessor) =>
+			workspaceVisualFileTree(
+				accessor,
+				this.props.directory,
+				{ maxLength: this.props.maxSize },
+				token ?? CancellationToken.None,
+			),
+		);
 	}
 
-	override render(state: IFileTreeData, sizing: PromptSizing): PromptPiece<any, any> | undefined {
+	override render(
+		state: IFileTreeData,
+		sizing: PromptSizing,
+	): PromptPiece<any, any> | undefined {
 		if (!state) {
 			return;
 		}
 
-		return <>
-			The folder `{this._promptPathRepresentationService.getFilePath(this.props.directory)}` has the following structure:<br />
-			<br />
-			{createFencedCodeBlock('', state.tree)}
-		</>;
+		return (
+			<>
+				The folder `
+				{this._promptPathRepresentationService.getFilePath(
+					this.props.directory,
+				)}
+				` has the following structure:
+				<br />
+				<br />
+				{createFencedCodeBlock('', state.tree)}
+			</>
+		);
 	}
 }

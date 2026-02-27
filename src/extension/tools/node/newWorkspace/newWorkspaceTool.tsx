@@ -3,8 +3,20 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as l10n from '@vscode/l10n';
-import { BasePromptElementProps, PromptElement, PromptElementProps, PromptSizing, TextChunk } from '@vscode/prompt-tsx';
-import type { CancellationToken, LanguageModelToolInvocationOptions, LanguageModelToolInvocationPrepareOptions, PreparedToolInvocation, Uri } from 'vscode';
+import {
+	BasePromptElementProps,
+	PromptElement,
+	PromptElementProps,
+	PromptSizing,
+	TextChunk,
+} from '@vscode/prompt-tsx';
+import type {
+	CancellationToken,
+	LanguageModelToolInvocationOptions,
+	LanguageModelToolInvocationPrepareOptions,
+	PreparedToolInvocation,
+	Uri,
+} from 'vscode';
 import { IRunCommandExecutionService } from '../../../../platform/commands/common/runCommandExecutionService';
 import { IDialogService } from '../../../../platform/dialog/common/dialogService';
 import { IVSCodeExtensionContext } from '../../../../platform/extContext/common/extensionContext';
@@ -14,7 +26,11 @@ import { IWorkspaceService } from '../../../../platform/workspace/common/workspa
 import { CancellationError } from '../../../../util/vs/base/common/errors';
 import { extUri } from '../../../../util/vs/base/common/resources';
 import { IInstantiationService } from '../../../../util/vs/platform/instantiation/common/instantiation';
-import { LanguageModelPromptTsxPart, LanguageModelTextPart, LanguageModelToolResult } from '../../../../vscodeTypes';
+import {
+	LanguageModelPromptTsxPart,
+	LanguageModelTextPart,
+	LanguageModelToolResult,
+} from '../../../../vscodeTypes';
 import { saveNewWorkspaceContext } from '../../../getting-started/common/newWorkspaceContext';
 import { renderPromptElementJSON } from '../../../prompts/node/base/promptRenderer';
 import { UnsafeCodeBlock } from '../../../prompts/node/panel/unsafeElements';
@@ -31,28 +47,36 @@ export class GetNewWorkspaceTool implements ICopilotTool<INewWorkspaceToolParams
 	private _shouldPromptWorkspaceOpen: boolean = false;
 	constructor(
 		@IWorkspaceService private readonly workspaceService: IWorkspaceService,
-		@IFileSystemService private readonly fileSystemService: IFileSystemService,
-		@IInstantiationService private readonly instantiationService: IInstantiationService,
+		@IFileSystemService
+		private readonly fileSystemService: IFileSystemService,
+		@IInstantiationService
+		private readonly instantiationService: IInstantiationService,
 		@IDialogService private readonly dialogService: IDialogService,
-		@IVSCodeExtensionContext private readonly _extensionContext: IVSCodeExtensionContext,
-		@IInteractiveSessionService private readonly interactiveSession: IInteractiveSessionService,
-		@IRunCommandExecutionService private readonly commandService: IRunCommandExecutionService,
-	) { }
+		@IVSCodeExtensionContext
+		private readonly _extensionContext: IVSCodeExtensionContext,
+		@IInteractiveSessionService
+		private readonly interactiveSession: IInteractiveSessionService,
+		@IRunCommandExecutionService
+		private readonly commandService: IRunCommandExecutionService,
+	) {}
 
-	async prepareInvocation?(options: LanguageModelToolInvocationPrepareOptions<INewWorkspaceToolParams>, token: CancellationToken): Promise<PreparedToolInvocation> {
-
+	async prepareInvocation?(
+		options: LanguageModelToolInvocationPrepareOptions<INewWorkspaceToolParams>,
+		token: CancellationToken,
+	): Promise<PreparedToolInvocation> {
 		this._shouldPromptWorkspaceOpen = false;
 		const workspace = this.workspaceService.getWorkspaceFolders();
 		if (!workspace || workspace.length === 0) {
 			this._shouldPromptWorkspaceOpen = true;
-		}
-		else if (workspace && workspace.length > 0) {
-			this._shouldPromptWorkspaceOpen = (await this.fileSystemService.readDirectory(workspace[0])).length > 0;
+		} else if (workspace && workspace.length > 0) {
+			this._shouldPromptWorkspaceOpen =
+				(await this.fileSystemService.readDirectory(workspace[0]))
+					.length > 0;
 		}
 		if (this._shouldPromptWorkspaceOpen) {
 			const confirmationMessages = {
 				title: l10n.t`Open an empty folder to continue`,
-				message: l10n.t`Copilot requires an empty folder as a workspace to continue workspace creation.`
+				message: l10n.t`Copilot requires an empty folder as a workspace to continue workspace creation.`,
 			};
 
 			return {
@@ -65,53 +89,96 @@ export class GetNewWorkspaceTool implements ICopilotTool<INewWorkspaceToolParams
 		};
 	}
 
-	async invoke(options: LanguageModelToolInvocationOptions<INewWorkspaceToolParams>, token: CancellationToken): Promise<LanguageModelToolResult> {
-
+	async invoke(
+		options: LanguageModelToolInvocationOptions<INewWorkspaceToolParams>,
+		token: CancellationToken,
+	): Promise<LanguageModelToolResult> {
 		if (token.isCancellationRequested) {
 			throw new CancellationError();
 		}
 
 		const workspace = this.workspaceService.getWorkspaceFolders();
-		let workspaceUri: Uri | undefined = workspace.length > 0 ? workspace[0] : undefined;
+		let workspaceUri: Uri | undefined =
+			workspace.length > 0 ? workspace[0] : undefined;
 
 		if (this._shouldPromptWorkspaceOpen) {
-			const newWorkspaceUri = (await this.dialogService.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false, openLabel: 'Select an Empty Workspace Folder' }))?.[0];
-			if (newWorkspaceUri && !extUri.isEqual(newWorkspaceUri, workspaceUri)) {
-
-				if ((await this.fileSystemService.readDirectory(newWorkspaceUri)).length > 0) {
+			const newWorkspaceUri = (
+				await this.dialogService.showOpenDialog({
+					canSelectFolders: true,
+					canSelectFiles: false,
+					canSelectMany: false,
+					openLabel: 'Select an Empty Workspace Folder',
+				})
+			)?.[0];
+			if (
+				newWorkspaceUri &&
+				!extUri.isEqual(newWorkspaceUri, workspaceUri)
+			) {
+				if (
+					(
+						await this.fileSystemService.readDirectory(
+							newWorkspaceUri,
+						)
+					).length > 0
+				) {
 					return new LanguageModelToolResult([
-						new LanguageModelTextPart('The user has not opened a valid workspace folder in VS Code. Ask them to open an empty folder before continuing.')
+						new LanguageModelTextPart(
+							'The user has not opened a valid workspace folder in VS Code. Ask them to open an empty folder before continuing.',
+						),
 					]);
 				}
 
-				saveNewWorkspaceContext({
-					workspaceURI: newWorkspaceUri.toString(),
-					userPrompt: options.input.query,
-					initialized: false, /*not already opened */
-				}, this._extensionContext);
+				saveNewWorkspaceContext(
+					{
+						workspaceURI: newWorkspaceUri.toString(),
+						userPrompt: options.input.query,
+						initialized: false /*not already opened */,
+					},
+					this._extensionContext,
+				);
 
 				workspaceUri = newWorkspaceUri;
-				this.commandService.executeCommand('setContext', 'chatSkipRequestInProgressMessage', true);
-				await this.interactiveSession.transferActiveChat(newWorkspaceUri);
-				this.commandService.executeCommand('vscode.openFolder', newWorkspaceUri, { forceReuseWindow: true });
+				this.commandService.executeCommand(
+					'setContext',
+					'chatSkipRequestInProgressMessage',
+					true,
+				);
+				await this.interactiveSession.transferActiveChat(
+					newWorkspaceUri,
+				);
+				this.commandService.executeCommand(
+					'vscode.openFolder',
+					newWorkspaceUri,
+					{ forceReuseWindow: true },
+				);
 
 				return new LanguageModelToolResult([
-					new LanguageModelTextPart(`The user is opening the folder ${newWorkspaceUri.toString()}. Do not proceed with project generation till the user has confirmed opening the folder.`)
+					new LanguageModelTextPart(
+						`The user is opening the folder ${newWorkspaceUri.toString()}. Do not proceed with project generation till the user has confirmed opening the folder.`,
+					),
 				]);
 			}
 
 			return new LanguageModelToolResult([
-				new LanguageModelTextPart('The user has not opened a valid workspace folder in VS Code. Ask them to open an empty folder before continuing.')
+				new LanguageModelTextPart(
+					'The user has not opened a valid workspace folder in VS Code. Ask them to open an empty folder before continuing.',
+				),
 			]);
 		}
 
 		if (!workspaceUri) {
 			return new LanguageModelToolResult([
-				new LanguageModelTextPart('The user has not opened a valid workspace folder in VS Code. Ask them to open an empty folder before continuing.')
+				new LanguageModelTextPart(
+					'The user has not opened a valid workspace folder in VS Code. Ask them to open an empty folder before continuing.',
+				),
 			]);
 		}
 
-		const json = await renderPromptElementJSON(this.instantiationService, NewWorkspaceCreationResult, { query: options.input.query },);
+		const json = await renderPromptElementJSON(
+			this.instantiationService,
+			NewWorkspaceCreationResult,
+			{ query: options.input.query },
+		);
 		return new LanguageModelToolResult([
 			new LanguageModelPromptTsxPart(json),
 		]);
@@ -122,30 +189,40 @@ export class NewWorkspaceCreationResult extends PromptElement<NewWorkspaceElemen
 	constructor(
 		props: PromptElementProps<NewWorkspaceElementProps>,
 		@IWorkspaceService private readonly workspaceService: IWorkspaceService,
-		@IRunCommandExecutionService private readonly commandService: IRunCommandExecutionService,
+		@IRunCommandExecutionService
+		private readonly commandService: IRunCommandExecutionService,
 	) {
 		super(props);
 	}
 
 	override async render(state: void, sizing: PromptSizing) {
 		const workspace = this.workspaceService.getWorkspaceFolders();
-		const workspaceUri: Uri | undefined = workspace.length > 0 ? workspace[0] : undefined;
+		const workspaceUri: Uri | undefined =
+			workspace.length > 0 ? workspace[0] : undefined;
 
 		if (!workspaceUri) {
-			return <TextChunk>
-				The user has not opened an empty workspace folder in VS Code. Ask them to open an empty folder before continuing.<br />
-			</TextChunk>;
+			return (
+				<TextChunk>
+					The user has not opened an empty workspace folder in VS<br />
+					Code. Ask them to open an empty folder before continuing.<br />
+					<br />
+				</TextChunk>
+			);
 		}
 
 		// For https://github.com/microsoft/vscode/issues/258252
 		this.commandService.executeCommand('workbench.action.terminal.focus');
 
-		return <>
-			<TextChunk>
-				Create or update the copilot-instructions.md file in the .github directory with the exact content shown below.<br />
-				<br />
-			</TextChunk>
-			<UnsafeCodeBlock code={`
+		return (
+			<>
+				<TextChunk>
+					Create or update the copilot-instructions.md file in the<br />
+					.github directory with the exact content shown below.<br />
+					<br />
+					<br />
+				</TextChunk>
+				<UnsafeCodeBlock
+					code={`
 <!-- Use this file to provide workspace-specific custom instructions to Copilot. For more details, visit https://code.visualstudio.com/docs/copilot/copilot-customization#_use-a-githubcopilotinstructionsmd-file -->
 - [ ] Verify that the copilot-instructions.md file in the .github directory is created.
 
@@ -252,15 +329,24 @@ Before starting a new task in the above plan, update progress in the plan.
 - Work through each checklist item systematically.
 - Keep communication concise and focused.
 - Follow development best practices.
-`} languageId='markdown'></UnsafeCodeBlock>
-			<TextChunk>
-				<br />
-				Verify that a copilot-instructions.md file in the .github directory exists and systematically work through each item in the task list.<br />
-				Update the copilot-instructions.md file in the .github directory directly as you complete each step.<br />
-				<br />
-				If the user asks to "continue," refer to the previous steps and proceed accordingly.
-			</TextChunk>
-		</>;
+`}
+					languageId="markdown"
+				></UnsafeCodeBlock>
+				<TextChunk>
+					<br />
+					Verify that a copilot-instructions.md file in the .github<br />
+					directory exists and systematically work through each item<br />
+					in the task list.<br />
+					<br />
+					Update the copilot-instructions.md file in the .github<br />
+					directory directly as you complete each step.<br />
+					<br />
+					<br />
+					If the user asks to "continue," refer to the previous steps<br />
+					and proceed accordingly.<br />
+				</TextChunk>
+			</>
+		);
 	}
 }
 

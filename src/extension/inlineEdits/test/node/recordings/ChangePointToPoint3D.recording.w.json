@@ -28,58 +28,32 @@
 		{
 			"kind": "selectionChanged",
 			"id": 0,
-			"selection": [
-				[
-					12,
-					12
-				]
-			],
+			"selection": [[12, 12]],
 			"time": 1737366489555
 		},
 		{
 			"kind": "selectionChanged",
 			"id": 0,
-			"selection": [
-				[
-					12,
-					12
-				]
-			],
+			"selection": [[12, 12]],
 			"time": 1737366491757
 		},
 		{
 			"kind": "changed",
 			"id": 0,
 			"v": 4,
-			"edit": [
-				[
-					12,
-					12,
-					"3"
-				]
-			],
+			"edit": [[12, 12, "3"]],
 			"time": 1737366491761
 		},
 		{
 			"kind": "selectionChanged",
 			"id": 0,
-			"selection": [
-				[
-					12,
-					12
-				]
-			],
+			"selection": [[12, 12]],
 			"time": 1737366491761
 		},
 		{
 			"kind": "selectionChanged",
 			"id": 0,
-			"selection": [
-				[
-					13,
-					13
-				]
-			],
+			"selection": [[13, 13]],
 			"time": 1737366491763
 		},
 		{
@@ -110,35 +84,19 @@
 			"kind": "changed",
 			"id": 0,
 			"v": 7,
-			"edit": [
-				[
-					13,
-					13,
-					"D"
-				]
-			],
+			"edit": [[13, 13, "D"]],
 			"time": 1737366493333
 		},
 		{
 			"kind": "selectionChanged",
 			"id": 0,
-			"selection": [
-				[
-					13,
-					13
-				]
-			],
+			"selection": [[13, 13]],
 			"time": 1737366493333
 		},
 		{
 			"kind": "selectionChanged",
 			"id": 0,
-			"selection": [
-				[
-					14,
-					14
-				]
-			],
+			"selection": [[14, 14]],
 			"time": 1737366493334
 		}
 	]

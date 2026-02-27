@@ -85,7 +85,9 @@
 }
 
 .tests-renderer {
-	font-family: "Helvetica Neue Light", "HelveticaNeue-Light", "Helvetica Neue", "Segoe UI", Calibri, Helvetica, Arial, sans-serif;
+	font-family:
+		'Helvetica Neue Light', 'HelveticaNeue-Light', 'Helvetica Neue',
+		'Segoe UI', Calibri, Helvetica, Arial, sans-serif;
 	font-size: 12px;
 }
 
@@ -173,7 +175,7 @@
 }
 
 .request-container .title {
-	font-family: Arial, "Segoe UI";
+	font-family: Arial, 'Segoe UI';
 	font-size: 1em;
 	font-weight: bold;
 }
@@ -206,7 +208,7 @@
 }
 
 .step-title {
-	font-family: Arial, "Segoe UI";
+	font-family: Arial, 'Segoe UI';
 	font-size: 1.1em;
 	font-weight: bold;
 	margin-top: 5px;
@@ -349,10 +351,14 @@
 }
 
 .fade-out-background {
-    animation: fadeOutBackground 5s ease-out forwards;
+	animation: fadeOutBackground 5s ease-out forwards;
 }
 
 @keyframes fadeOutBackground {
-    from { background-color: lightgreen; }
-    to { background-color: transparent; }
+	from {
+		background-color: lightgreen;
+	}
+	to {
+		background-color: transparent;
+	}
 }

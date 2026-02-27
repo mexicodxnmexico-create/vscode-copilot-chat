@@ -14,12 +14,27 @@ import {
 	PromptSnapshotNode,
 	StatusNotOk,
 } from '../../../../prompt/src/components/components';
-import { defaultTransformers, SnapshotWalker, WalkContextTransformer } from '../../../../prompt/src/components/walker';
-import { commentBlockAsSingles, isShebangLine } from '../../../../prompt/src/languageMarker';
-import { getTokenizer, TokenizerName } from '../../../../prompt/src/tokenization';
+import {
+	defaultTransformers,
+	SnapshotWalker,
+	WalkContextTransformer,
+} from '../../../../prompt/src/components/walker';
+import {
+	commentBlockAsSingles,
+	isShebangLine,
+} from '../../../../prompt/src/languageMarker';
+import {
+	getTokenizer,
+	TokenizerName,
+} from '../../../../prompt/src/tokenization';
 import { isContextNode } from './completionsContext';
 import { AfterCursor, BeforeCursor, CurrentFile } from './currentFile';
-import { ElidedBlock, makePrompt, WeightedBlock, WishlistElision } from './elision';
+import {
+	ElidedBlock,
+	makePrompt,
+	WeightedBlock,
+	WishlistElision,
+} from './elision';
 
 const TOKENS_RESERVED_FOR_SUFFIX_ENCODING = 5;
 
@@ -39,26 +54,32 @@ export interface CompletionsPromptRenderOptions extends PromptRenderOptions {
 	delimiter?: string;
 }
 
-export class CompletionsPromptRenderer implements PromptRenderer<CompletionsPrompt, CompletionsPromptRenderOptions> {
+export class CompletionsPromptRenderer implements PromptRenderer<
+	CompletionsPrompt,
+	CompletionsPromptRenderOptions
+> {
 	private renderId = 0;
 
 	/**
 	 * Function used to format the prefix blocks into a string.
 	 * If implementing a renderer subclass, override this to control how the prefix is formatted, otherwise defaults to `makePrompt`.
 	 */
-	protected formatPrefix: (elidedBlocks: ElidedBlock[]) => string = makePrompt;
+	protected formatPrefix: (elidedBlocks: ElidedBlock[]) => string =
+		makePrompt;
 
 	/**
 	 * Function used to format the context blocks into a string array.
 	 * Context is optional, so leave this as `undefined` if you do not want to include context in the rendered prompt.
 	 * If implementing a renderer subclass, override this to control how the context is formatted, otherwise defaults to `undefined`.
 	 */
-	protected formatContext: undefined | ((elidedBlocks: ElidedBlock[]) => string[]);
+	protected formatContext:
+		| undefined
+		| ((elidedBlocks: ElidedBlock[]) => string[]);
 
 	render(
 		snapshot: PromptSnapshotNode,
 		options: CompletionsPromptRenderOptions,
-		cancellationToken?: CancellationToken
+		cancellationToken?: CancellationToken,
 	): CompletionsPrompt {
 		const id = this.renderId++;
 		const renderStart = performance.now();
@@ -70,13 +91,13 @@ export class CompletionsPromptRenderer implements PromptRenderer<CompletionsProm
 			const delimiter = options.delimiter ?? '';
 			const tokenizer = options.tokenizer ?? TokenizerName.o200k;
 			// Process the snapshot to get the prefix and suffix and adjust the token limits accordingly
-			const { prefixBlocks, suffixBlock, componentStatistics } = this.processSnapshot(
-				snapshot,
-				delimiter,
-				options.languageId
-			);
+			const { prefixBlocks, suffixBlock, componentStatistics } =
+				this.processSnapshot(snapshot, delimiter, options.languageId);
 
-			const { prefixTokenLimit, suffixTokenLimit } = this.getPromptLimits(suffixBlock, options);
+			const { prefixTokenLimit, suffixTokenLimit } = this.getPromptLimits(
+				suffixBlock,
+				options,
+			);
 			const elisionStart = performance.now();
 			const elisionStrategy = new WishlistElision();
 			// The first element is always the suffix
@@ -87,16 +108,23 @@ export class CompletionsPromptRenderer implements PromptRenderer<CompletionsProm
 				prefixTokenLimit,
 				suffixBlock,
 				suffixTokenLimit,
-				getTokenizer(tokenizer)
+				getTokenizer(tokenizer),
 			);
 			const elisionEnd = performance.now();
 
 			const prefix = this.formatPrefix(elidedPrefix);
-			const context = this.formatContext ? this.formatContext(elidedPrefix) : undefined;
+			const context = this.formatContext
+				? this.formatContext(elidedPrefix)
+				: undefined;
 			const suffix = elidedSuffix.elidedValue;
-			const prefixTokens = elidedPrefix.reduce((acc, block) => acc + block.elidedTokens, 0);
+			const prefixTokens = elidedPrefix.reduce(
+				(acc, block) => acc + block.elidedTokens,
+				0,
+			);
 
-			componentStatistics.push(...computeComponentStatistics([...elidedPrefix, elidedSuffix]));
+			componentStatistics.push(
+				...computeComponentStatistics([...elidedPrefix, elidedSuffix]),
+			);
 			return {
 				prefix,
 				prefixTokens,
@@ -112,8 +140,9 @@ export class CompletionsPromptRenderer implements PromptRenderer<CompletionsProm
 					renderTimeMs: performance.now() - renderStart,
 					componentStatistics,
 					updateDataTimeMs: componentStatistics.reduce(
-						(acc, component) => acc + (component.updateDataTimeMs ?? 0),
-						0
+						(acc, component) =>
+							acc + (component.updateDataTimeMs ?? 0),
+						0,
 					),
 				},
 			};
@@ -124,7 +153,10 @@ export class CompletionsPromptRenderer implements PromptRenderer<CompletionsProm
 
 	// Defaults are hardcoded for now, but we can use EXP flags like PromptOptions does
 	// by passing the context
-	private getPromptLimits(suffixBlock: WeightedBlock | undefined, options: CompletionsPromptRenderOptions) {
+	private getPromptLimits(
+		suffixBlock: WeightedBlock | undefined,
+		options: CompletionsPromptRenderOptions,
+	) {
 		const suffix = suffixBlock?.value ?? '';
 
 		let availableTokens = options.promptTokenLimit;
@@ -135,9 +167,14 @@ export class CompletionsPromptRenderer implements PromptRenderer<CompletionsProm
 		}
 
 		// If there is a suffix, we need to reserve some tokens for the suffix encoding
-		availableTokens = suffix.length > 0 ? availableTokens - TOKENS_RESERVED_FOR_SUFFIX_ENCODING : availableTokens;
+		availableTokens =
+			suffix.length > 0
+				? availableTokens - TOKENS_RESERVED_FOR_SUFFIX_ENCODING
+				: availableTokens;
 
-		const suffixTokenLimit = Math.ceil(availableTokens * (suffixPercent / 100));
+		const suffixTokenLimit = Math.ceil(
+			availableTokens * (suffixPercent / 100),
+		);
 		const prefixTokenLimit = availableTokens - suffixTokenLimit;
 
 		return {
@@ -149,7 +186,7 @@ export class CompletionsPromptRenderer implements PromptRenderer<CompletionsProm
 	protected processSnapshot(
 		snapshot: PromptSnapshotNode,
 		delimiter: string,
-		languageId: string
+		languageId: string,
 	): {
 		prefixBlocks: WeightedBlock[];
 		suffixBlock: WeightedBlock;
@@ -172,7 +209,10 @@ export class CompletionsPromptRenderer implements PromptRenderer<CompletionsProm
 				foundDocument = true;
 			}
 
-			if (node.statistics.updateDataTimeMs && node.statistics.updateDataTimeMs > 0) {
+			if (
+				node.statistics.updateDataTimeMs &&
+				node.statistics.updateDataTimeMs > 0
+			) {
 				componentStatistics.push({
 					componentPath: node.path,
 					updateDataTimeMs: node.statistics.updateDataTimeMs,
@@ -198,14 +238,19 @@ export class CompletionsPromptRenderer implements PromptRenderer<CompletionsProm
 				});
 			} else {
 				// Add a delimiter for all nodes, that are not the beforeCursor if not already present
-				const nodeValueWithDelimiter = node.value.endsWith(delimiter) ? node.value : node.value + delimiter;
+				const nodeValueWithDelimiter = node.value.endsWith(delimiter)
+					? node.value
+					: node.value + delimiter;
 				let value = nodeValueWithDelimiter;
 				if (context.type === 'prefix') {
 					value = node.value;
 				} else if (isShebangLine(node.value)) {
 					value = nodeValueWithDelimiter;
 				} else {
-					value = commentBlockAsSingles(nodeValueWithDelimiter, languageId);
+					value = commentBlockAsSingles(
+						nodeValueWithDelimiter,
+						languageId,
+					);
 				}
 				prefixBlocks.push({
 					type: context.type === 'prefix' ? 'prefix' : 'context',
@@ -273,7 +318,7 @@ export const transformers: WalkContextTransformer[] = [
 ];
 
 function computeComponentStatistics(elidedBlocks: ElidedBlock[]) {
-	return elidedBlocks.map(block => {
+	return elidedBlocks.map((block) => {
 		const result: ComponentStatistics = {
 			componentPath: block.componentPath,
 		};

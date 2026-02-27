@@ -4,7 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { BasePromptElementProps, ChatResponseReferencePartStatusKind, Image, PromptElement, PromptReference, PromptSizing } from '@vscode/prompt-tsx';
+import {
+	BasePromptElementProps,
+	ChatResponseReferencePartStatusKind,
+	Image,
+	PromptElement,
+	PromptReference,
+	PromptSizing,
+} from '@vscode/prompt-tsx';
 import { UserMessage } from '@vscode/prompt-tsx/dist/base/promptElements';
 import { AbstractDocumentWithLanguageId } from '../../../../platform/editing/common/abstractText';
 import { NotebookDocumentSnapshot } from '../../../../platform/editing/common/notebookDocumentSnapshot';
@@ -15,7 +22,10 @@ import { IAlternativeNotebookContentService } from '../../../../platform/noteboo
 import { INotebookService } from '../../../../platform/notebook/common/notebookService';
 import { IPromptPathRepresentationService } from '../../../../platform/prompts/common/promptPathRepresentationService';
 import { IWorkspaceService } from '../../../../platform/workspace/common/workspaceService';
-import { getNotebookAndCellFromUri, getNotebookCellOutput } from '../../../../util/common/notebooks';
+import {
+	getNotebookAndCellFromUri,
+	getNotebookCellOutput,
+} from '../../../../util/common/notebooks';
 import { isUri } from '../../../../util/common/types';
 import { CachedFunction } from '../../../../util/vs/base/common/cache';
 import { Schemas } from '../../../../util/vs/base/common/network';
@@ -26,8 +36,15 @@ import { Location, Position, Range, Uri } from '../../../../vscodeTypes';
 import { IPromptEndpoint } from '../base/promptRenderer';
 import { Tag } from '../base/tag';
 import { SummarizedDocumentLineNumberStyle } from '../inline/summarizedDocument/implementation';
-import { ICostFnFactory, ProjectedDocument, RemovableNode } from '../inline/summarizedDocument/summarizeDocument';
-import { DocumentSummarizer, NotebookDocumentSummarizer } from '../inline/summarizedDocument/summarizeDocumentHelpers';
+import {
+	ICostFnFactory,
+	ProjectedDocument,
+	RemovableNode,
+} from '../inline/summarizedDocument/summarizeDocument';
+import {
+	DocumentSummarizer,
+	NotebookDocumentSummarizer,
+} from '../inline/summarizedDocument/summarizeDocumentHelpers';
 import { CodeBlock } from './safeElements';
 
 export interface FileVariableProps extends BasePromptElementProps {
@@ -51,40 +68,57 @@ export class FileVariable extends PromptElement<FileVariableProps, unknown> {
 		@IIgnoreService private readonly ignoreService: IIgnoreService,
 		@IFileSystemService private readonly fileService: IFileSystemService,
 		@INotebookService private readonly notebookService: INotebookService,
-		@IAlternativeNotebookContentService private readonly alternativeNotebookContent: IAlternativeNotebookContentService,
+		@IAlternativeNotebookContentService
+		private readonly alternativeNotebookContent: IAlternativeNotebookContentService,
 		@IPromptEndpoint private readonly promptEndpoint: IPromptEndpoint,
-		@IPromptPathRepresentationService private readonly promptPathRepresentationService: IPromptPathRepresentationService,
+		@IPromptPathRepresentationService
+		private readonly promptPathRepresentationService: IPromptPathRepresentationService,
 	) {
 		super(props);
 	}
 
 	override async render(_state: unknown, sizing: PromptSizing) {
-		const uri = 'uri' in this.props.variableValue ? this.props.variableValue.uri : this.props.variableValue;
+		const uri =
+			'uri' in this.props.variableValue
+				? this.props.variableValue.uri
+				: this.props.variableValue;
 
 		if (await this.ignoreService.isCopilotIgnored(uri)) {
 			return <ignoredFiles value={[uri]} />;
 		}
 
-		if (uri.scheme === 'untitled' && !this.workspaceService.textDocuments.some(doc => doc.uri.toString() === uri.toString())) {
+		if (
+			uri.scheme === 'untitled' &&
+			!this.workspaceService.textDocuments.some(
+				(doc) => doc.uri.toString() === uri.toString(),
+			)
+		) {
 			// A previously open untitled document that isn't open anymore- opening it would open an empty text editor
 			return;
 		}
 
 		// When omitContents is true, just render the file path without reading the file contents
 		if (this.props.omitContents) {
-			const filePath = this.promptPathRepresentationService.getFilePath(uri);
+			const filePath =
+				this.promptPathRepresentationService.getFilePath(uri);
 			const attrs: Record<string, string> = {};
 			if (this.props.variableName) {
 				attrs.id = this.props.variableName;
 			}
 			attrs.filePath = filePath;
-			return (
-				<Tag name='attachment' attrs={attrs} />
-			);
+			return <Tag name="attachment" attrs={attrs} />;
 		}
 
 		if (/\.(png|jpg|jpeg|bmp|gif|webp)$/i.test(uri.path)) {
-			const options = { status: { description: l10n.t("{0} does not support images.", this.promptEndpoint.model), kind: ChatResponseReferencePartStatusKind.Omitted } };
+			const options = {
+				status: {
+					description: l10n.t(
+						'{0} does not support images.',
+						this.promptEndpoint.model,
+					),
+					kind: ChatResponseReferencePartStatusKind.Omitted,
+				},
+			};
 			if (this.props.omitReferences) {
 				return;
 			}
@@ -92,8 +126,23 @@ export class FileVariable extends PromptElement<FileVariableProps, unknown> {
 			if (!this.promptEndpoint.supportsVision) {
 				return (
 					<>
-						<references value={[new PromptReference(this.props.variableName ? { variableName: this.props.variableName, value: uri } : uri, undefined, options)]} />
-					</>);
+						<references
+							value={[
+								new PromptReference(
+									this.props.variableName
+										? {
+											variableName:
+													this.props.variableName,
+											value: uri,
+										}
+										: uri,
+									undefined,
+									options,
+								),
+							]}
+						/>
+					</>
+				);
 			}
 
 			try {
@@ -102,98 +151,256 @@ export class FileVariable extends PromptElement<FileVariableProps, unknown> {
 				return (
 					<UserMessage priority={0}>
 						<Image src={base64string} detail={'high'} />
-						<references value={[new PromptReference(this.props.variableName ? { variableName: this.props.variableName, value: uri } : uri, undefined, options)]} />
+						<references
+							value={[
+								new PromptReference(
+									this.props.variableName
+										? {
+											variableName:
+													this.props.variableName,
+											value: uri,
+										}
+										: uri,
+									undefined,
+									options,
+								),
+							]}
+						/>
 					</UserMessage>
-
 				);
-
 			} catch (err) {
 				return (
 					<>
-						<references value={[new PromptReference(this.props.variableName ? { variableName: this.props.variableName, value: uri } : uri, undefined, options)]} />
-					</>);
+						<references
+							value={[
+								new PromptReference(
+									this.props.variableName
+										? {
+											variableName:
+													this.props.variableName,
+											value: uri,
+										}
+										: uri,
+									undefined,
+									options,
+								),
+							]}
+						/>
+					</>
+				);
 			}
-
 		}
 
-		let range = isUri(this.props.variableValue) ? undefined : this.props.variableValue.range;
+		let range = isUri(this.props.variableValue)
+			? undefined
+			: this.props.variableValue.range;
 		let documentSnapshot: TextDocumentSnapshot | NotebookDocumentSnapshot;
 		let fileUri: Uri = uri;
 
 		if (uri.scheme === Schemas.vscodeNotebookCellOutput) {
 			// add exception for notebook cell output with image mime type in unsupported endpoint
-			const items = getNotebookCellOutput(uri, this.workspaceService.notebookDocuments);
+			const items = getNotebookCellOutput(
+				uri,
+				this.workspaceService.notebookDocuments,
+			);
 			if (!items) {
 				return;
 			}
 			const outputCell = items[2];
-			if (outputCell.items.length > 0 && outputCell.items[0].mime.startsWith('image/') && !this.promptEndpoint.supportsVision) {
-				const options = { status: { description: l10n.t("{0} does not support images.", this.promptEndpoint.model), kind: ChatResponseReferencePartStatusKind.Omitted } };
+			if (
+				outputCell.items.length > 0 &&
+				outputCell.items[0].mime.startsWith('image/') &&
+				!this.promptEndpoint.supportsVision
+			) {
+				const options = {
+					status: {
+						description: l10n.t(
+							'{0} does not support images.',
+							this.promptEndpoint.model,
+						),
+						kind: ChatResponseReferencePartStatusKind.Omitted,
+					},
+				};
 				if (this.props.omitReferences) {
 					return;
 				}
 
 				return (
 					<>
-						<references value={[new PromptReference(this.props.variableName ? { variableName: this.props.variableName, value: this.props.variableValue } : this.props.variableValue, undefined, options)]} />
+						<references
+							value={[
+								new PromptReference(
+									this.props.variableName
+										? {
+											variableName:
+													this.props.variableName,
+											value: this.props.variableValue,
+										}
+										: this.props.variableValue,
+									undefined,
+									options,
+								),
+							]}
+						/>
 					</>
 				);
 			}
 		}
-		if (uri.scheme === Schemas.vscodeNotebookCell || uri.scheme === Schemas.vscodeNotebookCellOutput) {
-			const [notebook, cell] = getNotebookAndCellFromUri(uri, this.workspaceService.notebookDocuments);
+		if (
+			uri.scheme === Schemas.vscodeNotebookCell ||
+			uri.scheme === Schemas.vscodeNotebookCellOutput
+		) {
+			const [notebook, cell] = getNotebookAndCellFromUri(
+				uri,
+				this.workspaceService.notebookDocuments,
+			);
 			if (!notebook) {
 				return;
 			}
 			fileUri = notebook.uri;
 			if (cell) {
-				const cellRange = new Range(cell.document.lineAt(0).range.start, cell.document.lineAt(cell.document.lineCount - 1).range.end);
+				const cellRange = new Range(
+					cell.document.lineAt(0).range.start,
+					cell.document.lineAt(cell.document.lineCount - 1).range.end,
+				);
 				range = range ?? cellRange;
 				// Ensure the range is within the cell range
-				if (range.start > cellRange.end || range.end < cellRange.start) {
+				if (
+					range.start > cellRange.end ||
+					range.end < cellRange.start
+				) {
 					range = cellRange;
 				}
-				const altDocument = this.alternativeNotebookContent.create(this.alternativeNotebookContent.getFormat(this.promptEndpoint)).getAlternativeDocument(notebook);
+				const altDocument = this.alternativeNotebookContent
+					.create(
+						this.alternativeNotebookContent.getFormat(
+							this.promptEndpoint,
+						),
+					)
+					.getAlternativeDocument(notebook);
 				//Translate the range to alternative content.
-				range = new Range(altDocument.fromCellPosition(cell, range.start), altDocument.fromCellPosition(cell, range.end));
+				range = new Range(
+					altDocument.fromCellPosition(cell, range.start),
+					altDocument.fromCellPosition(cell, range.end),
+				);
 			} else {
 				range = undefined;
 			}
 		}
 		try {
-			documentSnapshot = this.notebookService.hasSupportedNotebooks(fileUri) ?
-				await this.workspaceService.openNotebookDocumentAndSnapshot(fileUri, this.alternativeNotebookContent.getFormat(this.promptEndpoint)) :
-				await this.workspaceService.openTextDocumentAndSnapshot(fileUri);
+			documentSnapshot = this.notebookService.hasSupportedNotebooks(
+				fileUri,
+			)
+				? await this.workspaceService.openNotebookDocumentAndSnapshot(
+					fileUri,
+					this.alternativeNotebookContent.getFormat(
+						this.promptEndpoint,
+					),
+				)
+				: await this.workspaceService.openTextDocumentAndSnapshot(
+					fileUri,
+				);
 		} catch (err) {
-			const options = { status: { description: l10n.t('This file could not be read: {0}', err.message), kind: ChatResponseReferencePartStatusKind.Omitted } };
+			const options = {
+				status: {
+					description: l10n.t(
+						'This file could not be read: {0}',
+						err.message,
+					),
+					kind: ChatResponseReferencePartStatusKind.Omitted,
+				},
+			};
 			if (this.props.omitReferences) {
 				return;
 			}
 
 			return (
 				<>
-					<references value={[new PromptReference(this.props.variableName ? { variableName: this.props.variableName, value: this.props.variableValue } : this.props.variableValue, undefined, options)]} />
+					<references
+						value={[
+							new PromptReference(
+								this.props.variableName
+									? {
+										variableName:
+												this.props.variableName,
+										value: this.props.variableValue,
+									}
+									: this.props.variableValue,
+								undefined,
+								options,
+							),
+						]}
+					/>
 				</>
 			);
 		}
 
-		if ((range && (!this.props.alwaysIncludeSummary || range.isEqual(new Range(new Position(0, 0), documentSnapshot.lineAt(documentSnapshot.lineCount - 1).range.end)))) || /\.(svg)$/i.test(uri.path)) {
+		if (
+			(range &&
+				(!this.props.alwaysIncludeSummary ||
+					range.isEqual(
+						new Range(
+							new Position(0, 0),
+							documentSnapshot.lineAt(
+								documentSnapshot.lineCount - 1,
+							).range.end,
+						),
+					))) ||
+			/\.(svg)$/i.test(uri.path)
+		) {
 			// Don't summarize if the file is an SVG, since summarization will almost certainly not work as expected
-			return <CodeSelection variableName={this.props.variableName} document={documentSnapshot} range={range} filePathMode={this.props.filePathMode} omitReferences={this.props.omitReferences} description={this.props.description} />;
+			return (
+				<CodeSelection
+					variableName={this.props.variableName}
+					document={documentSnapshot}
+					range={range}
+					filePathMode={this.props.filePathMode}
+					omitReferences={this.props.omitReferences}
+					description={this.props.description}
+				/>
+			);
 		}
 
 		if (range) {
-			const selectionDesc = this.props.description ? this.props.description : ``;
+			const selectionDesc = this.props.description
+				? this.props.description
+				: ``;
 			const summaryDesc = `User's active file for additional context`;
 			return (
 				<>
-					<CodeSelection variableName={this.props.variableName} document={documentSnapshot} range={range} filePathMode={this.props.filePathMode} omitReferences={this.props.omitReferences} description={selectionDesc} />
-					<CodeSummary flexGrow={1} variableName={''} document={documentSnapshot} range={range} filePathMode={this.props.filePathMode} lineNumberStyle={this.props.lineNumberStyle} omitReferences={this.props.omitReferences} description={summaryDesc} />
+					<CodeSelection
+						variableName={this.props.variableName}
+						document={documentSnapshot}
+						range={range}
+						filePathMode={this.props.filePathMode}
+						omitReferences={this.props.omitReferences}
+						description={selectionDesc}
+					/>
+					<CodeSummary
+						flexGrow={1}
+						variableName={''}
+						document={documentSnapshot}
+						range={range}
+						filePathMode={this.props.filePathMode}
+						lineNumberStyle={this.props.lineNumberStyle}
+						omitReferences={this.props.omitReferences}
+						description={summaryDesc}
+					/>
 				</>
 			);
 		}
 
-		return <CodeSummary variableName={this.props.variableName} document={documentSnapshot} range={range} filePathMode={this.props.filePathMode} lineNumberStyle={this.props.lineNumberStyle} omitReferences={this.props.omitReferences} description={this.props.description} />;
+		return (
+			<CodeSummary
+				variableName={this.props.variableName}
+				document={documentSnapshot}
+				range={range}
+				filePathMode={this.props.filePathMode}
+				lineNumberStyle={this.props.lineNumberStyle}
+				omitReferences={this.props.omitReferences}
+				description={this.props.description}
+			/>
+		);
 	}
 }
 
@@ -207,17 +414,37 @@ interface CodeSelectionProps extends BasePromptElementProps {
 }
 
 class CodeSelection extends PromptElement<CodeSelectionProps, unknown> {
-
 	override async render(_state: unknown, sizing: PromptSizing) {
 		const { document, range } = this.props;
 		const { uri } = document;
-		const references = this.props.omitReferences ? undefined : [new PromptReference(range ? new Location(uri, range) : uri)];
+		const references = this.props.omitReferences
+			? undefined
+			: [new PromptReference(range ? new Location(uri, range) : uri)];
 		return (
-			<Tag name='attachment' attrs={this.props.variableName ? { id: this.props.variableName } : undefined} >
+			<Tag
+				name="attachment"
+				attrs={
+					this.props.variableName
+						? { id: this.props.variableName }
+						: undefined
+				}
+			>
 				{this.props.description ? this.props.description + ':\n' : ''}
-				Excerpt from {basename(uri)}{range ? `, lines ${range.start.line + 1} to ${range.end.line + 1}` : ''}:
-				<CodeBlock includeFilepath={this.props.filePathMode === FilePathMode.AsComment} languageId={document.languageId} uri={uri} references={references} code={document.getText(range)} />
-			</Tag >
+				Excerpt from {basename(uri)}
+				{range
+					? `, lines ${range.start.line + 1} to ${range.end.line + 1}`
+					: ''}
+				:
+				<CodeBlock
+					includeFilepath={
+						this.props.filePathMode === FilePathMode.AsComment
+					}
+					languageId={document.languageId}
+					uri={uri}
+					references={references}
+					code={document.getText(range)}
+				/>
+			</Tag>
 		);
 	}
 }
@@ -225,7 +452,7 @@ class CodeSelection extends PromptElement<CodeSelectionProps, unknown> {
 export enum FilePathMode {
 	AsAttribute,
 	AsComment,
-	None
+	None,
 }
 
 interface CodeSummaryProps extends BasePromptElementProps {
@@ -239,11 +466,12 @@ interface CodeSummaryProps extends BasePromptElementProps {
 }
 
 class CodeSummary extends PromptElement<CodeSummaryProps, unknown> {
-
 	constructor(
 		props: CodeSummaryProps,
-		@IInstantiationService private readonly instantiationService: IInstantiationService,
-		@IPromptPathRepresentationService private readonly _promptPathRepresentationService: IPromptPathRepresentationService,
+		@IInstantiationService
+		private readonly instantiationService: IInstantiationService,
+		@IPromptPathRepresentationService
+		private readonly _promptPathRepresentationService: IPromptPathRepresentationService,
 	) {
 		super(props);
 	}
@@ -251,22 +479,54 @@ class CodeSummary extends PromptElement<CodeSummaryProps, unknown> {
 	override async render(_state: unknown, sizing: PromptSizing) {
 		const { document, range } = this.props;
 		const { uri } = document;
-		const lineNumberStyle = this.props.lineNumberStyle === 'legacy' ? undefined : this.props.lineNumberStyle;
-		const summarized = document instanceof TextDocumentSnapshot ?
-			await this.instantiationService.createInstance(DocumentSummarizer).summarizeDocument(document, undefined, range, sizing.tokenBudget, {
-				costFnOverride: fileVariableCostFn,
-				lineNumberStyle,
-			}) :
-			await this.instantiationService.createInstance(NotebookDocumentSummarizer).summarizeDocument(document, undefined, range, sizing.tokenBudget, {
-				costFnOverride: fileVariableCostFn,
-				lineNumberStyle,
-			});
+		const lineNumberStyle =
+			this.props.lineNumberStyle === 'legacy'
+				? undefined
+				: this.props.lineNumberStyle;
+		const summarized =
+			document instanceof TextDocumentSnapshot
+				? await this.instantiationService
+					.createInstance(DocumentSummarizer)
+					.summarizeDocument(
+						document,
+						undefined,
+						range,
+						sizing.tokenBudget,
+						{
+							costFnOverride: fileVariableCostFn,
+							lineNumberStyle,
+						},
+					)
+				: await this.instantiationService
+					.createInstance(NotebookDocumentSummarizer)
+					.summarizeDocument(
+						document,
+						undefined,
+						range,
+						sizing.tokenBudget,
+						{
+							costFnOverride: fileVariableCostFn,
+							lineNumberStyle,
+						},
+					);
 
-		const code = this.props.lineNumberStyle === 'legacy' ? this.includeLineNumbers(summarized) : summarized.text;
+		const code =
+			this.props.lineNumberStyle === 'legacy'
+				? this.includeLineNumbers(summarized)
+				: summarized.text;
 		const promptReferenceOptions = !summarized.isOriginal
-			? { status: { description: l10n.t('Part of this file was not sent to the model due to context window limitations. Try attaching specific selections from your file instead.'), kind: 2 } }
+			? {
+				status: {
+					description: l10n.t(
+						'Part of this file was not sent to the model due to context window limitations. Try attaching specific selections from your file instead.',
+					),
+					kind: 2,
+				},
+			}
 			: undefined;
-		const references = this.props.omitReferences ? undefined : [new PromptReference(uri, undefined, promptReferenceOptions)];
+		const references = this.props.omitReferences
+			? undefined
+			: [new PromptReference(uri, undefined, promptReferenceOptions)];
 		const attrs: Record<string, string> = {};
 		if (this.props.variableName) {
 			attrs.id = this.props.variableName;
@@ -275,12 +535,22 @@ class CodeSummary extends PromptElement<CodeSummaryProps, unknown> {
 			attrs.isSummarized = 'true';
 		}
 		if (this.props.filePathMode === FilePathMode.AsAttribute) {
-			attrs.filePath = this._promptPathRepresentationService.getFilePath(uri);
+			attrs.filePath =
+				this._promptPathRepresentationService.getFilePath(uri);
 		}
 		return (
-			<Tag name='attachment' attrs={attrs} >
+			<Tag name="attachment" attrs={attrs}>
 				{this.props.description ? this.props.description + ':\n' : ''}
-				<CodeBlock includeFilepath={this.props.filePathMode === FilePathMode.AsComment} languageId={document.languageId} uri={uri} references={references} code={code} fence='' />
+				<CodeBlock
+					includeFilepath={
+						this.props.filePathMode === FilePathMode.AsComment
+					}
+					languageId={document.languageId}
+					uri={uri}
+					references={references}
+					code={code}
+					fence=""
+				/>
 			</Tag>
 		);
 	}
@@ -289,41 +559,60 @@ class CodeSummary extends PromptElement<CodeSummaryProps, unknown> {
 		const lines = splitLines(summarized.text);
 		const lineNumberWidth = lines.length.toString().length;
 
-		return lines.map((line, index) => {
-			let lineNumber: number;
-			if (summarized.isOriginal) {
-				lineNumber = index;
-			} else {
-				const offset = summarized.positionOffsetTransformer.getOffset(new Position(index, 0));
-				const originalPosition = summarized.originalPositionOffsetTransformer.getPosition(summarized.projectBack(offset));
-				lineNumber = originalPosition.line;
-			}
-			return `${(lineNumber + 1).toString().padStart(lineNumberWidth)}: ${line}`;
-		}).join('\n');
+		return lines
+			.map((line, index) => {
+				let lineNumber: number;
+				if (summarized.isOriginal) {
+					lineNumber = index;
+				} else {
+					const offset =
+						summarized.positionOffsetTransformer.getOffset(
+							new Position(index, 0),
+						);
+					const originalPosition =
+						summarized.originalPositionOffsetTransformer.getPosition(
+							summarized.projectBack(offset),
+						);
+					lineNumber = originalPosition.line;
+				}
+				return `${(lineNumber + 1).toString().padStart(lineNumberWidth)}: ${line}`;
+			})
+			.join('\n');
 	}
 }
 
-export const fileVariableCostFn: ICostFnFactory<AbstractDocumentWithLanguageId> = {
-	createCostFn(doc) {
-		const nodeMultiplier: CachedFunction<RemovableNode, number> = new CachedFunction(node => {
-			if (doc.languageId === 'typescript') {
-				const parentCost = node.parent ? nodeMultiplier.get(node.parent) : 1;
-				const nodeText = node.text.trim();
-				if (nodeText.startsWith('private ')) { return parentCost * 1.1; }
-				if (nodeText.startsWith('export ') || nodeText.startsWith('public ')) { return parentCost * 0.9; }
-			}
-			return 1;
-		});
+export const fileVariableCostFn: ICostFnFactory<AbstractDocumentWithLanguageId> =
+	{
+		createCostFn(doc) {
+			const nodeMultiplier: CachedFunction<RemovableNode, number> =
+				new CachedFunction((node) => {
+					if (doc.languageId === 'typescript') {
+						const parentCost = node.parent
+							? nodeMultiplier.get(node.parent)
+							: 1;
+						const nodeText = node.text.trim();
+						if (nodeText.startsWith('private ')) {
+							return parentCost * 1.1;
+						}
+						if (
+							nodeText.startsWith('export ') ||
+							nodeText.startsWith('public ')
+						) {
+							return parentCost * 0.9;
+						}
+					}
+					return 1;
+				});
 
-		return (node, currentCost) => {
-			if (!node) {
-				return currentCost;
-			}
-			if (node.kind === 'import_statement') {
-				return 1000; // Include import statements last
-			}
-			const m = nodeMultiplier.get(node);
-			return currentCost * m;
-		};
-	},
-};
+			return (node, currentCost) => {
+				if (!node) {
+					return currentCost;
+				}
+				if (node.kind === 'import_statement') {
+					return 1000; // Include import statements last
+				}
+				const m = nodeMultiplier.get(node);
+				return currentCost * m;
+			};
+		},
+	};

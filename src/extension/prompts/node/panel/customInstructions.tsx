@@ -3,10 +3,20 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { BasePromptElementProps, PromptElement, PromptReference, PromptSizing, TextChunk } from '@vscode/prompt-tsx';
+import {
+	BasePromptElementProps,
+	PromptElement,
+	PromptReference,
+	PromptSizing,
+	TextChunk,
+} from '@vscode/prompt-tsx';
 import type { ChatLanguageModelToolReference } from 'vscode';
 import { ConfigKey } from '../../../../platform/configuration/common/configurationService';
-import { CustomInstructionsKind, ICustomInstructions, ICustomInstructionsService } from '../../../../platform/customInstructions/common/customInstructionsService';
+import {
+	CustomInstructionsKind,
+	ICustomInstructions,
+	ICustomInstructionsService,
+} from '../../../../platform/customInstructions/common/customInstructionsService';
 import { IFileSystemService } from '../../../../platform/filesystem/common/fileSystemService';
 import { ILogService } from '../../../../platform/log/common/logService';
 import { IPromptPathRepresentationService } from '../../../../platform/prompts/common/promptPathRepresentationService';
@@ -14,7 +24,10 @@ import { isUri } from '../../../../util/common/types';
 import { ResourceSet } from '../../../../util/vs/base/common/map';
 import { isString } from '../../../../util/vs/base/common/types';
 import { URI } from '../../../../util/vs/base/common/uri';
-import { ChatVariablesCollection, isPromptInstruction } from '../../../prompt/common/chatVariablesCollection';
+import {
+	ChatVariablesCollection,
+	isPromptInstruction,
+} from '../../../prompt/common/chatVariablesCollection';
 import { IPromptVariablesService } from '../../../prompt/node/promptVariablesService';
 import { Tag } from '../base/tag';
 
@@ -53,18 +66,29 @@ export interface CustomInstructionsProps extends BasePromptElementProps {
 export class CustomInstructions extends PromptElement<CustomInstructionsProps> {
 	constructor(
 		props: CustomInstructionsProps,
-		@ICustomInstructionsService private readonly customInstructionsService: ICustomInstructionsService,
-		@IPromptPathRepresentationService private readonly promptPathRepresentationService: IPromptPathRepresentationService,
-		@IPromptVariablesService private readonly promptVariablesService: IPromptVariablesService,
-		@IFileSystemService private readonly fileSystemService: IFileSystemService,
+		@ICustomInstructionsService
+		private readonly customInstructionsService: ICustomInstructionsService,
+		@IPromptPathRepresentationService
+		private readonly promptPathRepresentationService: IPromptPathRepresentationService,
+		@IPromptVariablesService
+		private readonly promptVariablesService: IPromptVariablesService,
+		@IFileSystemService
+		private readonly fileSystemService: IFileSystemService,
 		@ILogService private readonly logService: ILogService,
 	) {
 		super(props);
 	}
 	override async render(state: void, sizing: PromptSizing) {
-
-		const { includeCodeGenerationInstructions, includeTestGenerationInstructions, includeCodeFeedbackInstructions, includeCommitMessageGenerationInstructions, includePullRequestDescriptionGenerationInstructions, customIntroduction } = this.props;
-		const includeSystemMessageConflictWarning = this.props.includeSystemMessageConflictWarning ?? true;
+		const {
+			includeCodeGenerationInstructions,
+			includeTestGenerationInstructions,
+			includeCodeFeedbackInstructions,
+			includeCommitMessageGenerationInstructions,
+			includePullRequestDescriptionGenerationInstructions,
+			customIntroduction,
+		} = this.props;
+		const includeSystemMessageConflictWarning =
+			this.props.includeSystemMessageConflictWarning ?? true;
 
 		const chunks = [];
 
@@ -77,13 +101,23 @@ export class CustomInstructions extends PromptElement<CustomInstructionsProps> {
 						let value = variable.value;
 						if (isString(value)) {
 							if (variable.reference.toolReferences?.length) {
-								value = await this.promptVariablesService.resolveToolReferencesInPrompt(value, variable.reference.toolReferences);
+								value =
+									await this.promptVariablesService.resolveToolReferencesInPrompt(
+										value,
+										variable.reference.toolReferences,
+									);
 							}
 							chunks.push(<TextChunk>{value}</TextChunk>);
 						} else if (isUri(value) && !hasSeen.has(value)) {
 							hasSeen.add(value);
-							const element = await this.createElementFromURI(value, variable.reference.toolReferences);
-							if (element && !hasSeenContent.has(element.content)) {
+							const element = await this.createElementFromURI(
+								value,
+								variable.reference.toolReferences,
+							);
+							if (
+								element &&
+								!hasSeenContent.has(element.content)
+							) {
 								hasSeenContent.add(element.content);
 								chunks.push(element.chuck);
 							}
@@ -91,11 +125,13 @@ export class CustomInstructions extends PromptElement<CustomInstructionsProps> {
 					}
 				}
 			}
-			const instructionFiles = await this.customInstructionsService.getAgentInstructions();
+			const instructionFiles =
+				await this.customInstructionsService.getAgentInstructions();
 			for (const instructionFile of instructionFiles) {
 				if (!hasSeen.has(instructionFile)) {
 					hasSeen.add(instructionFile);
-					const element = await this.createElementFromURI(instructionFile);
+					const element =
+						await this.createElementFromURI(instructionFile);
 					if (element && !hasSeenContent.has(element.content)) {
 						hasSeenContent.add(element.content);
 						chunks.push(element.chuck);
@@ -106,19 +142,39 @@ export class CustomInstructions extends PromptElement<CustomInstructionsProps> {
 
 		const customInstructions: ICustomInstructions[] = [];
 		if (includeCodeGenerationInstructions !== false) {
-			customInstructions.push(...await this.customInstructionsService.fetchInstructionsFromSetting(ConfigKey.CodeGenerationInstructions));
+			customInstructions.push(
+				...(await this.customInstructionsService.fetchInstructionsFromSetting(
+					ConfigKey.CodeGenerationInstructions,
+				)),
+			);
 		}
 		if (includeTestGenerationInstructions) {
-			customInstructions.push(...await this.customInstructionsService.fetchInstructionsFromSetting(ConfigKey.TestGenerationInstructions));
+			customInstructions.push(
+				...(await this.customInstructionsService.fetchInstructionsFromSetting(
+					ConfigKey.TestGenerationInstructions,
+				)),
+			);
 		}
 		if (includeCodeFeedbackInstructions) {
-			customInstructions.push(...await this.customInstructionsService.fetchInstructionsFromSetting(ConfigKey.CodeFeedbackInstructions));
+			customInstructions.push(
+				...(await this.customInstructionsService.fetchInstructionsFromSetting(
+					ConfigKey.CodeFeedbackInstructions,
+				)),
+			);
 		}
 		if (includeCommitMessageGenerationInstructions) {
-			customInstructions.push(...await this.customInstructionsService.fetchInstructionsFromSetting(ConfigKey.CommitMessageGenerationInstructions));
+			customInstructions.push(
+				...(await this.customInstructionsService.fetchInstructionsFromSetting(
+					ConfigKey.CommitMessageGenerationInstructions,
+				)),
+			);
 		}
 		if (includePullRequestDescriptionGenerationInstructions) {
-			customInstructions.push(...await this.customInstructionsService.fetchInstructionsFromSetting(ConfigKey.PullRequestDescriptionGenerationInstructions));
+			customInstructions.push(
+				...(await this.customInstructionsService.fetchInstructionsFromSetting(
+					ConfigKey.PullRequestDescriptionGenerationInstructions,
+				)),
+			);
 		}
 		for (const instruction of customInstructions) {
 			const chunk = this.createInstructionElement(instruction);
@@ -129,36 +185,62 @@ export class CustomInstructions extends PromptElement<CustomInstructionsProps> {
 		if (chunks.length === 0) {
 			return undefined;
 		}
-		const introduction = customIntroduction ?? 'When generating code, please follow these user provided coding instructions.';
-		const systemMessageConflictWarning = includeSystemMessageConflictWarning && ' You can ignore an instruction if it contradicts a system message.';
+		const introduction =
+			customIntroduction ??
+			'When generating code, please follow these user provided coding instructions.';
+		const systemMessageConflictWarning =
+			includeSystemMessageConflictWarning &&
+			' You can ignore an instruction if it contradicts a system message.';
 
-		return (<>
-			{introduction}{systemMessageConflictWarning}<br />
-			<Tag name='instructions'>
-				{
-					...chunks
-				}
-			</Tag>
-
-		</>);
+		return (
+			<>
+				{introduction}
+				{systemMessageConflictWarning}
+				<br />
+				<Tag name="instructions">{...chunks}</Tag>
+			</>
+		);
 	}
 
-	private async createElementFromURI(fileUri: URI, toolReferences?: readonly ChatLanguageModelToolReference[]): Promise<{ chuck: PromptElement; content: string } | undefined> {
+	private async createElementFromURI(
+		fileUri: URI,
+		toolReferences?: readonly ChatLanguageModelToolReference[],
+	): Promise<{ chuck: PromptElement; content: string } | undefined> {
 		try {
 			const fileContents = await this.fileSystemService.readFile(fileUri);
 			let content = new TextDecoder().decode(fileContents);
 			if (toolReferences && toolReferences.length > 0) {
-				content = await this.promptVariablesService.resolveToolReferencesInPrompt(content, toolReferences);
+				content =
+					await this.promptVariablesService.resolveToolReferencesInPrompt(
+						content,
+						toolReferences,
+					);
 			}
 			return {
-				chuck: <Tag name='attachment' attrs={{ filePath: this.promptPathRepresentationService.getFilePath(fileUri) }}>
-					<references value={[new InstructionFileReference(fileUri, content)]} />
-					<TextChunk>{content}</TextChunk>
-				</Tag>,
-				content
+				chuck: (
+					<Tag
+						name="attachment"
+						attrs={{
+							filePath:
+								this.promptPathRepresentationService.getFilePath(
+									fileUri,
+								),
+						}}
+					>
+						<references
+							value={[
+								new InstructionFileReference(fileUri, content),
+							]}
+						/>
+						<TextChunk>{content}</TextChunk>
+					</Tag>
+				),
+				content,
 			};
 		} catch (e) {
-			this.logService.debug(`Instruction file not found: ${fileUri.toString()}`);
+			this.logService.debug(
+				`Instruction file not found: ${fileUri.toString()}`,
+			);
 			return undefined;
 		}
 	}
@@ -168,7 +250,9 @@ export class CustomInstructions extends PromptElement<CustomInstructionsProps> {
 		for (const entry of instructions.content) {
 			if (entry.languageId) {
 				if (entry.languageId === this.props.languageId) {
-					lines.push(`For ${entry.languageId} code: ${entry.instruction}`);
+					lines.push(
+						`For ${entry.languageId} code: ${entry.instruction}`,
+					);
 				}
 			} else {
 				lines.push(entry.instruction);
@@ -178,31 +262,53 @@ export class CustomInstructions extends PromptElement<CustomInstructionsProps> {
 			return undefined;
 		}
 
-		return (<>
-			<references value={[new CustomInstructionPromptReference(instructions, lines)]} />
+		return (
 			<>
-				{
-					lines.map(line => <TextChunk>{line}</TextChunk>)
-				}
+				<references
+					value={[
+						new CustomInstructionPromptReference(
+							instructions,
+							lines,
+						),
+					]}
+				/>
+				<>
+					{lines.map((line) => (
+						<TextChunk>{line}</TextChunk>
+					))}
+				</>
 			</>
-		</>);
+		);
 	}
-
 }
 
 export class CustomInstructionPromptReference extends PromptReference {
-	constructor(public readonly instructions: ICustomInstructions, public readonly usedInstructions: string[]) {
+	constructor(
+		public readonly instructions: ICustomInstructions,
+		public readonly usedInstructions: string[],
+	) {
 		super(instructions.reference);
 	}
 }
 
 export class InstructionFileReference extends PromptReference {
-	constructor(public readonly ref: URI, public readonly instruction: string) {
+	constructor(
+		public readonly ref: URI,
+		public readonly instruction: string,
+	) {
 		super(ref);
 	}
 }
 
-export function getCustomInstructionTelemetry(references: readonly PromptReference[]): { codeGenInstructionsCount: number; codeGenInstructionsLength: number; codeGenInstructionsFilteredCount: number; codeGenInstructionFileCount: number; codeGenInstructionSettingsCount: number } {
+export function getCustomInstructionTelemetry(
+	references: readonly PromptReference[],
+): {
+	codeGenInstructionsCount: number;
+	codeGenInstructionsLength: number;
+	codeGenInstructionsFilteredCount: number;
+	codeGenInstructionFileCount: number;
+	codeGenInstructionSettingsCount: number;
+} {
 	let codeGenInstructionsCount = 0;
 	let codeGenInstructionsFilteredCount = 0;
 	let codeGenInstructionsLength = 0;
@@ -212,12 +318,20 @@ export function getCustomInstructionTelemetry(references: readonly PromptReferen
 	for (const reference of references) {
 		if (reference instanceof CustomInstructionPromptReference) {
 			codeGenInstructionsCount += reference.usedInstructions.length;
-			codeGenInstructionsLength += reference.usedInstructions.reduce((acc, instruction) => acc + instruction.length, 0);
-			codeGenInstructionsFilteredCount += Math.max(reference.instructions.content.length - reference.usedInstructions.length, 0);
+			codeGenInstructionsLength += reference.usedInstructions.reduce(
+				(acc, instruction) => acc + instruction.length,
+				0,
+			);
+			codeGenInstructionsFilteredCount += Math.max(
+				reference.instructions.content.length -
+					reference.usedInstructions.length,
+				0,
+			);
 			if (reference.instructions.kind === CustomInstructionsKind.File) {
 				codeGenInstructionFileCount++;
 			} else {
-				codeGenInstructionSettingsCount += reference.usedInstructions.length;
+				codeGenInstructionSettingsCount +=
+					reference.usedInstructions.length;
 			}
 		} else if (reference instanceof InstructionFileReference) {
 			codeGenInstructionsLength += reference.instruction.length;
@@ -225,6 +339,11 @@ export function getCustomInstructionTelemetry(references: readonly PromptReferen
 			codeGenInstructionFileCount++;
 		}
 	}
-	return { codeGenInstructionsCount, codeGenInstructionsLength, codeGenInstructionsFilteredCount, codeGenInstructionFileCount, codeGenInstructionSettingsCount };
-
+	return {
+		codeGenInstructionsCount,
+		codeGenInstructionsLength,
+		codeGenInstructionsFilteredCount,
+		codeGenInstructionFileCount,
+		codeGenInstructionSettingsCount,
+	};
 }

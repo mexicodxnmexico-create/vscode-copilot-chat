@@ -76,10 +76,7 @@
 	{
 		"type": "label",
 		"name": "L10N",
-		"assign": [
-			"csigs",
-			"TylerLeonhardt"
-		]
+		"assign": ["csigs", "TylerLeonhardt"]
 	},
 	{
 		"type": "comment",

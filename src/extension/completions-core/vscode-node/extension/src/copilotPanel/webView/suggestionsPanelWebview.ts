@@ -59,7 +59,7 @@ function handleSolutionUpdate(message: Message) {
 					? `<p>
 						<span style="vertical-align: text-bottom"><strong><span aria-hidden="true">&#9888;</span> Warning:</strong></span>
 						${DOMPurify.sanitize(solution.citation.message)}
-						<a href="${DOMPurify.sanitize(solution.citation.url)}" target="_blank" rel="noopener noreferrer">Inspect source code</a>
+						<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">Inspect source code</a>
 					  </p>`
 					: '';
 				const sanitizedSnippet = DOMPurify.sanitize(solution.htmlSnippet);
@@ -76,6 +76,7 @@ function handleSolutionUpdate(message: Message) {
 		solutionsContainer.querySelectorAll('pre').forEach((pre) => {
 			pre.tabIndex = 0;
 		});
+		solutionsContainer.setAttribute('aria-busy', 'false');
 	}
 }
 

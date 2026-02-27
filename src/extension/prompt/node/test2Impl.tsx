@@ -3,7 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { PromptElement, PromptElementProps, PromptSizing } from '@vscode/prompt-tsx';
+import {
+	PromptElement,
+	PromptElementProps,
+	PromptSizing,
+} from '@vscode/prompt-tsx';
 import assert from 'assert';
 import type * as vscode from 'vscode';
 import { IIgnoreService } from '../../../platform/ignore/common/ignoreService';
@@ -34,10 +38,10 @@ type Props = PromptElementProps<{
  * @remark Respects copilot-ignore.
  */
 export class Test2Impl extends PromptElement<Props> {
-
 	constructor(
 		props: Props,
-		@IInstantiationService private readonly instaService: IInstantiationService,
+		@IInstantiationService
+		private readonly instaService: IInstantiationService,
 		@IIgnoreService private readonly ignoreService: IIgnoreService,
 		@IWorkspaceService private readonly workspaceService: IWorkspaceService,
 	) {
@@ -45,10 +49,12 @@ export class Test2Impl extends PromptElement<Props> {
 	}
 
 	override async render(state: void, sizing: PromptSizing) {
+		const { documentContext, srcFile } = this.props;
 
-		const { documentContext, srcFile, } = this.props;
-
-		assert(isTestFile(documentContext.document), 'Test2Impl must be invoked on a test file.');
+		assert(
+			isTestFile(documentContext.document),
+			'Test2Impl must be invoked on a test file.',
+		);
 
 		let candidateFile: URI | undefined;
 		let selection: vscode.Range | undefined;
@@ -59,16 +65,26 @@ export class Test2Impl extends PromptElement<Props> {
 		} else {
 			// @ulugbekna: find file that this test file corresponds to
 			const finder = this.instaService.createInstance(TestFileFinder);
-			candidateFile = await finder.findFileForTestFile(documentContext.document, CancellationToken.None);
+			candidateFile = await finder.findFileForTestFile(
+				documentContext.document,
+				CancellationToken.None,
+			);
 		}
 
-		if (candidateFile === undefined || await this.ignoreService.isCopilotIgnored(candidateFile)) {
+		if (
+			candidateFile === undefined ||
+			(await this.ignoreService.isCopilotIgnored(candidateFile))
+		) {
 			return undefined;
 		}
 
-		const doc = await this.workspaceService.openTextDocumentAndSnapshot(candidateFile);
+		const doc =
+			await this.workspaceService.openTextDocumentAndSnapshot(
+				candidateFile,
+			);
 
-		const docSummarizer = this.instaService.createInstance(DocumentSummarizer);
+		const docSummarizer =
+			this.instaService.createInstance(DocumentSummarizer);
 
 		const summarizedDoc = await docSummarizer.summarizeDocument(
 			doc,
@@ -80,7 +96,7 @@ export class Test2Impl extends PromptElement<Props> {
 		const references = [new PromptReference(candidateFile)];
 
 		return (
-			<Tag name='codeToTest' priority={this.props.priority}>
+			<Tag name="codeToTest" priority={this.props.priority}>
 				<references value={references} />
 				Below is the file located at {candidateFile.path}:<br />
 				<CodeBlock
@@ -91,5 +107,4 @@ export class Test2Impl extends PromptElement<Props> {
 			</Tag>
 		);
 	}
-
 }

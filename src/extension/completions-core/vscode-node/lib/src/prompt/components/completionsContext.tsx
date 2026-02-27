@@ -5,7 +5,10 @@
 //** @jsxRuntime automatic */
 /** @jsxImportSource ../../../../prompt/jsx-runtime/ */
 
-import { PromptElementProps, PromptSnapshotNode } from '../../../../prompt/src/components/components';
+import {
+	PromptElementProps,
+	PromptSnapshotNode,
+} from '../../../../prompt/src/components/components';
 
 /**
  * A component that marks the context part of the prompt

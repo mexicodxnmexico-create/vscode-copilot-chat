@@ -30,16 +30,17 @@ process.on('exit', () => writeFileSync(packageJsonPath, raw));
 const isRecoveryBuild = !pkg.version.endsWith('.0');
 
 export default defineConfig({
-	files: __dirname + (isSanity ? '/dist/sanity-test-extension.js' : '/dist/test-extension.js'),
+	files:
+		__dirname +
+		(isSanity
+			? '/dist/sanity-test-extension.js'
+			: '/dist/test-extension.js'),
 	version: isRecoveryBuild ? 'stable' : 'insiders-unreleased',
-	launchArgs: [
-		'--disable-extensions',
-		'--profile-temp'
-	],
+	launchArgs: ['--disable-extensions', '--profile-temp'],
 	mocha: {
 		ui: 'tdd',
 		color: true,
 		forbidOnly: !!process.env.CI,
-		timeout: 5000
-	}
+		timeout: 5000,
+	},
 });

@@ -4,7 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Select, ToggleButton, Tooltip } from '@fluentui/react-components';
-import { WeatherMoon20Regular, WeatherSunny20Regular } from '@fluentui/react-icons';
+import {
+	WeatherMoon20Regular,
+	WeatherSunny20Regular,
+} from '@fluentui/react-icons';
 import * as mobx from 'mobx';
 import * as mobxlite from 'mobx-react-lite';
 import * as React from 'react';
@@ -52,7 +55,6 @@ export const Toolbar = mobxlite.observer(
 		theme,
 		toggleTheme,
 	}: ToolbarProps) => {
-
 		const toolbarContent = (() => {
 			switch (testSource.value) {
 				case TestSource.Local:
@@ -91,45 +93,92 @@ export const Toolbar = mobxlite.observer(
 		return (
 			<div style={{ padding: '5px', display: 'flex' }}>
 				{toolbarContent}
-				<div style={{ display: 'flex', justifyContent: 'end', maxHeight: '35px' }}>
+				<div
+					style={{
+						display: 'flex',
+						justifyContent: 'end',
+						maxHeight: '35px',
+					}}
+				>
 					<ThemeToggler theme={theme} toggleTheme={toggleTheme} />
-					<ModeToggler testSource={testSource} onFiltererChange={onFiltererChange} />
+					<ModeToggler
+						testSource={testSource}
+						onFiltererChange={onFiltererChange}
+					/>
 				</div>
 			</div>
 		);
-	}
+	},
 );
 
-const ThemeToggler = ({ theme, toggleTheme }: { theme: ThemeKind; toggleTheme: () => void }) => (
-	<Tooltip content='Toggle workbench theme' relationship='label'>
+const ThemeToggler = ({
+	theme,
+	toggleTheme,
+}: {
+	theme: ThemeKind;
+	toggleTheme: () => void;
+}) => (
+	<Tooltip content="Toggle workbench theme" relationship="label">
 		<ToggleButton
-			appearance='subtle'
-			icon={theme === 'dark' ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />}
+			appearance="subtle"
+			icon={
+				theme === 'dark' ? (
+					<WeatherSunny20Regular />
+				) : (
+					<WeatherMoon20Regular />
+				)
+			}
 			onClick={toggleTheme}
 		/>
 	</Tooltip>
 );
 
-const testSourceOptions: { value: string; label: string; source: TestSource }[] = [
-	{ value: String(TestSource.Local), label: 'Local', source: TestSource.Local },
-	{ value: String(TestSource.NesExternal), label: 'NES External', source: TestSource.NesExternal },
-	{ value: String(TestSource.External), label: 'AML', source: TestSource.External },
+const testSourceOptions: {
+	value: string;
+	label: string;
+	source: TestSource;
+}[] = [
+	{
+		value: String(TestSource.Local),
+		label: 'Local',
+		source: TestSource.Local,
+	},
+	{
+		value: String(TestSource.NesExternal),
+		label: 'NES External',
+		source: TestSource.NesExternal,
+	},
+	{
+		value: String(TestSource.External),
+		label: 'AML',
+		source: TestSource.External,
+	},
 ];
 
-const ModeToggler = ({ testSource, onFiltererChange }: { testSource: TestSourceValue; onFiltererChange: (filter: TestFilterer | undefined) => void }) => (
+const ModeToggler = ({
+	testSource,
+	onFiltererChange,
+}: {
+	testSource: TestSourceValue;
+	onFiltererChange: (filter: TestFilterer | undefined) => void;
+}) => (
 	<Select
 		style={{ marginLeft: '8px', minWidth: '140px' }}
 		value={String(testSource.value)}
 		onChange={mobx.action((_e, data) => {
-			const selected = testSourceOptions.find(o => o.value === data.value);
+			const selected = testSourceOptions.find(
+				(o) => o.value === data.value,
+			);
 			if (selected) {
 				testSource.value = selected.source;
 				onFiltererChange(undefined);
 			}
 		})}
 	>
-		{testSourceOptions.map(o => (
-			<option key={o.value} value={o.value}>{o.label}</option>
+		{testSourceOptions.map((o) => (
+			<option key={o.value} value={o.value}>
+				{o.label}
+			</option>
 		))}
 	</Select>
 );

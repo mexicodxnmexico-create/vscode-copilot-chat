@@ -3,7 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ChatFetchResponseType, ChatLocation } from '../../../platform/chat/common/commonTypes';
+import {
+	ChatFetchResponseType,
+	ChatLocation,
+} from '../../../platform/chat/common/commonTypes';
 import { IEndpointProvider } from '../../../platform/endpoint/common/endpointProvider';
 import { IExtensionsService } from '../../../platform/extensions/common/extensionsService';
 import { ITelemetryService } from '../../../platform/telemetry/common/telemetry';
@@ -15,8 +18,14 @@ import { count } from '../../../util/vs/base/common/strings';
 import { URI } from '../../../util/vs/base/common/uri';
 import { IInstantiationService } from '../../../util/vs/platform/instantiation/common/instantiation';
 import { PromptRenderer } from '../../prompts/node/base/promptRenderer';
-import { StartDebuggingPrompt, StartDebuggingType } from '../../prompts/node/panel/startDebugging';
-import { IStartDebuggingParsedResponse, parseLaunchConfigFromResponse } from './parseLaunchConfigFromResponse';
+import {
+	StartDebuggingPrompt,
+	StartDebuggingType,
+} from '../../prompts/node/panel/startDebugging';
+import {
+	IStartDebuggingParsedResponse,
+	parseLaunchConfigFromResponse,
+} from './parseLaunchConfigFromResponse';
 
 export interface IDebugConfigResult {
 	ok: boolean;
@@ -27,28 +36,40 @@ export interface IDebugConfigResult {
 
 export interface IDebugCommandToConfigConverter {
 	readonly _serviceBrand: undefined;
-	convert(cwd: string, args: readonly string[], token: CancellationToken): Promise<IDebugConfigResult>;
+	convert(
+		cwd: string,
+		args: readonly string[],
+		token: CancellationToken,
+	): Promise<IDebugConfigResult>;
 }
 
-export const IDebugCommandToConfigConverter = createServiceIdentifier<IDebugCommandToConfigConverter>('IDebugCommandToConfigConverter');
+export const IDebugCommandToConfigConverter =
+	createServiceIdentifier<IDebugCommandToConfigConverter>(
+		'IDebugCommandToConfigConverter',
+	);
 
 export class DebugCommandToConfigConverter implements IDebugCommandToConfigConverter {
 	declare readonly _serviceBrand: undefined;
 
 	constructor(
 		@IEndpointProvider private readonly endpointProvider: IEndpointProvider,
-		@IInstantiationService private readonly instantiationService: IInstantiationService,
+		@IInstantiationService
+		private readonly instantiationService: IInstantiationService,
 		@IWorkspaceService private readonly workspace: IWorkspaceService,
 		@ITelemetryService private readonly telemetry: ITelemetryService,
-		@IExtensionsService private readonly extensionsService: IExtensionsService,
-	) {
-	}
+		@IExtensionsService
+		private readonly extensionsService: IExtensionsService,
+	) {}
 
 	/**
 	 * Converts a command run in the given working directory to a VS Code
 	 * launch config.
 	 */
-	public async convert(cwd: string, args: readonly string[], token: CancellationToken): Promise<IDebugConfigResult> {
+	public async convert(
+		cwd: string,
+		args: readonly string[],
+		token: CancellationToken,
+	): Promise<IDebugConfigResult> {
 		const relCwd = getPathRelativeToWorkspaceFolder(cwd, this.workspace);
 
 		const endpoint = await this.endpointProvider.getChatEndpoint('gpt-4.1');
@@ -64,7 +85,7 @@ export class DebugCommandToConfigConverter implements IDebugCommandToConfigConve
 					args,
 				},
 				history: [],
-			}
+			},
 		);
 
 		const prompt = await promptRenderer.render(undefined, token);
@@ -77,10 +98,18 @@ export class DebugCommandToConfigConverter implements IDebugCommandToConfigConve
 		);
 
 		if (fetchResult.type !== ChatFetchResponseType.Success) {
-			return { ok: false, config: undefined, text: fetchResult.reason, workspaceFolder: relCwd?.folder };
+			return {
+				ok: false,
+				config: undefined,
+				text: fetchResult.reason,
+				workspaceFolder: relCwd?.folder,
+			};
 		}
 
-		const config = parseLaunchConfigFromResponse(fetchResult.value, this.extensionsService);
+		const config = parseLaunchConfigFromResponse(
+			fetchResult.value,
+			this.extensionsService,
+		);
 
 		/* __GDPR__
 		"onboardDebug.configGenerated" : {
@@ -90,29 +119,44 @@ export class DebugCommandToConfigConverter implements IDebugCommandToConfigConve
 			"configType": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "command": "launch.json config type generated, if any" }
 		}
 		*/
-		this.telemetry.sendMSFTTelemetryEvent('onboardDebug.configGenerated', {
-			configType: config?.configurations[0].type,
-		}, {
-			ok: config ? 1 : 0,
-		});
+		this.telemetry.sendMSFTTelemetryEvent(
+			'onboardDebug.configGenerated',
+			{
+				configType: config?.configurations[0].type,
+			},
+			{
+				ok: config ? 1 : 0,
+			},
+		);
 
 		return {
 			ok: true,
 			config,
 			text: fetchResult.value,
-			workspaceFolder: relCwd?.folder
+			workspaceFolder: relCwd?.folder,
 		};
 	}
 }
 
-export function getPathRelativeToWorkspaceFolder(path: string, workspace: IWorkspaceService) {
+export function getPathRelativeToWorkspaceFolder(
+	path: string,
+	workspace: IWorkspaceService,
+) {
 	let closest: { rel: string; distance: number; folder: URI } | undefined;
 
 	for (const folder of workspace.getWorkspaceFolders()) {
 		const rel = relative(folder.fsPath, path);
 		const distance = isAbsolute(rel) ? Infinity : count(rel, '..');
-		if (!closest || distance < closest.distance || (distance === closest.distance && rel.length < closest.rel.length)) {
-			closest = { rel: join('${workspaceFolder}', rel).replaceAll('\\', '/'), distance, folder };
+		if (
+			!closest ||
+			distance < closest.distance ||
+			(distance === closest.distance && rel.length < closest.rel.length)
+		) {
+			closest = {
+				rel: join('${workspaceFolder}', rel).replaceAll('\\', '/'),
+				distance,
+				folder,
+			};
 		}
 	}
 

@@ -15,7 +15,9 @@ function findPython(): void {
 	}
 
 	// check if a venv already exists
-	const pythonPath = isWindows ? '.venv\\Scripts\\python.exe' : '.venv/bin/python';
+	const pythonPath = isWindows
+		? '.venv\\Scripts\\python.exe'
+		: '.venv/bin/python';
 	if (fs.existsSync(pythonPath)) {
 		python = pythonPath;
 		return;
@@ -40,7 +42,10 @@ function checkPythonVersion() {
 	try {
 		console.log(`Checking python: ${python} --version`);
 		// Version must match `pyproject.toml` requirements
-		execSync(`${python} -c "import sys;version=sys.version_info;print(version);assert (3,10) <= version < (3,13),'Python version must be >=3.10, < 3.13'"`, { encoding: 'utf8', stdio: 'inherit' });
+		execSync(
+			`${python} -c "import sys;version=sys.version_info;print(version);assert (3,10) <= version < (3,13),'Python version must be >=3.10, < 3.13'"`,
+			{ encoding: 'utf8', stdio: 'inherit' },
+		);
 	} catch (error) {
 		process.exit(1);
 	}
@@ -65,7 +70,6 @@ function findUv(): void {
 	}
 }
 
-
 function runCommand(command: string) {
 	console.log(`Running command: ${command}`);
 	execSync(command, { stdio: 'inherit' });
@@ -77,7 +81,9 @@ function installRequirements(uvCommand: string) {
 
 function prepareVenv() {
 	if (!fs.existsSync('test/requirements.txt')) {
-		console.log('No requirements.txt found. Skipping virtual environment creation.');
+		console.log(
+			'No requirements.txt found. Skipping virtual environment creation.',
+		);
 		return;
 	}
 
@@ -85,7 +91,9 @@ function prepareVenv() {
 	findUv();
 
 	if (python === undefined && !uv) {
-		console.error('No python cli found. Please install python and add it to your PATH.');
+		console.error(
+			'No python cli found. Please install python and add it to your PATH.',
+		);
 		process.exit(1);
 	}
 
@@ -99,7 +107,9 @@ function prepareVenv() {
 		}
 	}
 
-	const pythonPath = isWindows ? '.venv\\Scripts\\python.exe' : '.venv/bin/python';
+	const pythonPath = isWindows
+		? '.venv\\Scripts\\python.exe'
+		: '.venv/bin/python';
 
 	if (!uv) {
 		runCommand(`${pythonPath} -m pip install uv`);

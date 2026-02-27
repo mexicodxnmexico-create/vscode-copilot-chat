@@ -6,12 +6,20 @@
 import { beforeEach, expect, suite, test } from 'vitest';
 import type * as vscode from 'vscode';
 import { IGitExtensionService } from '../../../../platform/git/common/gitExtensionService';
-import type { API, Change, Repository, RepositoryState } from '../../../../platform/git/vscode/git';
+import type {
+	API,
+	Change,
+	Repository,
+	RepositoryState,
+} from '../../../../platform/git/vscode/git';
 import { ITabsAndEditorsService } from '../../../../platform/tabs/common/tabsAndEditorsService';
 import { ITestingServicesAccessor } from '../../../../platform/test/node/services';
 import { TestingTabsAndEditorsService } from '../../../../platform/test/node/simulationWorkspaceServices';
 import { TestWorkspaceService } from '../../../../platform/test/node/testWorkspaceService';
-import { ITestFailure, ITestProvider } from '../../../../platform/testing/common/testProvider';
+import {
+	ITestFailure,
+	ITestProvider,
+} from '../../../../platform/testing/common/testProvider';
 import { IWorkspaceService } from '../../../../platform/workspace/common/workspaceService';
 import { Event } from '../../../../util/vs/base/common/event';
 import { URI } from '../../../../util/vs/base/common/uri';
@@ -39,27 +47,34 @@ suite('TestFailureTool', () => {
 			label: 'Test Suite',
 		}),
 		task: upcastPartial<vscode.TestSnapshotTaskState>({
-			messages: [{
-				message: 'Expected true to be false',
-				location: { uri: URI.file('/test/file.test.ts'), range: new Range(1, 1, 1, 1) }
-			}]
-		})
+			messages: [
+				{
+					message: 'Expected true to be false',
+					location: {
+						uri: URI.file('/test/file.test.ts'),
+						range: new Range(1, 1, 1, 1),
+					},
+				},
+			],
+		}),
 	};
 
 	const noopGitService: IGitExtensionService = {
 		_serviceBrand: undefined,
 		onDidChange: Event.None,
 		extensionAvailable: false,
-		getExtensionApi: () => upcastPartial<API>({
-			getRepository: () => upcastPartial<Repository>({
-				state: upcastPartial<RepositoryState>({
-					indexChanges: [],
-					workingTreeChanges: workingChanges,
-					mergeChanges: [],
-					untrackedChanges: [],
-				}),
-			})
-		})
+		getExtensionApi: () =>
+			upcastPartial<API>({
+				getRepository: () =>
+					upcastPartial<Repository>({
+						state: upcastPartial<RepositoryState>({
+							indexChanges: [],
+							workingTreeChanges: workingChanges,
+							mergeChanges: [],
+							untrackedChanges: [],
+						}),
+					}),
+			}),
 	};
 
 	beforeEach(async () => {
@@ -75,12 +90,18 @@ suite('TestFailureTool', () => {
 		} as any;
 
 		testingServiceCollection.define(ITestProvider, mockTestProvider);
-		testingServiceCollection.define(IWorkspaceService, new TestWorkspaceService([URI.file('/workspace')]));
-		testingServiceCollection.define(ITabsAndEditorsService, new TestingTabsAndEditorsService({
-			getActiveTextEditor: () => activeTextEditor,
-			getVisibleTextEditors: () => visibleTextEditors,
-			getActiveNotebookEditor: () => undefined,
-		}));
+		testingServiceCollection.define(
+			IWorkspaceService,
+			new TestWorkspaceService([URI.file('/workspace')]),
+		);
+		testingServiceCollection.define(
+			ITabsAndEditorsService,
+			new TestingTabsAndEditorsService({
+				getActiveTextEditor: () => activeTextEditor,
+				getVisibleTextEditors: () => visibleTextEditors,
+				getActiveNotebookEditor: () => undefined,
+			}),
+		);
 		testingServiceCollection.define(IGitExtensionService, noopGitService);
 
 		accessor = testingServiceCollection.createTestingAccessor();
@@ -90,30 +111,54 @@ suite('TestFailureTool', () => {
 
 	test('returns a message when no failures exist', async () => {
 		failures = [];
-		const result = await resolver.invoke({ input: {}, toolInvocationToken: '' as any });
-		expect(await toolResultToString(accessor, result)).toMatchInlineSnapshot(`"No test failures were found yet, call the tool runTests to run tests and find failures."`);
+		const result = await resolver.invoke({
+			input: {},
+			toolInvocationToken: '' as any,
+		});
+		expect(
+			await toolResultToString(accessor, result),
+		).toMatchInlineSnapshot(
+			`"No test failures were found yet, call the tool runTests to run tests and find failures."`,
+		);
 	});
 
 	test('formats stack frames', async () => {
 		failures = [
 			{
-				snapshot: upcastPartial<vscode.TestResultSnapshot>({ uri: URI.file('/test/notOpen.ts'), label: 'Is an active editor in stack', parent: undefined }),
-				task: upcastPartial<vscode.TestSnapshotTaskState>({
-					messages: [{
-						message: upcastPartial<vscode.MarkdownString>({
-							value: 'G',
-						}),
-						stackTrace: [
-							{ label: 'file1 no contents' },
-							{ label: 'just uri', uri: URI.file('/test/coolFile.ts') },
-							{ label: 'with position', uri: URI.file('/test/coolFile.ts'), position: new Position(5, 10) },
-						]
-					}]
+				snapshot: upcastPartial<vscode.TestResultSnapshot>({
+					uri: URI.file('/test/notOpen.ts'),
+					label: 'Is an active editor in stack',
+					parent: undefined,
 				}),
-			}
+				task: upcastPartial<vscode.TestSnapshotTaskState>({
+					messages: [
+						{
+							message: upcastPartial<vscode.MarkdownString>({
+								value: 'G',
+							}),
+							stackTrace: [
+								{ label: 'file1 no contents' },
+								{
+									label: 'just uri',
+									uri: URI.file('/test/coolFile.ts'),
+								},
+								{
+									label: 'with position',
+									uri: URI.file('/test/coolFile.ts'),
+									position: new Position(5, 10),
+								},
+							],
+						},
+					],
+				}),
+			},
 		];
-		const result = await resolver.invoke({ input: {}, toolInvocationToken: '' as any });
-		expect(await toolResultToString(accessor, result)).toMatchInlineSnapshot(`
+		const result = await resolver.invoke({
+			input: {},
+			toolInvocationToken: '' as any,
+		});
+		expect(await toolResultToString(accessor, result))
+			.toMatchInlineSnapshot(`
 			"<testFailure testCase="Is an active editor in stack" path="/test/notOpen.ts">
 			<message>
 			G
@@ -136,23 +181,31 @@ suite('TestFailureTool', () => {
 	});
 
 	test('includes expected and actual output when available', async () => {
-		failures = [{
-			snapshot: upcastPartial<vscode.TestResultSnapshot>({
-				uri: URI.file('/test/file.test.ts'),
-				label: 'Test Suite',
-				parent: undefined
-			}),
-			task: upcastPartial<vscode.TestSnapshotTaskState>({
-				messages: [{
-					message: 'Values do not match',
-					expectedOutput: 'true',
-					actualOutput: 'false'
-				}]
-			})
-		}];
+		failures = [
+			{
+				snapshot: upcastPartial<vscode.TestResultSnapshot>({
+					uri: URI.file('/test/file.test.ts'),
+					label: 'Test Suite',
+					parent: undefined,
+				}),
+				task: upcastPartial<vscode.TestSnapshotTaskState>({
+					messages: [
+						{
+							message: 'Values do not match',
+							expectedOutput: 'true',
+							actualOutput: 'false',
+						},
+					],
+				}),
+			},
+		];
 
-		const result = await resolver.invoke({ input: {}, toolInvocationToken: '' as any });
-		expect(await toolResultToString(accessor, result)).toMatchInlineSnapshot(`
+		const result = await resolver.invoke({
+			input: {},
+			toolInvocationToken: '' as any,
+		});
+		expect(await toolResultToString(accessor, result))
+			.toMatchInlineSnapshot(`
 			"<testFailure testCase="Test Suite" path="/test/file.test.ts">
 			<expectedOutput>
 			true
@@ -172,44 +225,137 @@ suite('TestFailureTool', () => {
 	});
 
 	test('ranks correctly', async () => {
-		activeTextEditor = upcastPartial<vscode.TextEditor>({ document: upcastPartial<vscode.TextDocument>({ uri: URI.file('/test/isActive.ts') }) });
-		visibleTextEditors = [upcastPartial<vscode.TextEditor>({ document: upcastPartial<vscode.TextDocument>({ uri: URI.file('/test/isVisible.ts') }) })];
-		workingChanges = [{ originalUri: URI.file('/test/workingChange.ts'), uri: URI.file('/test/workingChange.ts'), status: 0, renameUri: undefined, }];
-
-		failures = [
+		activeTextEditor = upcastPartial<vscode.TextEditor>({
+			document: upcastPartial<vscode.TextDocument>({
+				uri: URI.file('/test/isActive.ts'),
+			}),
+		});
+		visibleTextEditors = [
+			upcastPartial<vscode.TextEditor>({
+				document: upcastPartial<vscode.TextDocument>({
+					uri: URI.file('/test/isVisible.ts'),
+				}),
+			}),
+		];
+		workingChanges = [
 			{
-				snapshot: upcastPartial<vscode.TestResultSnapshot>({ uri: URI.file('/test/notOpen.ts'), label: 'Not open file, no stack', parent: undefined }),
-				task: upcastPartial<vscode.TestSnapshotTaskState>({ messages: [{ message: 'A', }] })
-			},
-			{
-				snapshot: upcastPartial<vscode.TestResultSnapshot>({ uri: URI.file('/test/workingChange.ts'), label: 'Has git working change', parent: undefined }),
-				task: upcastPartial<vscode.TestSnapshotTaskState>({ messages: [{ message: 'B', }] })
-			},
-			{
-				snapshot: upcastPartial<vscode.TestResultSnapshot>({ uri: URI.file('/test/isVisible.ts'), label: 'Is a visible editor', parent: undefined }),
-				task: upcastPartial<vscode.TestSnapshotTaskState>({ messages: [{ message: 'C', }] })
-			},
-			{
-				snapshot: upcastPartial<vscode.TestResultSnapshot>({ uri: URI.file('/test/isActive.ts'), label: 'Is an active editor', parent: undefined }),
-				task: upcastPartial<vscode.TestSnapshotTaskState>({ messages: [{ message: 'D', }] })
-			},
-
-			{
-				snapshot: upcastPartial<vscode.TestResultSnapshot>({ uri: URI.file('/test/notOpen.ts'), label: 'Has git working change in stack', parent: undefined }),
-				task: upcastPartial<vscode.TestSnapshotTaskState>({ messages: [{ message: 'E', stackTrace: [{ label: 'workingChange.ts', uri: URI.file('/test/workingChange.ts') }] }] })
-			},
-			{
-				snapshot: upcastPartial<vscode.TestResultSnapshot>({ uri: URI.file('/test/notOpen.ts'), label: 'Is a visible editor in stack', parent: undefined }),
-				task: upcastPartial<vscode.TestSnapshotTaskState>({ messages: [{ message: 'F', stackTrace: [{ label: 'isVisible.ts', uri: URI.file('/test/isVisible.ts') }] }] })
-			},
-			{
-				snapshot: upcastPartial<vscode.TestResultSnapshot>({ uri: URI.file('/test/notOpen.ts'), label: 'Is an active editor in stack', parent: undefined }),
-				task: upcastPartial<vscode.TestSnapshotTaskState>({ messages: [{ message: 'G', stackTrace: [{ label: 'isActive.ts', uri: URI.file('/test/isActive.ts') }] }] }),
+				originalUri: URI.file('/test/workingChange.ts'),
+				uri: URI.file('/test/workingChange.ts'),
+				status: 0,
+				renameUri: undefined,
 			},
 		];
 
-		const result = await resolver.invoke({ input: {}, toolInvocationToken: '' as any });
-		expect(await toolResultToString(accessor, result)).toMatchInlineSnapshot(`
+		failures = [
+			{
+				snapshot: upcastPartial<vscode.TestResultSnapshot>({
+					uri: URI.file('/test/notOpen.ts'),
+					label: 'Not open file, no stack',
+					parent: undefined,
+				}),
+				task: upcastPartial<vscode.TestSnapshotTaskState>({
+					messages: [{ message: 'A' }],
+				}),
+			},
+			{
+				snapshot: upcastPartial<vscode.TestResultSnapshot>({
+					uri: URI.file('/test/workingChange.ts'),
+					label: 'Has git working change',
+					parent: undefined,
+				}),
+				task: upcastPartial<vscode.TestSnapshotTaskState>({
+					messages: [{ message: 'B' }],
+				}),
+			},
+			{
+				snapshot: upcastPartial<vscode.TestResultSnapshot>({
+					uri: URI.file('/test/isVisible.ts'),
+					label: 'Is a visible editor',
+					parent: undefined,
+				}),
+				task: upcastPartial<vscode.TestSnapshotTaskState>({
+					messages: [{ message: 'C' }],
+				}),
+			},
+			{
+				snapshot: upcastPartial<vscode.TestResultSnapshot>({
+					uri: URI.file('/test/isActive.ts'),
+					label: 'Is an active editor',
+					parent: undefined,
+				}),
+				task: upcastPartial<vscode.TestSnapshotTaskState>({
+					messages: [{ message: 'D' }],
+				}),
+			},
+
+			{
+				snapshot: upcastPartial<vscode.TestResultSnapshot>({
+					uri: URI.file('/test/notOpen.ts'),
+					label: 'Has git working change in stack',
+					parent: undefined,
+				}),
+				task: upcastPartial<vscode.TestSnapshotTaskState>({
+					messages: [
+						{
+							message: 'E',
+							stackTrace: [
+								{
+									label: 'workingChange.ts',
+									uri: URI.file('/test/workingChange.ts'),
+								},
+							],
+						},
+					],
+				}),
+			},
+			{
+				snapshot: upcastPartial<vscode.TestResultSnapshot>({
+					uri: URI.file('/test/notOpen.ts'),
+					label: 'Is a visible editor in stack',
+					parent: undefined,
+				}),
+				task: upcastPartial<vscode.TestSnapshotTaskState>({
+					messages: [
+						{
+							message: 'F',
+							stackTrace: [
+								{
+									label: 'isVisible.ts',
+									uri: URI.file('/test/isVisible.ts'),
+								},
+							],
+						},
+					],
+				}),
+			},
+			{
+				snapshot: upcastPartial<vscode.TestResultSnapshot>({
+					uri: URI.file('/test/notOpen.ts'),
+					label: 'Is an active editor in stack',
+					parent: undefined,
+				}),
+				task: upcastPartial<vscode.TestSnapshotTaskState>({
+					messages: [
+						{
+							message: 'G',
+							stackTrace: [
+								{
+									label: 'isActive.ts',
+									uri: URI.file('/test/isActive.ts'),
+								},
+							],
+						},
+					],
+				}),
+			},
+		];
+
+		const result = await resolver.invoke({
+			input: {},
+			toolInvocationToken: '' as any,
+		});
+		expect(await toolResultToString(accessor, result))
+			.toMatchInlineSnapshot(`
 			"<testFailure testCase="Is an active editor" path="/test/isActive.ts">
 			<message>
 			D

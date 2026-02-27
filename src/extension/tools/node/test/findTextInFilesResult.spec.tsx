@@ -29,36 +29,58 @@ suite('FindTextInFilesResult', () => {
 	async function toString(results: vscode.TextSearchResult2[]) {
 		const clz = class extends PromptElement {
 			render() {
-				return <UserMessage>
-					<FindTextInFilesResult textResults={results} maxResults={20} />
-				</UserMessage>;
+				return (
+					<UserMessage>
+						<FindTextInFilesResult
+							textResults={results}
+							maxResults={20}
+						/>
+					</UserMessage>
+				);
 			}
 		};
 
-		const endpoint = await services.get(IEndpointProvider).getChatEndpoint('gpt-4.1');
-		const renderer = PromptRenderer.create(services.get(IInstantiationService), endpoint, clz, {});
+		const endpoint = await services
+			.get(IEndpointProvider)
+			.getChatEndpoint('gpt-4.1');
+		const renderer = PromptRenderer.create(
+			services.get(IInstantiationService),
+			endpoint,
+			clz,
+			{},
+		);
 
 		const r = await renderer.render();
 		return r.messages
-			.map(m => m.content
-				.map(c => c.type === Raw.ChatCompletionContentPartKind.Text ? c.text : JSON.stringify(c)).join('')
-			).join('\n').replace(/\\+/g, '/');
+			.map((m) =>
+				m.content
+					.map((c) =>
+						c.type === Raw.ChatCompletionContentPartKind.Text
+							? c.text
+							: JSON.stringify(c),
+					)
+					.join(''),
+			)
+			.join('\n')
+			.replace(/\\+/g, '/');
 	}
 
 	test('returns simple single line matches', async () => {
-		expect(await toString([
-			{
-				lineNumber: 5,
-				previewText: 'Line before\nThis is a test\nLine after',
-				ranges: [
-					{
-						previewRange: new Range(1, 5, 1, 7),
-						sourceRange: new Range(5, 5, 5, 7),
-					}
-				],
-				uri: URI.file('/file.txt'),
-			}
-		])).toMatchInlineSnapshot(`
+		expect(
+			await toString([
+				{
+					lineNumber: 5,
+					previewText: 'Line before\nThis is a test\nLine after',
+					ranges: [
+						{
+							previewRange: new Range(1, 5, 1, 7),
+							sourceRange: new Range(5, 5, 5, 7),
+						},
+					],
+					uri: URI.file('/file.txt'),
+				},
+			]),
+		).toMatchInlineSnapshot(`
 			"1 match
 			<match path="/file.txt" line=6>
 			Line before
@@ -70,19 +92,21 @@ suite('FindTextInFilesResult', () => {
 	});
 
 	test('elides long single line content before match', async () => {
-		expect(await toString([
-			{
-				lineNumber: 5,
-				previewText: `Line ${'before'.repeat(1000)}\nThis is a test\nLine after`,
-				ranges: [
-					{
-						previewRange: new Range(1, 5, 1, 7),
-						sourceRange: new Range(5, 5, 5, 7),
-					}
-				],
-				uri: URI.file('/file.txt'),
-			}
-		])).toMatchInlineSnapshot(`
+		expect(
+			await toString([
+				{
+					lineNumber: 5,
+					previewText: `Line ${'before'.repeat(1000)}\nThis is a test\nLine after`,
+					ranges: [
+						{
+							previewRange: new Range(1, 5, 1, 7),
+							sourceRange: new Range(5, 5, 5, 7),
+						},
+					],
+					uri: URI.file('/file.txt'),
+				},
+			]),
+		).toMatchInlineSnapshot(`
 			"1 match
 			<match path="/file.txt" line=6>
 			...rebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebeforebefore
@@ -94,17 +118,21 @@ suite('FindTextInFilesResult', () => {
 	});
 
 	test('elides long single line content after match', async () => {
-		expect(await toString([
-			{
-				lineNumber: 5,
-				previewText: `Line before\nThis is a test\nLine ${'after'.repeat(1000)}`,
-				ranges: [{
-					previewRange: new Range(1, 5, 1, 7),
-					sourceRange: new Range(5, 5, 5, 7),
-				}],
-				uri: URI.file('/file.txt'),
-			}
-		])).toMatchInlineSnapshot(`
+		expect(
+			await toString([
+				{
+					lineNumber: 5,
+					previewText: `Line before\nThis is a test\nLine ${'after'.repeat(1000)}`,
+					ranges: [
+						{
+							previewRange: new Range(1, 5, 1, 7),
+							sourceRange: new Range(5, 5, 5, 7),
+						},
+					],
+					uri: URI.file('/file.txt'),
+				},
+			]),
+		).toMatchInlineSnapshot(`
 			"1 match
 			<match path="/file.txt" line=6>
 			Line before
@@ -117,17 +145,21 @@ suite('FindTextInFilesResult', () => {
 
 	test('adjusts line number if prefix text is omitted', async () => {
 		const prefix = ('Line before'.repeat(25) + '\n').repeat(3);
-		expect(await toString([
-			{
-				lineNumber: 5,
-				previewText: `${prefix}This is a test\nLine after`,
-				ranges: [{
-					previewRange: new Range(3, 5, 3, 7),
-					sourceRange: new Range(5, 5, 5, 7),
-				}],
-				uri: URI.file('/file.txt'),
-			}
-		])).toMatchInlineSnapshot(`
+		expect(
+			await toString([
+				{
+					lineNumber: 5,
+					previewText: `${prefix}This is a test\nLine after`,
+					ranges: [
+						{
+							previewRange: new Range(3, 5, 3, 7),
+							sourceRange: new Range(5, 5, 5, 7),
+						},
+					],
+					uri: URI.file('/file.txt'),
+				},
+			]),
+		).toMatchInlineSnapshot(`
 			"1 match
 			<match path="/file.txt" line=6>
 			...ne beforeLine beforeLine beforeLine beforeLine beforeLine beforeLine beforeLine beforeLine beforeLine beforeLine beforeLine beforeLine beforeLine beforeLine beforeLine beforeLine beforeLine beforeLine beforeLine before
@@ -140,17 +172,21 @@ suite('FindTextInFilesResult', () => {
 	});
 
 	test('elides text on the same line as the match', async () => {
-		expect(await toString([
-			{
-				lineNumber: 5,
-				previewText: `${'x'.repeat(1000)}This is a test${'y'.repeat(1000)}`,
-				ranges: [{
-					previewRange: new Range(5, 1000 + 5, 5, 1000 + 7),
-					sourceRange: new Range(5, 1000 + 5, 5, 1000 + 7),
-				}],
-				uri: URI.file('/file.txt'),
-			}
-		])).toMatchInlineSnapshot(`
+		expect(
+			await toString([
+				{
+					lineNumber: 5,
+					previewText: `${'x'.repeat(1000)}This is a test${'y'.repeat(1000)}`,
+					ranges: [
+						{
+							previewRange: new Range(5, 1000 + 5, 5, 1000 + 7),
+							sourceRange: new Range(5, 1000 + 5, 5, 1000 + 7),
+						},
+					],
+					uri: URI.file('/file.txt'),
+				},
+			]),
+		).toMatchInlineSnapshot(`
 			"1 match
 			<match path="/file.txt" line=6>
 			...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxThis is a testyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy...

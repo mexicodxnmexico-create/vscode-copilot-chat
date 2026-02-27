@@ -5,24 +5,36 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource ../../../../prompt/jsx-runtime/ */
 
-import { Chunk, ComponentContext, PromptElementProps, Text } from '../../../../prompt/src/components/components';
+import {
+	Chunk,
+	ComponentContext,
+	PromptElementProps,
+	Text,
+} from '../../../../prompt/src/components/components';
 import { ICompletionsTextDocumentManagerService } from '../../textDocumentManager';
 import {
 	CompletionRequestDocument,
 	isCompletionRequestData,
 } from '../completionsPromptFactory/componentsCompletionsPromptFactory';
-import { addRelativePathToCodeSnippets, CodeSnippetWithRelativePath } from '../contextProviders/codeSnippets';
+import {
+	addRelativePathToCodeSnippets,
+	CodeSnippetWithRelativePath,
+} from '../contextProviders/codeSnippets';
 import { CodeSnippetWithId } from '../contextProviders/contextItemSchemas';
 
 type CodeSnippetsProps = {
 	tdms: ICompletionsTextDocumentManagerService;
 } & PromptElementProps;
 
-export const CodeSnippets = (props: CodeSnippetsProps, context: ComponentContext) => {
+export const CodeSnippets = (
+	props: CodeSnippetsProps,
+	context: ComponentContext,
+) => {
 	const [snippets, setSnippets] = context.useState<CodeSnippetWithId[]>();
-	const [document, setDocument] = context.useState<CompletionRequestDocument>();
+	const [document, setDocument] =
+		context.useState<CompletionRequestDocument>();
 
-	context.useData(isCompletionRequestData, request => {
+	context.useData(isCompletionRequestData, (request) => {
 		if (request.codeSnippets !== snippets) {
 			setSnippets(request.codeSnippets);
 		}
@@ -35,7 +47,10 @@ export const CodeSnippets = (props: CodeSnippetsProps, context: ComponentContext
 		return;
 	}
 
-	const codeSnippetsWithRelativePath = addRelativePathToCodeSnippets(props.tdms, snippets);
+	const codeSnippetsWithRelativePath = addRelativePathToCodeSnippets(
+		props.tdms,
+		snippets,
+	);
 
 	// Snippets with the same URI should appear together as a single snippet.
 	const snippetsByUri = new Map<string, CodeSnippetWithRelativePath[]>();
@@ -56,12 +71,18 @@ export const CodeSnippets = (props: CodeSnippetsProps, context: ComponentContext
 		uri: string;
 	}[] = [];
 	for (const [uri, snippets] of snippetsByUri.entries()) {
-		const validSnippets = snippets.filter(s => s.snippet.value.length > 0);
+		const validSnippets = snippets.filter(
+			(s) => s.snippet.value.length > 0,
+		);
 		if (validSnippets.length > 0) {
 			codeSnippetChunks.push({
-				chunkElements: validSnippets.map(s => s.snippet),
+				chunkElements: validSnippets.map((s) => s.snippet),
 				// The importance is the maximum importance of the snippets in this group.
-				importance: Math.max(...validSnippets.map(snippet => snippet.snippet.importance ?? 0)),
+				importance: Math.max(
+					...validSnippets.map(
+						(snippet) => snippet.snippet.importance ?? 0,
+					),
+				),
 				uri,
 			});
 		}
@@ -76,22 +97,25 @@ export const CodeSnippets = (props: CodeSnippetsProps, context: ComponentContext
 	// Reverse the order so the most important snippet is last. Note, that we don't directly
 	// sort in ascending order to handle importance 0 correctly.
 	codeSnippetChunks.reverse();
-	return codeSnippetChunks.map(chunk => {
+	return codeSnippetChunks.map((chunk) => {
 		const elements = [];
 
 		elements.push(
 			<Text>
 				{`Compare ${chunk.chunkElements.length > 1 ? 'these snippets' : 'this snippet'} from ${chunk.uri}:`}
-			</Text>
+			</Text>,
 		);
 
 		chunk.chunkElements.forEach((element, index) => {
 			elements.push(
 				<Text source={element} key={element.id}>
 					{element.value}
-				</Text>
+				</Text>,
 			);
-			if (chunk.chunkElements.length > 1 && index < chunk.chunkElements.length - 1) {
+			if (
+				chunk.chunkElements.length > 1 &&
+				index < chunk.chunkElements.length - 1
+			) {
 				elements.push(<Text>---</Text>);
 			}
 		});

@@ -12,9 +12,16 @@ import { IWorkspaceService } from '../../../platform/workspace/common/workspaceS
 import { equals } from '../../../util/vs/base/common/arrays';
 import { CancellationToken } from '../../../util/vs/base/common/cancellation';
 import { URI, UriComponents } from '../../../util/vs/base/common/uri';
-import { ICommandInteractor, ILaunchConfigService } from '../common/launchConfigService';
+import {
+	ICommandInteractor,
+	ILaunchConfigService,
+} from '../common/launchConfigService';
 import { IDebugCommandToConfigConverter } from './commandToConfigConverter';
-import { IStartOptions, StartResult, StartResultKind } from './copilotDebugWorker/shared';
+import {
+	IStartOptions,
+	StartResult,
+	StartResultKind,
+} from './copilotDebugWorker/shared';
 import { IStartDebuggingParsedResponse } from './parseLaunchConfigFromResponse';
 
 const STORAGE_KEY = 'copilot-chat.terminalToDebugging.configs';
@@ -44,22 +51,34 @@ const testsStatuses: Record<string, StartResult> = {
 	'73687c45-ok': {
 		kind: StartResultKind.Ok,
 		folder: undefined,
-		config: { type: 'node', name: 'Generated Node Launch', request: 'launch', program: '${workspaceFolder}/app.js' },
-	}
+		config: {
+			type: 'node',
+			name: 'Generated Node Launch',
+			request: 'launch',
+			program: '${workspaceFolder}/app.js',
+		},
+	},
 };
 
 export class CopilotDebugCommandSessionFactory {
 	constructor(
 		private readonly interactor: ICommandInteractor,
 		@ITelemetryService private readonly telemetry: ITelemetryService,
-		@IVSCodeExtensionContext private readonly context: IVSCodeExtensionContext,
-		@IDebugCommandToConfigConverter private readonly commandToConfig: IDebugCommandToConfigConverter,
-		@IExtensionsService private readonly extensionsService: IExtensionsService,
+		@IVSCodeExtensionContext
+		private readonly context: IVSCodeExtensionContext,
+		@IDebugCommandToConfigConverter
+		private readonly commandToConfig: IDebugCommandToConfigConverter,
+		@IExtensionsService
+		private readonly extensionsService: IExtensionsService,
 		@IWorkspaceService private readonly workspaceService: IWorkspaceService,
-		@ILaunchConfigService private readonly launchConfigService: ILaunchConfigService,
-	) { }
+		@ILaunchConfigService
+		private readonly launchConfigService: ILaunchConfigService,
+	) {}
 
-	public async start({ args, cwd, forceNew, printOnly, save }: IStartOptions, token: CancellationToken): Promise<StartResult> {
+	public async start(
+		{ args, cwd, forceNew, printOnly, save }: IStartOptions,
+		token: CancellationToken,
+	): Promise<StartResult> {
 		/* __GDPR__
 		"onboardDebug.commandExecuted" : {
 			"owner": "connor4312",
@@ -101,17 +120,28 @@ export class CopilotDebugCommandSessionFactory {
 				"debugType": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "Debug type generated" }
 			}
 			*/
-			this.telemetry.sendMSFTTelemetryEvent('onboardDebug.sessionConfigGenerated', {
-				binary: args[0],
-				debugType: record.config.configurations[0].type,
-			});
+			this.telemetry.sendMSFTTelemetryEvent(
+				'onboardDebug.sessionConfigGenerated',
+				{
+					binary: args[0],
+					debugType: record.config.configurations[0].type,
+				},
+			);
 		}
 
 		const config = record.config.configurations[0];
-		const folder = record.folder && this.workspaceService.getWorkspaceFolder(URI.revive(record.folder));
+		const folder =
+			record.folder &&
+			this.workspaceService.getWorkspaceFolder(URI.revive(record.folder));
 		if (!printOnly && record.config.tasks?.length) {
-			if (!(await this.interactor.ensureTask(folder, record.config.tasks[0]))) {
-				if (!save) { // if just saving, still let the user save even if they don't want the task
+			if (
+				!(await this.interactor.ensureTask(
+					folder,
+					record.config.tasks[0],
+				))
+			) {
+				if (!save) {
+					// if just saving, still let the user save even if they don't want the task
 					return { kind: StartResultKind.Cancelled };
 				}
 			}
@@ -126,10 +156,18 @@ export class CopilotDebugCommandSessionFactory {
 		}
 
 		if (!this.hasMatchingExtension(config)) {
-			return { kind: StartResultKind.NeedExtension, debugType: config.type };
+			return {
+				kind: StartResultKind.NeedExtension,
+				debugType: config.type,
+			};
 		}
 
-		const postInput = await this.launchConfigService.resolveConfigurationInputs(record.config, new Map(record.inputs), this.interactor);
+		const postInput =
+			await this.launchConfigService.resolveConfigurationInputs(
+				record.config,
+				new Map(record.inputs),
+				this.interactor,
+			);
 		if (!postInput) {
 			return { kind: StartResultKind.Cancelled };
 		}
@@ -145,17 +183,31 @@ export class CopilotDebugCommandSessionFactory {
 		};
 	}
 
-	private async save(launchConfig: { configurations: vscode.DebugConfiguration[]; inputs?: any[] }, folder: URI | undefined) {
+	private async save(
+		launchConfig: {
+			configurations: vscode.DebugConfiguration[];
+			inputs?: any[];
+		},
+		folder: URI | undefined,
+	) {
 		await this.launchConfigService.add(folder, launchConfig);
 		if (folder) {
-			await this.launchConfigService.show(folder, launchConfig.configurations[0].name);
+			await this.launchConfigService.show(
+				folder,
+				launchConfig.configurations[0].name,
+			);
 		}
 	}
 
 	private hasMatchingExtension(config: vscode.DebugConfiguration) {
-		for (const extension of this.extensionsService.allAcrossExtensionHosts) {
-			const debuggers = (extension.packageJSON as IPackageJson)?.contributes?.debuggers;
-			if (Array.isArray(debuggers) && debuggers.some(d => d && d.type === config.type)) {
+		for (const extension of this.extensionsService
+			.allAcrossExtensionHosts) {
+			const debuggers = (extension.packageJSON as IPackageJson)
+				?.contributes?.debuggers;
+			if (
+				Array.isArray(debuggers) &&
+				debuggers.some((d) => d && d.type === config.type)
+			) {
 				return true;
 			}
 		}
@@ -163,9 +215,14 @@ export class CopilotDebugCommandSessionFactory {
 		return false;
 	}
 
-	private tryMatchExistingConfig(cwd: string, args: readonly string[]): IStoredData | undefined {
+	private tryMatchExistingConfig(
+		cwd: string,
+		args: readonly string[],
+	): IStoredData | undefined {
 		const stored = this.readStoredConfigs();
-		const exact = stored.findIndex(c => c.cwd === cwd && equals(c.args, args));
+		const exact = stored.findIndex(
+			(c) => c.cwd === cwd && equals(c.args, args),
+		);
 		if (exact !== -1) {
 			return stored[exact];
 		}

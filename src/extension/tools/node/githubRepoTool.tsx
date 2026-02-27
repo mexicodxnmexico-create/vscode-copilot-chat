@@ -4,23 +4,43 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { BasePromptElementProps, PromptElement, PromptElementProps, PromptPiece, PromptReference, PromptSizing } from '@vscode/prompt-tsx';
+import {
+	BasePromptElementProps,
+	PromptElement,
+	PromptElementProps,
+	PromptPiece,
+	PromptReference,
+	PromptSizing,
+} from '@vscode/prompt-tsx';
 import type * as vscode from 'vscode';
 import { FileChunkAndScore } from '../../../platform/chunking/common/chunk';
 import { IRunCommandExecutionService } from '../../../platform/commands/common/runCommandExecutionService';
-import { GithubRepoId, toGithubNwo } from '../../../platform/git/common/gitService';
+import {
+	GithubRepoId,
+	toGithubNwo,
+} from '../../../platform/git/common/gitService';
 import { IGithubCodeSearchService } from '../../../platform/remoteCodeSearch/common/githubCodeSearchService';
 import { RemoteCodeSearchIndexStatus } from '../../../platform/remoteCodeSearch/common/remoteCodeSearch';
 import { ITelemetryService } from '../../../platform/telemetry/common/telemetry';
-import { GithubAvailableEmbeddingTypesService, IGithubAvailableEmbeddingTypesService } from '../../../platform/workspaceChunkSearch/common/githubAvailableEmbeddingTypes';
+import {
+	GithubAvailableEmbeddingTypesService,
+	IGithubAvailableEmbeddingTypesService,
+} from '../../../platform/workspaceChunkSearch/common/githubAvailableEmbeddingTypes';
 import { Result } from '../../../util/common/result';
 import { TelemetryCorrelationId } from '../../../util/common/telemetryCorrelationId';
 import { isLocation, isUri } from '../../../util/common/types';
-import { raceCancellationError, timeout } from '../../../util/vs/base/common/async';
+import {
+	raceCancellationError,
+	timeout,
+} from '../../../util/vs/base/common/async';
 import { CancellationToken } from '../../../util/vs/base/common/cancellation';
 import { URI } from '../../../util/vs/base/common/uri';
 import { IInstantiationService } from '../../../util/vs/platform/instantiation/common/instantiation';
-import { ExtendedLanguageModelToolResult, LanguageModelPromptTsxPart, MarkdownString } from '../../../vscodeTypes';
+import {
+	ExtendedLanguageModelToolResult,
+	LanguageModelPromptTsxPart,
+	MarkdownString,
+} from '../../../vscodeTypes';
 import { getUniqueReferences } from '../../prompt/common/conversation';
 import { renderPromptElementJSON } from '../../prompts/node/base/promptRenderer';
 import { WorkspaceChunkList } from '../../prompts/node/panel/workspace/workspaceContext';
@@ -41,66 +61,115 @@ interface PrepareError {
 export class GithubRepoTool implements ICopilotTool<GithubRepoToolParams> {
 	public static readonly toolName = ToolName.GithubRepo;
 
-
 	constructor(
-		@IRunCommandExecutionService _commandService: IRunCommandExecutionService,
-		@IInstantiationService private readonly _instantiationService: IInstantiationService,
-		@IGithubCodeSearchService private readonly _githubCodeSearch: IGithubCodeSearchService,
-		@IGithubAvailableEmbeddingTypesService private readonly _availableEmbeddingTypesManager: GithubAvailableEmbeddingTypesService,
-		@ITelemetryService private readonly _telemetryService: ITelemetryService,
-	) { }
+		@IRunCommandExecutionService
+			_commandService: IRunCommandExecutionService,
+		@IInstantiationService
+		private readonly _instantiationService: IInstantiationService,
+		@IGithubCodeSearchService
+		private readonly _githubCodeSearch: IGithubCodeSearchService,
+		@IGithubAvailableEmbeddingTypesService
+		private readonly _availableEmbeddingTypesManager: GithubAvailableEmbeddingTypesService,
+		@ITelemetryService
+		private readonly _telemetryService: ITelemetryService,
+	) {}
 
-	async invoke(options: vscode.LanguageModelToolInvocationOptions<GithubRepoToolParams>, token: CancellationToken): Promise<vscode.LanguageModelToolResult> {
+	async invoke(
+		options: vscode.LanguageModelToolInvocationOptions<GithubRepoToolParams>,
+		token: CancellationToken,
+	): Promise<vscode.LanguageModelToolResult> {
 		const githubRepoId = GithubRepoId.parse(options.input.repo);
 		if (!githubRepoId) {
 			throw new Error('Invalid input. Could not parse repo');
 		}
 
-		const embeddingType = await this._availableEmbeddingTypesManager.getPreferredType(false);
+		const embeddingType =
+			await this._availableEmbeddingTypesManager.getPreferredType(false);
 		if (!embeddingType) {
 			throw new Error('No embedding models available');
 		}
 
-		const searchResults = await this._githubCodeSearch.searchRepo({ silent: true }, embeddingType, { githubRepoId, localRepoRoot: undefined, indexedCommit: undefined }, options.input.query, 64, {}, new TelemetryCorrelationId('github-repo-tool'), token);
+		const searchResults = await this._githubCodeSearch.searchRepo(
+			{ silent: true },
+			embeddingType,
+			{
+				githubRepoId,
+				localRepoRoot: undefined,
+				indexedCommit: undefined,
+			},
+			options.input.query,
+			64,
+			{},
+			new TelemetryCorrelationId('github-repo-tool'),
+			token,
+		);
 
 		// Map the chunks to URIs
 		// TODO: Won't work for proxima or branches not called main
-		const chunks = searchResults.chunks.map((entry): FileChunkAndScore => ({
-			chunk: {
-				...entry.chunk,
-				file: URI.joinPath(URI.parse('https://github.com'), toGithubNwo(githubRepoId), 'tree', 'main', entry.chunk.file.path).with({
-					fragment: `L${entry.chunk.range.startLineNumber}-L${entry.chunk.range.endLineNumber}`,
-				}),
-			},
-			distance: entry.distance,
-		}));
+		const chunks = searchResults.chunks.map(
+			(entry): FileChunkAndScore => ({
+				chunk: {
+					...entry.chunk,
+					file: URI.joinPath(
+						URI.parse('https://github.com'),
+						toGithubNwo(githubRepoId),
+						'tree',
+						'main',
+						entry.chunk.file.path,
+					).with({
+						fragment: `L${entry.chunk.range.startLineNumber}-L${entry.chunk.range.endLineNumber}`,
+					}),
+				},
+				distance: entry.distance,
+			}),
+		);
 
 		let references: PromptReference[] = [];
-		const json = await renderPromptElementJSON(this._instantiationService, GithubChunkSearchResults, {
-			chunks,
-			referencesOut: references,
-		});
+		const json = await renderPromptElementJSON(
+			this._instantiationService,
+			GithubChunkSearchResults,
+			{
+				chunks,
+				referencesOut: references,
+			},
+		);
 		const result = new ExtendedLanguageModelToolResult([
 			new LanguageModelPromptTsxPart(json),
 		]);
 
 		references = getUniqueReferences(references);
-		result.toolResultMessage = references.length === 0 ?
-			new MarkdownString(l10n.t`Searched ${githubRepoId.toString()} for "${options.input.query}", no results`) :
-			references.length === 1 ?
-				new MarkdownString(l10n.t`Searched ${githubRepoId.toString()} for "${options.input.query}", 1 result`) :
-				new MarkdownString(l10n.t`Searched ${githubRepoId.toString()} for "${options.input.query}", ${references.length} results`);
+		result.toolResultMessage =
+			references.length === 0
+				? new MarkdownString(
+					l10n.t`Searched ${githubRepoId.toString()} for "${options.input.query}", no results`,
+				)
+				: references.length === 1
+					? new MarkdownString(
+						l10n.t`Searched ${githubRepoId.toString()} for "${options.input.query}", 1 result`,
+					)
+					: new MarkdownString(
+						l10n.t`Searched ${githubRepoId.toString()} for "${options.input.query}", ${references.length} results`,
+					);
 		result.toolResultDetails = references
-			.map(r => r.anchor)
-			.filter(r => isUri(r) || isLocation(r));
+			.map((r) => r.anchor)
+			.filter((r) => isUri(r) || isLocation(r));
 		return result;
 	}
 
-	async prepareInvocation(options: vscode.LanguageModelToolInvocationPrepareOptions<GithubRepoToolParams>, token: vscode.CancellationToken): Promise<vscode.PreparedToolInvocation> {
-		const prepareResult = await raceCancellationError(this.doPrepare(options, token), token);
+	async prepareInvocation(
+		options: vscode.LanguageModelToolInvocationPrepareOptions<GithubRepoToolParams>,
+		token: vscode.CancellationToken,
+	): Promise<vscode.PreparedToolInvocation> {
+		const prepareResult = await raceCancellationError(
+			this.doPrepare(options, token),
+			token,
+		);
 		if (prepareResult.isOk()) {
 			return {
-				invocationMessage: l10n.t("Searching '{0}' for relevant code snippets", options.input.repo),
+				invocationMessage: l10n.t(
+					"Searching '{0}' for relevant code snippets",
+					options.input.repo,
+				),
 			};
 		}
 
@@ -112,15 +181,21 @@ export class GithubRepoTool implements ICopilotTool<GithubRepoToolParams> {
 				"errorDetails": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "More detailed info about the failure" }
 			}
 		*/
-		this._telemetryService.sendMSFTTelemetryEvent('githubRepoTool.prepare.error', {
-			errorId: prepareResult.err.id,
-			errorDetails: prepareResult.err.details,
-		});
+		this._telemetryService.sendMSFTTelemetryEvent(
+			'githubRepoTool.prepare.error',
+			{
+				errorId: prepareResult.err.id,
+				errorDetails: prepareResult.err.details,
+			},
+		);
 
 		throw new Error(prepareResult.err.message);
 	}
 
-	private async doPrepare(options: vscode.LanguageModelToolInvocationPrepareOptions<GithubRepoToolParams>, token: vscode.CancellationToken): Promise<Result<GithubRepoId, PrepareError>> {
+	private async doPrepare(
+		options: vscode.LanguageModelToolInvocationPrepareOptions<GithubRepoToolParams>,
+		token: vscode.CancellationToken,
+	): Promise<Result<GithubRepoId, PrepareError>> {
 		if (!options.input.repo) {
 			return Result.error<PrepareError>({
 				message: l10n.t`Invalid input. No 'repo' argument provided`,
@@ -136,7 +211,10 @@ export class GithubRepoTool implements ICopilotTool<GithubRepoToolParams> {
 				if (uri.scheme === 'https' && uri.authority === 'github.com') {
 					const pathParts = uri.path.split('/');
 					if (pathParts.length >= 3) {
-						githubRepoId = new GithubRepoId(pathParts[1], pathParts[2]);
+						githubRepoId = new GithubRepoId(
+							pathParts[1],
+							pathParts[2],
+						);
 					}
 				}
 			} catch {
@@ -151,8 +229,18 @@ export class GithubRepoTool implements ICopilotTool<GithubRepoToolParams> {
 			});
 		}
 
-		const checkIndexReady = async (): Promise<Result<boolean, PrepareError>> => {
-			const state = await raceCancellationError(this._githubCodeSearch.getRemoteIndexState({ silent: true }, githubRepoId, new TelemetryCorrelationId('GitHubRepoTool'), token), token);
+		const checkIndexReady = async (): Promise<
+			Result<boolean, PrepareError>
+		> => {
+			const state = await raceCancellationError(
+				this._githubCodeSearch.getRemoteIndexState(
+					{ silent: true },
+					githubRepoId,
+					new TelemetryCorrelationId('GitHubRepoTool'),
+					token,
+				),
+				token,
+			);
 			if (!state.isOk()) {
 				if (state.err.type === 'not-authorized') {
 					return Result.error<PrepareError>({
@@ -178,12 +266,18 @@ export class GithubRepoTool implements ICopilotTool<GithubRepoToolParams> {
 			});
 		};
 
-
 		if ((await checkIndexReady()).isOk()) {
 			return Result.ok(githubRepoId);
 		}
 
-		if (!await this._githubCodeSearch.triggerIndexing({ silent: true }, 'tool', githubRepoId, new TelemetryCorrelationId('GitHubRepoTool'))) {
+		if (
+			!(await this._githubCodeSearch.triggerIndexing(
+				{ silent: true },
+				'tool',
+				githubRepoId,
+				new TelemetryCorrelationId('GitHubRepoTool'),
+			))
+		) {
 			return Result.error<PrepareError>({
 				message: l10n.t`Could not index Github repo. Repo may not exist or you may not have access to it.`,
 				id: 'trigger-indexing-failed',
@@ -194,7 +288,9 @@ export class GithubRepoTool implements ICopilotTool<GithubRepoToolParams> {
 		const pollDelay = 1000;
 		for (let i = 0; i < pollAttempts; i++) {
 			await raceCancellationError(timeout(pollDelay), token);
-			if ((await raceCancellationError(checkIndexReady(), token)).isOk()) {
+			if (
+				(await raceCancellationError(checkIndexReady(), token)).isOk()
+			) {
 				return Result.ok(githubRepoId);
 			}
 		}
@@ -213,20 +309,25 @@ interface GithubChunkSearchResultsProps extends BasePromptElementProps {
 }
 
 class GithubChunkSearchResults extends PromptElement<GithubChunkSearchResultsProps> {
-	constructor(
-		props: PromptElementProps<GithubChunkSearchResultsProps>,
-	) {
+	constructor(props: PromptElementProps<GithubChunkSearchResultsProps>) {
 		super(props);
 	}
 
-	override render(_state: void, _sizing: PromptSizing, _progress?: vscode.Progress<vscode.ChatResponsePart>, _token?: vscode.CancellationToken): Promise<PromptPiece | undefined> | PromptPiece | undefined {
-		return <WorkspaceChunkList
-			result={{ chunks: this.props.chunks, isFullWorkspace: false }}
-			referencesOut={this.props.referencesOut}
-			absolutePaths={true}
-			isToolCall={true} />;
+	override render(
+		_state: void,
+		_sizing: PromptSizing,
+		_progress?: vscode.Progress<vscode.ChatResponsePart>,
+		_token?: vscode.CancellationToken,
+	): Promise<PromptPiece | undefined> | PromptPiece | undefined {
+		return (
+			<WorkspaceChunkList
+				result={{ chunks: this.props.chunks, isFullWorkspace: false }}
+				referencesOut={this.props.referencesOut}
+				absolutePaths={true}
+				isToolCall={true}
+			/>
+		);
 	}
 }
-
 
 ToolRegistry.registerTool(GithubRepoTool);

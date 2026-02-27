@@ -3,7 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { PromptElement, PromptElementProps, PromptPiece, PromptSizing, SystemMessage, UserMessage } from '@vscode/prompt-tsx';
+import {
+	PromptElement,
+	PromptElementProps,
+	PromptPiece,
+	PromptSizing,
+	SystemMessage,
+	UserMessage,
+} from '@vscode/prompt-tsx';
 import type * as vscode from 'vscode';
 import { TextDocumentSnapshot } from '../../../platform/editing/common/textDocumentSnapshot';
 import { IEndpointProvider } from '../../../platform/endpoint/common/endpointProvider';
@@ -11,13 +18,18 @@ import { getLanguage } from '../../../util/common/languages';
 import { SyncDescriptor } from '../../../util/vs/platform/instantiation/common/descriptors';
 import { IInstantiationService } from '../../../util/vs/platform/instantiation/common/instantiation';
 import { Selection } from '../../../vscodeTypes';
-import { DefinitionAroundCursor, State as DefinitionAroundCursorState } from '../../prompt/node/definitionAroundCursor';
+import {
+	DefinitionAroundCursor,
+	State as DefinitionAroundCursorState,
+} from '../../prompt/node/definitionAroundCursor';
 import { IDocumentContext } from '../../prompt/node/documentContext';
 import { LegacySafetyRules } from '../../prompts/node/base/safetyRules';
-import { DefinitionAtPosition, State as DefinitionAtPositionState } from '../../prompts/node/panel/definitionAtPosition';
+import {
+	DefinitionAtPosition,
+	State as DefinitionAtPositionState,
+} from '../../prompts/node/panel/definitionAtPosition';
 
 type Props = PromptElementProps<{
-
 	/** Document rename happening in */
 	document: TextDocumentSnapshot;
 
@@ -31,32 +43,49 @@ type State = {
 };
 
 export class RenameSuggestionsPrompt extends PromptElement<Props, State> {
-
 	private readonly _defAtPos: DefinitionAtPosition;
 	private _defAroundCursor: DefinitionAroundCursor | undefined;
 
 	constructor(
 		props: Props,
-		@IInstantiationService private readonly instaService: IInstantiationService,
+		@IInstantiationService
+		private readonly instaService: IInstantiationService,
 		@IEndpointProvider private readonly endpointProvider: IEndpointProvider,
 	) {
 		super(props);
 
 		const { document, range } = this.props;
 
-		this._defAtPos = instaService.createInstance(new SyncDescriptor(DefinitionAtPosition, [{ document, position: range.start }]));
+		this._defAtPos = instaService.createInstance(
+			new SyncDescriptor(DefinitionAtPosition, [
+				{ document, position: range.start },
+			]),
+		);
 	}
 
-	override async prepare(sizing: PromptSizing, progress?: vscode.Progress<vscode.ChatResponseProgressPart | vscode.ChatResponseReferencePart> | undefined, token?: vscode.CancellationToken | undefined): Promise<State> {
-
+	override async prepare(
+		sizing: PromptSizing,
+		progress?:
+			| vscode.Progress<
+					| vscode.ChatResponseProgressPart
+					| vscode.ChatResponseReferencePart
+			  >
+			| undefined,
+		token?: vscode.CancellationToken | undefined,
+	): Promise<State> {
 		const { document, range } = this.props;
 
 		const defState = await this._defAtPos.prepare();
 
-		const isDefinitionBeingRenamed = defState.k === 'found' && defState.definitions.some(def => def.excerptRange.contains(this.props.range));
+		const isDefinitionBeingRenamed =
+			defState.k === 'found' &&
+			defState.definitions.some((def) =>
+				def.excerptRange.contains(this.props.range),
+			);
 
 		if (!isDefinitionBeingRenamed) {
-			const endpointInfo = await this.endpointProvider.getChatEndpoint('copilot-fast');
+			const endpointInfo =
+				await this.endpointProvider.getChatEndpoint('copilot-fast');
 			const documentContext: IDocumentContext = {
 				document,
 				fileIndentInfo: undefined,
@@ -64,44 +93,69 @@ export class RenameSuggestionsPrompt extends PromptElement<Props, State> {
 				wholeRange: range,
 				selection: new Selection(range.start, range.end),
 			};
-			this._defAroundCursor = this.instaService.createInstance(DefinitionAroundCursor, { documentContext, endpointInfo });
+			this._defAroundCursor = this.instaService.createInstance(
+				DefinitionAroundCursor,
+				{ documentContext, endpointInfo },
+			);
 		}
 
 		const state: State = {
 			defAtPositionState: defState,
-			defAroundCursorState: this._defAroundCursor ? await this._defAroundCursor.prepare(sizing) : undefined,
+			defAroundCursorState: this._defAroundCursor
+				? await this._defAroundCursor.prepare(sizing)
+				: undefined,
 		};
 
 		return state;
 	}
 
-	override render(state: State, sizing: PromptSizing): PromptPiece<any, any> | undefined {
-
+	override render(
+		state: State,
+		sizing: PromptSizing,
+	): PromptPiece<any, any> | undefined {
 		const { document, range } = this.props;
 
 		const symbolName = document.getText(range);
 
 		const prefix = extractIdentifierPrefix(symbolName);
-		const instructionToKeepPrefix = prefix ? ` keeping prefix '${prefix}'` : '';
+		const instructionToKeepPrefix = prefix
+			? ` keeping prefix '${prefix}'`
+			: '';
 
-		const renderedDef = this._defAtPos.render(state.defAtPositionState, sizing);
+		const renderedDef = this._defAtPos.render(
+			state.defAtPositionState,
+			sizing,
+		);
 
-		const renderedDefAroundCursor = state.defAroundCursorState !== undefined && this._defAroundCursor?.render(state.defAroundCursorState, sizing);
+		const renderedDefAroundCursor =
+			state.defAroundCursorState !== undefined &&
+			this._defAroundCursor?.render(state.defAroundCursorState, sizing);
 
 		return (
 			<>
 				<SystemMessage>
-					You are a distinguished software engineer.<br />
+					You are a distinguished software engineer.
+					<br />
 					<LegacySafetyRules />
-					You must reply with a JSON array of strings of at least four new names, e.g., `["first", "second", "third", "fourth"]`.<br />
-					You must respect existing naming conventions{instructionToKeepPrefix}.
+					You must reply with a JSON array of strings of at least four<br />
+					new names, e.g., `["first", "second", "third", "fourth"]`.<br />
+					<br />
+					You must respect existing naming conventions
+					{instructionToKeepPrefix}.
 				</SystemMessage>
 				{renderedDefAroundCursor}
 				<UserMessage>
-					{renderedDef !== undefined && <>
-						{renderedDef}<br />
-					</>}
-					Think of the purpose of `{symbolName}` in the given code. Think of several names that reflect what `{symbolName}` is and what it does{instructionToKeepPrefix}. Follow existing naming conventions. Reply with a JSON array of strings of at least four new names for `{symbolName}`.
+					{renderedDef !== undefined && (
+						<>
+							{renderedDef}
+							<br />
+						</>
+					)}
+					Think of the purpose of `{symbolName}` in the given code.
+					Think of several names that reflect what `{symbolName}` is
+					and what it does{instructionToKeepPrefix}. Follow existing<br />
+					naming conventions. Reply with a JSON array of strings of at<br />
+					least four new names for `{symbolName}`.
 				</UserMessage>
 			</>
 		);

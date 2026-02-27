@@ -9,7 +9,9 @@ interface MyComponentProps {
 }
 
 // Define a functional component
-const MyFunctionalComponent: React.FC<MyComponentProps> = ({ initialCount }) => {
+const MyFunctionalComponent: React.FC<MyComponentProps> = ({
+	initialCount,
+}) => {
 	const [count, setCount] = useState(initialCount);
 
 	return (

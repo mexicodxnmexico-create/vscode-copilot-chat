@@ -8,7 +8,9 @@ import { JsonSchema } from '../../../platform/configuration/common/jsonSchema';
 import { CancellationError } from '../../../util/vs/base/common/errors';
 
 export class McpPickRef {
-	public _inner?: { type: 'pick'; value: vscode.QuickPick<vscode.QuickPickItem> } | { type: 'input'; value: vscode.InputBox };
+	public _inner?:
+		| { type: 'pick'; value: vscode.QuickPick<vscode.QuickPickItem> }
+		| { type: 'input'; value: vscode.InputBox };
 	private _isDisposed = false;
 
 	public readonly picks: {
@@ -19,7 +21,6 @@ export class McpPickRef {
 
 	constructor(private _inputBarrier: Promise<void>) {
 		this._inputBarrier.then(() => {
-
 			if (!this._inner && !this._isDisposed) {
 				this.getPick().show();
 				this.reset(); // mark as "thinking"
@@ -96,7 +97,8 @@ interface IQuickInputToolArgs {
 
 export class QuickInputTool {
 	public static readonly ID = 'getInput';
-	public static readonly description = 'Prompts the user for a short string input.';
+	public static readonly description =
+		'Prompts the user for a short string input.';
 	public static readonly schema: JsonSchema = {
 		type: 'object',
 		properties: {
@@ -120,7 +122,10 @@ export class QuickInputTool {
 		required: ['title', 'id'],
 	};
 
-	public static async invoke(ref: McpPickRef, args: IQuickInputToolArgs): Promise<vscode.LanguageModelToolResult> {
+	public static async invoke(
+		ref: McpPickRef,
+		args: IQuickInputToolArgs,
+	): Promise<vscode.LanguageModelToolResult> {
 		const input = await ref.input();
 		input.title = args.title;
 		input.placeholder = args.placeholder;
@@ -149,7 +154,9 @@ export class QuickInputTool {
 		}
 
 		ref.picks.push({ id: args.id, title: args.title, choice: result });
-		return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(`${args.title}: ${result}`)]);
+		return new vscode.LanguageModelToolResult([
+			new vscode.LanguageModelTextPart(`${args.title}: ${result}`),
+		]);
 	}
 }
 
@@ -162,7 +169,8 @@ interface IQuickPickToolArgs {
 
 export class QuickPickTool {
 	public static readonly ID = 'getChoice';
-	public static readonly description = 'Prompts the user to select from a list of choices. It returns the label or labels of the choices that were selected';
+	public static readonly description =
+		'Prompts the user to select from a list of choices. It returns the label or labels of the choices that were selected';
 	public static readonly schema: JsonSchema = {
 		type: 'object',
 		properties: {
@@ -183,9 +191,16 @@ export class QuickPickTool {
 				items: {
 					type: 'object',
 					properties: {
-						label: { type: 'string', description: 'The primary label of the choice of the choice.' },
-						description: { type: 'string', description: 'A brief extra description.' },
-					}
+						label: {
+							type: 'string',
+							description:
+								'The primary label of the choice of the choice.',
+						},
+						description: {
+							type: 'string',
+							description: 'A brief extra description.',
+						},
+					},
 				},
 				minItems: 1,
 			},
@@ -193,7 +208,10 @@ export class QuickPickTool {
 		required: ['title', 'choices'],
 	};
 
-	public static async invoke(ref: McpPickRef, args: IQuickPickToolArgs): Promise<vscode.LanguageModelToolResult> {
+	public static async invoke(
+		ref: McpPickRef,
+		args: IQuickPickToolArgs,
+	): Promise<vscode.LanguageModelToolResult> {
 		const pick = await ref.pick();
 		pick.title = args.title;
 		pick.placeholder = args.placeholder;
@@ -201,18 +219,22 @@ export class QuickPickTool {
 		pick.canSelectMany = args.canPickMany ?? false;
 		pick.ignoreFocusOut = true;
 
-		let result = await new Promise<string | string[] | undefined>((resolve) => {
-			pick.onDidAccept(() => {
-				const value = args.canPickMany ? pick.selectedItems.map(i => i.label) : pick.selectedItems[0]?.label;
-				resolve(value);
-			});
+		let result = await new Promise<string | string[] | undefined>(
+			(resolve) => {
+				pick.onDidAccept(() => {
+					const value = args.canPickMany
+						? pick.selectedItems.map((i) => i.label)
+						: pick.selectedItems[0]?.label;
+					resolve(value);
+				});
 
-			pick.onDidHide(() => {
-				resolve(undefined);
-			});
+				pick.onDidHide(() => {
+					resolve(undefined);
+				});
 
-			pick.show();
-		});
+				pick.show();
+			},
+		);
 
 		ref.reset();
 
@@ -223,6 +245,8 @@ export class QuickPickTool {
 			result = '- ' + result.join('\n- ');
 		}
 
-		return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(`${args.title}: ${result}`)]);
+		return new vscode.LanguageModelToolResult([
+			new vscode.LanguageModelTextPart(`${args.title}: ${result}`),
+		]);
 	}
 }

@@ -11,9 +11,15 @@ import { ICompletionsLogTargetService, logger } from '../../logger';
 
 import { IIgnoreService } from '../../../../../../../platform/ignore/common/ignoreService';
 import { URI } from '../../../../../../../util/vs/base/common/uri';
-import { IInstantiationService, ServicesAccessor } from '../../../../../../../util/vs/platform/instantiation/common/instantiation';
+import {
+	IInstantiationService,
+	ServicesAccessor,
+} from '../../../../../../../util/vs/platform/instantiation/common/instantiation';
 import { ICompletionsTelemetryService } from '../../../../bridge/src/completionsTelemetryServiceBridge';
-import { DataPipe, VirtualPrompt } from '../../../../prompt/src/components/virtualPrompt';
+import {
+	DataPipe,
+	VirtualPrompt,
+} from '../../../../prompt/src/components/virtualPrompt';
 import { TokenizerName } from '../../../../prompt/src/tokenization';
 import { CancellationToken, Position } from '../../../../types/src';
 import { CompletionState } from '../../completionState';
@@ -22,7 +28,10 @@ import { TextDocumentContents } from '../../textDocument';
 import { ICompletionsTextDocumentManagerService } from '../../textDocumentManager';
 import { CodeSnippets } from '../components/codeSnippets';
 import { CompletionsContext } from '../components/completionsContext';
-import { CompletionsPromptOk, CompletionsPromptRenderer } from '../components/completionsPromptRenderer';
+import {
+	CompletionsPromptOk,
+	CompletionsPromptRenderer,
+} from '../components/completionsPromptRenderer';
 import { ICompletionsContextProviderBridgeService } from '../components/contextProviderBridge';
 import { CurrentFile } from '../components/currentFile';
 import { Diagnostics } from '../components/diagnostics';
@@ -42,7 +51,7 @@ import {
 	ResolvedContextItem,
 	telemetrizeContextItems,
 	useContextProviderAPI,
-	type DefaultDiagnosticSettings
+	type DefaultDiagnosticSettings,
 } from '../contextProviderRegistry';
 import { getCodeSnippetsFromContextItems } from '../contextProviders/codeSnippets';
 import {
@@ -52,8 +61,14 @@ import {
 	type DiagnosticBagWithId,
 } from '../contextProviders/contextItemSchemas';
 import { getDiagnosticsFromContextItems as getDiagnosticBagsFromContextItems } from '../contextProviders/diagnostics';
-import { getTraitsFromContextItems, ReportTraitsTelemetry } from '../contextProviders/traits';
-import { componentStatisticsToPromptMatcher, ICompletionsContextProviderService } from '../contextProviderStatistics';
+import {
+	getTraitsFromContextItems,
+	ReportTraitsTelemetry,
+} from '../contextProviders/traits';
+import {
+	componentStatisticsToPromptMatcher,
+	ICompletionsContextProviderService,
+} from '../contextProviderStatistics';
 import {
 	_contextTooShort,
 	_copilotContentExclusion,
@@ -68,8 +83,9 @@ import {
 import { ICompletionsRecentEditsProviderService } from '../recentEdits/recentEditsProvider';
 import { isIncludeNeighborFilesActive } from '../similarFiles/neighborFiles';
 import {
-	CompletionsPromptOptions, IPromptFactory,
-	PromptOpts
+	CompletionsPromptOptions,
+	IPromptFactory,
+	PromptOpts,
 } from './completionsPromptFactory';
 
 export type CompletionRequestDocument = TextDocumentContents;
@@ -91,21 +107,35 @@ export type CompletionRequestData = {
 	tokenizer?: TokenizerName;
 };
 
-export function isCompletionRequestData(data: unknown): data is CompletionRequestData {
-	if (!data || typeof data !== 'object') { return false; }
+export function isCompletionRequestData(
+	data: unknown,
+): data is CompletionRequestData {
+	if (!data || typeof data !== 'object') {
+		return false;
+	}
 
 	const req = data as Partial<CompletionRequestData>;
 
 	// Check document
-	if (!req.document) { return false; }
+	if (!req.document) {
+		return false;
+	}
 
 	// Check position
-	if (!req.position) { return false; }
-	if (req.position.line === undefined) { return false; }
-	if (req.position.character === undefined) { return false; }
+	if (!req.position) {
+		return false;
+	}
+	if (req.position.line === undefined) {
+		return false;
+	}
+	if (req.position.character === undefined) {
+		return false;
+	}
 
 	// Check telemetryData
-	if (!req.telemetryData) { return false; }
+	if (!req.telemetryData) {
+		return false;
+	}
 
 	return true;
 }
@@ -138,7 +168,9 @@ const availableDeclarativePrompts: AvailableDeclarativePrompts = {
 function defaultCompletionsPrompt(accessor: ServicesAccessor) {
 	const tdms = accessor.get(ICompletionsTextDocumentManagerService);
 	const instantiationService = accessor.get(IInstantiationService);
-	const recentEditsProvider = accessor.get(ICompletionsRecentEditsProviderService);
+	const recentEditsProvider = accessor.get(
+		ICompletionsRecentEditsProviderService,
+	);
 	return (
 		<>
 			<CompletionsContext>
@@ -146,8 +178,16 @@ function defaultCompletionsPrompt(accessor: ServicesAccessor) {
 				<Traits weight={0.6} />
 				<Diagnostics tdms={tdms} weight={0.65} />
 				<CodeSnippets tdms={tdms} weight={0.9} />
-				<SimilarFiles tdms={tdms} instantiationService={instantiationService} weight={0.8} />
-				<RecentEdits tdms={tdms} recentEditsProvider={recentEditsProvider} weight={0.99} />
+				<SimilarFiles
+					tdms={tdms}
+					instantiationService={instantiationService}
+					weight={0.8}
+				/>
+				<RecentEdits
+					tdms={tdms}
+					recentEditsProvider={recentEditsProvider}
+					weight={0.99}
+				/>
 			</CompletionsContext>
 			<CurrentFile weight={1} />
 		</>
@@ -164,21 +204,31 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 	constructor(
 		virtualPrompt: VirtualPrompt | undefined,
 		ordering: PromptOrdering | undefined,
-		@IInstantiationService private readonly instantiationService: IInstantiationService,
-		@ICompletionsTelemetryService private readonly completionsTelemetryService: ICompletionsTelemetryService,
+		@IInstantiationService
+		private readonly instantiationService: IInstantiationService,
+		@ICompletionsTelemetryService
+		private readonly completionsTelemetryService: ICompletionsTelemetryService,
 		@IIgnoreService private readonly ignoreService: IIgnoreService,
-		@ICompletionsContextProviderBridgeService private readonly contextProviderBridge: ICompletionsContextProviderBridgeService,
-		@ICompletionsLogTargetService private readonly logTarget: ICompletionsLogTargetService,
-		@ICompletionsContextProviderService private readonly contextProviderStatistics: ICompletionsContextProviderService,
-		@ILanguageDiagnosticsService private readonly languageDiagnosticsService: ILanguageDiagnosticsService,
+		@ICompletionsContextProviderBridgeService
+		private readonly contextProviderBridge: ICompletionsContextProviderBridgeService,
+		@ICompletionsLogTargetService
+		private readonly logTarget: ICompletionsLogTargetService,
+		@ICompletionsContextProviderService
+		private readonly contextProviderStatistics: ICompletionsContextProviderService,
+		@ILanguageDiagnosticsService
+		private readonly languageDiagnosticsService: ILanguageDiagnosticsService,
 	) {
 		this.promptOrdering = ordering ?? PromptOrdering.Default;
-		this.virtualPrompt = virtualPrompt ?? new VirtualPrompt(this.completionsPrompt());
+		this.virtualPrompt =
+			virtualPrompt ?? new VirtualPrompt(this.completionsPrompt());
 		this.pipe = this.virtualPrompt.createPipe();
 		this.renderer = this.getRenderer();
 	}
 
-	async prompt(opts: CompletionsPromptOptions, cancellationToken?: CancellationToken): Promise<PromptResponse> {
+	async prompt(
+		opts: CompletionsPromptOptions,
+		cancellationToken?: CancellationToken,
+	): Promise<PromptResponse> {
 		try {
 			return await this.createPromptUnsafe(opts, cancellationToken);
 		} catch (e) {
@@ -187,19 +237,26 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 	}
 
 	async createPromptUnsafe(
-		{ completionId, completionState, telemetryData, promptOpts }: CompletionsPromptOptions,
-		cancellationToken?: CancellationToken
-	): Promise<PromptResponse> {
-		const { maxPromptLength, suffixPercent, suffixMatchThreshold } = this.instantiationService.invokeFunction(getPromptOptions,
+		{
+			completionId,
+			completionState,
 			telemetryData,
-			completionState.textDocument.detectedLanguageId
-		);
+			promptOpts,
+		}: CompletionsPromptOptions,
+		cancellationToken?: CancellationToken,
+	): Promise<PromptResponse> {
+		const { maxPromptLength, suffixPercent, suffixMatchThreshold } =
+			this.instantiationService.invokeFunction(
+				getPromptOptions,
+				telemetryData,
+				completionState.textDocument.detectedLanguageId,
+			);
 
 		const failFastPrompt = await this.failFastPrompt(
 			completionState.textDocument,
 			completionState.position,
 			suffixPercent,
-			cancellationToken
+			cancellationToken,
 		);
 		if (failFastPrompt) {
 			return failFastPrompt;
@@ -207,17 +264,25 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 
 		// TODO: Prompt ordering changes are triggered by ExP changes.
 		// TODO@benibenj remove this as its always true (except in tests)
-		const promptOrdering = promptOpts?.separateContext ? PromptOrdering.SplitContext : PromptOrdering.Default;
+		const promptOrdering = promptOpts?.separateContext
+			? PromptOrdering.SplitContext
+			: PromptOrdering.Default;
 		this.setPromptOrdering(promptOrdering);
 
 		const start = performance.now();
 
-		const { traits, codeSnippets, diagnostics, turnOffSimilarFiles, resolvedContextItems } = await this.resolveContext(
+		const {
+			traits,
+			codeSnippets,
+			diagnostics,
+			turnOffSimilarFiles,
+			resolvedContextItems,
+		} = await this.resolveContext(
 			completionId,
 			completionState,
 			telemetryData,
 			cancellationToken,
-			promptOpts
+			promptOpts,
 		);
 
 		await this.updateComponentData(
@@ -232,7 +297,7 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 			cancellationToken,
 			promptOpts,
 			suffixMatchThreshold,
-			promptOpts?.tokenizer
+			promptOpts?.tokenizer,
 		);
 
 		if (cancellationToken?.isCancellationRequested) {
@@ -256,7 +321,7 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 				suffixPercent: suffixPercent,
 				languageId: completionState.textDocument.detectedLanguageId,
 			},
-			cancellationToken
+			cancellationToken,
 		);
 		if (rendered.status === 'cancelled') {
 			return _promptCancelled;
@@ -267,20 +332,42 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 		const [prefix, trailingWs] = trimLastLine(rendered.prefix);
 		const renderedTrimmed = { ...rendered, prefix };
 
-		let contextProvidersTelemetry: ContextProviderTelemetry[] | undefined = undefined;
+		let contextProvidersTelemetry: ContextProviderTelemetry[] | undefined =
+			undefined;
 		const languageId = completionState.textDocument.detectedLanguageId;
-		if (this.instantiationService.invokeFunction(useContextProviderAPI, languageId, telemetryData)) {
-			const promptMatcher = componentStatisticsToPromptMatcher(rendered.metadata.componentStatistics);
+		if (
+			this.instantiationService.invokeFunction(
+				useContextProviderAPI,
+				languageId,
+				telemetryData,
+			)
+		) {
+			const promptMatcher = componentStatisticsToPromptMatcher(
+				rendered.metadata.componentStatistics,
+			);
 			this.contextProviderStatistics
 				.getStatisticsForCompletion(completionId)
 				.computeMatch(promptMatcher);
-			contextProvidersTelemetry = telemetrizeContextItems(this.contextProviderStatistics, completionId, resolvedContextItems);
+			contextProvidersTelemetry = telemetrizeContextItems(
+				this.contextProviderStatistics,
+				completionId,
+				resolvedContextItems,
+			);
 			// To support generating context provider metrics of completion in COffE.
-			logger.debug(this.logTarget, `Context providers telemetry: '${JSON.stringify(contextProvidersTelemetry)}'`);
+			logger.debug(
+				this.logTarget,
+				`Context providers telemetry: '${JSON.stringify(contextProvidersTelemetry)}'`,
+			);
 		}
 		const end = performance.now();
 		this.resetIfEmpty(rendered);
-		return this.successPrompt(renderedTrimmed, end, start, trailingWs, contextProvidersTelemetry);
+		return this.successPrompt(
+			renderedTrimmed,
+			end,
+			start,
+			trailingWs,
+			contextProvidersTelemetry,
+		);
 	}
 
 	private async updateComponentData(
@@ -295,7 +382,7 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 		cancellationToken?: CancellationToken,
 		opts: PromptOpts = {},
 		suffixMatchThreshold?: number,
-		tokenizer?: TokenizerName
+		tokenizer?: TokenizerName,
 	) {
 		const completionRequestData = this.createRequestData(
 			textDocument,
@@ -309,7 +396,7 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 			diagnostics,
 			turnOffSimilarFiles,
 			suffixMatchThreshold,
-			tokenizer
+			tokenizer,
 		);
 		await this.pipe.pump(completionRequestData);
 	}
@@ -319,7 +406,7 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 		completionState: CompletionState,
 		telemetryData: TelemetryWithExp,
 		cancellationToken?: CancellationToken,
-		opts: PromptOpts = {}
+		opts: PromptOpts = {},
 	): Promise<{
 		traits: TraitWithId[] | undefined;
 		codeSnippets: CodeSnippetWithId[] | undefined;
@@ -332,57 +419,105 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 		let codeSnippets: CodeSnippetWithId[] | undefined;
 		let diagnosticBags: DiagnosticBagWithId[] | undefined;
 		let turnOffSimilarFiles = false;
-		if (this.instantiationService.invokeFunction(useContextProviderAPI, completionState.textDocument.detectedLanguageId, telemetryData)) {
-			resolvedContextItems = await this.contextProviderBridge.resolution(completionId);
+		if (
+			this.instantiationService.invokeFunction(
+				useContextProviderAPI,
+				completionState.textDocument.detectedLanguageId,
+				telemetryData,
+			)
+		) {
+			resolvedContextItems =
+				await this.contextProviderBridge.resolution(completionId);
 			const { textDocument } = completionState;
 			// Turn off neighboring files if:
 			// - it's not explicitly enabled via EXP flag
 			// - there are matched context providers
-			const matchedContextItems = resolvedContextItems.filter(matchContextItems);
-			if (!this.instantiationService.invokeFunction(similarFilesEnabled, textDocument.detectedLanguageId, matchedContextItems, telemetryData)) {
+			const matchedContextItems =
+				resolvedContextItems.filter(matchContextItems);
+			if (
+				!this.instantiationService.invokeFunction(
+					similarFilesEnabled,
+					textDocument.detectedLanguageId,
+					matchedContextItems,
+					telemetryData,
+				)
+			) {
 				turnOffSimilarFiles = true;
 			}
 
-			traits = await this.instantiationService.invokeFunction(getTraitsFromContextItems, completionId, matchedContextItems);
-			void this.instantiationService.invokeFunction(ReportTraitsTelemetry,
+			traits = await this.instantiationService.invokeFunction(
+				getTraitsFromContextItems,
+				completionId,
+				matchedContextItems,
+			);
+			void this.instantiationService.invokeFunction(
+				ReportTraitsTelemetry,
 				`contextProvider.traits`,
 				traits,
 				textDocument.detectedLanguageId,
 				textDocument.detectedLanguageId, // TextDocumentContext does not have clientLanguageId
-				telemetryData
+				telemetryData,
 			);
 
-			codeSnippets = await this.instantiationService.invokeFunction(getCodeSnippetsFromContextItems,
+			codeSnippets = await this.instantiationService.invokeFunction(
+				getCodeSnippetsFromContextItems,
 				completionId,
 				matchedContextItems,
-				textDocument.detectedLanguageId
+				textDocument.detectedLanguageId,
 			);
 
-			diagnosticBags = await this.instantiationService.invokeFunction(getDiagnosticBagsFromContextItems,
+			diagnosticBags = await this.instantiationService.invokeFunction(
+				getDiagnosticBagsFromContextItems,
 				completionId,
-				matchedContextItems
+				matchedContextItems,
 			);
 		}
-		const settings = this.instantiationService.invokeFunction(getDefaultDiagnosticSettings);
-		diagnosticBags = this.addDefaultDiagnosticBag(resolvedContextItems, diagnosticBags, completionId, completionState, settings);
-		return { traits, codeSnippets, diagnostics: diagnosticBags, turnOffSimilarFiles, resolvedContextItems };
+		const settings = this.instantiationService.invokeFunction(
+			getDefaultDiagnosticSettings,
+		);
+		diagnosticBags = this.addDefaultDiagnosticBag(
+			resolvedContextItems,
+			diagnosticBags,
+			completionId,
+			completionState,
+			settings,
+		);
+		return {
+			traits,
+			codeSnippets,
+			diagnostics: diagnosticBags,
+			turnOffSimilarFiles,
+			resolvedContextItems,
+		};
 	}
 
 	private async failFastPrompt(
 		textDocument: TextDocumentContents,
 		position: Position,
 		suffixPercent: number,
-		cancellationToken: CancellationToken | undefined
+		cancellationToken: CancellationToken | undefined,
 	) {
 		if (cancellationToken?.isCancellationRequested) {
 			return _promptCancelled;
 		}
-		if (await this.ignoreService.isCopilotIgnored(URI.parse(textDocument.uri))) {
+		if (
+			await this.ignoreService.isCopilotIgnored(
+				URI.parse(textDocument.uri),
+			)
+		) {
 			return _copilotContentExclusion;
 		}
 
-		const eligibleChars = suffixPercent > 0 ? textDocument.getText().length : textDocument.offsetAt(position);
-		if (eligibleChars < MIN_PROMPT_CHARS && !MIN_PROMPT_EXCLUDED_LANGUAGE_IDS.includes(textDocument.detectedLanguageId)) {
+		const eligibleChars =
+			suffixPercent > 0
+				? textDocument.getText().length
+				: textDocument.offsetAt(position);
+		if (
+			eligibleChars < MIN_PROMPT_CHARS &&
+			!MIN_PROMPT_EXCLUDED_LANGUAGE_IDS.includes(
+				textDocument.detectedLanguageId,
+			)
+		) {
 			// Too short context
 			return _contextTooShort;
 		}
@@ -400,7 +535,7 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 		diagnostics?: DiagnosticBagWithId[],
 		turnOffSimilarFiles?: boolean,
 		suffixMatchThreshold?: number,
-		tokenizer?: TokenizerName
+		tokenizer?: TokenizerName,
 	): CompletionRequestData {
 		return {
 			document: textDocument,
@@ -429,7 +564,7 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 		end: number,
 		start: number,
 		trailingWs: string,
-		contextProvidersTelemetry?: ContextProviderTelemetry[]
+		contextProvidersTelemetry?: ContextProviderTelemetry[],
 	): PromptResponse {
 		return {
 			type: 'prompt',
@@ -450,7 +585,11 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 	}
 
 	private errorPrompt(error: Error): PromptResponse {
-		telemetryException(this.completionsTelemetryService, error, 'PromptComponents.CompletionsPromptFactory');
+		telemetryException(
+			this.completionsTelemetryService,
+			error,
+			'PromptComponents.CompletionsPromptFactory',
+		);
 		this.reset();
 		return _promptError;
 	}
@@ -470,47 +609,74 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 
 	private completionsPrompt() {
 		const promptFunction =
-			availableDeclarativePrompts[this.promptOrdering]?.promptFunction ?? defaultCompletionsPrompt;
+			availableDeclarativePrompts[this.promptOrdering]?.promptFunction ??
+			defaultCompletionsPrompt;
 		return this.instantiationService.invokeFunction(promptFunction);
 	}
 
 	private getRenderer() {
 		const promptInfo =
-			availableDeclarativePrompts[this.promptOrdering] ?? availableDeclarativePrompts[PromptOrdering.Default];
+			availableDeclarativePrompts[this.promptOrdering] ??
+			availableDeclarativePrompts[PromptOrdering.Default];
 		return new promptInfo.renderer();
 	}
 
 	/** Public for testing */
-	public addDefaultDiagnosticBag(resolvedContextItems: ResolvedContextItem[], bags: DiagnosticBagWithId[] | undefined, completionId: string, completionState: CompletionState, settings: DefaultDiagnosticSettings | undefined): DiagnosticBagWithId[] | undefined {
+	public addDefaultDiagnosticBag(
+		resolvedContextItems: ResolvedContextItem[],
+		bags: DiagnosticBagWithId[] | undefined,
+		completionId: string,
+		completionState: CompletionState,
+		settings: DefaultDiagnosticSettings | undefined,
+	): DiagnosticBagWithId[] | undefined {
 		if (settings === undefined) {
 			return bags;
 		}
 
 		const document = completionState.textDocument;
-		if (bags !== undefined && bags.some(bag => bag.uri.toString() === document.uri)) {
+		if (
+			bags !== undefined &&
+			bags.some((bag) => bag.uri.toString() === document.uri)
+		) {
 			return bags;
 		}
 		const startTime = performance.now();
-		const diagnostics = this.languageDiagnosticsService.getDiagnostics(URI.parse(document.uri));
+		const diagnostics = this.languageDiagnosticsService.getDiagnostics(
+			URI.parse(document.uri),
+		);
 		if (diagnostics.length === 0) {
 			return bags;
 		}
 		const errors: Diagnostic[] = [];
 		const warnings: Diagnostic[] = [];
-		const captureWarnings = settings.warnings === 'yes' || settings.warnings === 'yesIfNoErrors';
+		const captureWarnings =
+			settings.warnings === 'yes' ||
+			settings.warnings === 'yesIfNoErrors';
 		const position = completionState.position;
 		for (const diag of diagnostics) {
-			const inRange = Math.abs(diag.range.start.line - position.line) <= settings.maxLineDistance;
+			const inRange =
+				Math.abs(diag.range.start.line - position.line) <=
+				settings.maxLineDistance;
 			if (!inRange) {
 				continue;
 			}
 			if (diag.severity === DiagnosticSeverity.Error) {
 				errors.push(diag);
-			} else if (diag.severity === DiagnosticSeverity.Warning && captureWarnings) {
+			} else if (
+				diag.severity === DiagnosticSeverity.Warning &&
+				captureWarnings
+			) {
 				warnings.push(diag);
 			}
 		}
-		const filterDiagnostics = [...errors, ...(settings.warnings === 'yes' ? warnings : (settings.warnings === 'yesIfNoErrors' && errors.length === 0 ? warnings : []))];
+		const filterDiagnostics = [
+			...errors,
+			...(settings.warnings === 'yes'
+				? warnings
+				: settings.warnings === 'yesIfNoErrors' && errors.length === 0
+					? warnings
+					: []),
+		];
 		if (filterDiagnostics.length === 0) {
 			return bags;
 		}
@@ -523,17 +689,20 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 			type: 'DiagnosticBag',
 			uri: URI.parse(document.uri),
 			values: filterDiagnostics.slice(0, settings.maxDiagnostics),
-			id: generateUuid()
+			id: generateUuid(),
 		};
 		const providerId = 'copilot.chat.defaultDiagnostics';
-		const statistics = this.contextProviderStatistics.getStatisticsForCompletion(completionId);
+		const statistics =
+			this.contextProviderStatistics.getStatisticsForCompletion(
+				completionId,
+			);
 		statistics.addExpectations(providerId, [[result, 'included']]);
 		resolvedContextItems.push({
 			providerId: providerId,
 			matchScore: 10,
 			resolution: 'full',
 			resolutionTimeMs: performance.now() - startTime,
-			data: [result]
+			data: [result],
 		});
 		statistics.setLastResolution(providerId, 'full');
 		if (bags === undefined) {
@@ -547,12 +716,16 @@ abstract class BaseComponentsCompletionsPromptFactory implements IPromptFactory 
 export class ComponentsCompletionsPromptFactory extends BaseComponentsCompletionsPromptFactory {
 	constructor(
 		@IInstantiationService instantiationService: IInstantiationService,
-		@ICompletionsTelemetryService completionsTelemetryService: ICompletionsTelemetryService,
+		@ICompletionsTelemetryService
+			completionsTelemetryService: ICompletionsTelemetryService,
 		@IIgnoreService ignoreService: IIgnoreService,
-		@ICompletionsContextProviderBridgeService contextProviderBridge: ICompletionsContextProviderBridgeService,
+		@ICompletionsContextProviderBridgeService
+			contextProviderBridge: ICompletionsContextProviderBridgeService,
 		@ICompletionsLogTargetService logTarget: ICompletionsLogTargetService,
-		@ICompletionsContextProviderService contextProviderStatistics: ICompletionsContextProviderService,
-		@ILanguageDiagnosticsService languageDiagnosticsService: ILanguageDiagnosticsService,
+		@ICompletionsContextProviderService
+			contextProviderStatistics: ICompletionsContextProviderService,
+		@ILanguageDiagnosticsService
+			languageDiagnosticsService: ILanguageDiagnosticsService,
 	) {
 		super(
 			undefined,
@@ -563,12 +736,12 @@ export class ComponentsCompletionsPromptFactory extends BaseComponentsCompletion
 			contextProviderBridge,
 			logTarget,
 			contextProviderStatistics,
-			languageDiagnosticsService
+			languageDiagnosticsService,
 		);
 	}
 }
 
-export class TestComponentsCompletionsPromptFactory extends BaseComponentsCompletionsPromptFactory { }
+export class TestComponentsCompletionsPromptFactory extends BaseComponentsCompletionsPromptFactory {}
 
 // Similar files is enabled if:
 // - the languageId is C/C++.
@@ -578,12 +751,19 @@ function similarFilesEnabled(
 	accessor: ServicesAccessor,
 	detectedLanguageId: string,
 	matchedContextItems: ResolvedContextItem<SupportedContextItemWithId>[],
-	telemetryData: TelemetryWithExp
+	telemetryData: TelemetryWithExp,
 ) {
 	const cppLanguageIds = ['cpp', 'c'];
 	const includeNeighboringFiles =
-		isIncludeNeighborFilesActive(accessor, detectedLanguageId, telemetryData) || cppLanguageIds.includes(detectedLanguageId);
+		isIncludeNeighborFilesActive(
+			accessor,
+			detectedLanguageId,
+			telemetryData,
+		) || cppLanguageIds.includes(detectedLanguageId);
 	return (
-		includeNeighboringFiles || !matchedContextItems.some(ci => ci.data.some(item => item.type === 'CodeSnippet'))
+		includeNeighboringFiles ||
+		!matchedContextItems.some((ci) =>
+			ci.data.some((item) => item.type === 'CodeSnippet'),
+		)
 	);
 }

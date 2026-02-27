@@ -10,7 +10,10 @@ import { MarkdownString } from '../../../vscodeTypes';
 import { ToolName } from '../common/toolNames';
 import { ToolRegistry } from '../common/toolsRegistry';
 import { formatUriForFileWidget } from '../common/toolUtils';
-import { AbstractReplaceStringTool, IAbstractReplaceStringInput } from './abstractReplaceStringTool';
+import {
+	AbstractReplaceStringTool,
+	IAbstractReplaceStringInput,
+} from './abstractReplaceStringTool';
 import { resolveToolInputPath } from './toolUtils';
 
 export interface IReplaceStringToolParams {
@@ -20,19 +23,28 @@ export interface IReplaceStringToolParams {
 	newString: string;
 }
 
-export class ReplaceStringTool<T extends IReplaceStringToolParams = IReplaceStringToolParams> extends AbstractReplaceStringTool<T> {
+export class ReplaceStringTool<
+	T extends IReplaceStringToolParams = IReplaceStringToolParams,
+> extends AbstractReplaceStringTool<T> {
 	public static toolName = ToolName.ReplaceString;
 
 	protected extractReplaceInputs(input: T): IAbstractReplaceStringInput[] {
-		return [{
-			filePath: input.filePath,
-			oldString: input.oldString,
-			newString: input.newString,
-		}];
+		return [
+			{
+				filePath: input.filePath,
+				oldString: input.oldString,
+				newString: input.newString,
+			},
+		];
 	}
 
-	async handleToolStream(options: vscode.LanguageModelToolInvocationStreamOptions<IReplaceStringToolParams>, _token: vscode.CancellationToken): Promise<vscode.LanguageModelToolStreamResult> {
-		const partialInput = options.rawInput as Partial<IReplaceStringToolParams> | undefined;
+	async handleToolStream(
+		options: vscode.LanguageModelToolInvocationStreamOptions<IReplaceStringToolParams>,
+		_token: vscode.CancellationToken,
+	): Promise<vscode.LanguageModelToolStreamResult> {
+		const partialInput = options.rawInput as
+			| Partial<IReplaceStringToolParams>
+			| undefined;
 
 		let invocationMessage: MarkdownString;
 		if (partialInput && typeof partialInput === 'object') {
@@ -40,27 +52,48 @@ export class ReplaceStringTool<T extends IReplaceStringToolParams = IReplaceStri
 			const newString = partialInput.newString;
 			const filePath = partialInput.filePath;
 
-			const oldLineCount = oldString !== undefined ? count(oldString, '\n') + 1 : undefined;
-			const newLineCount = newString !== undefined ? count(newString, '\n') + 1 : undefined;
+			const oldLineCount =
+				oldString !== undefined
+					? count(oldString, '\n') + 1
+					: undefined;
+			const newLineCount =
+				newString !== undefined
+					? count(newString, '\n') + 1
+					: undefined;
 
 			if (filePath) {
-				const uri = resolveToolInputPath(filePath, this.promptPathRepresentationService);
+				const uri = resolveToolInputPath(
+					filePath,
+					this.promptPathRepresentationService,
+				);
 				const fileRef = formatUriForFileWidget(uri);
 
 				if (oldLineCount !== undefined && newLineCount !== undefined) {
-					invocationMessage = new MarkdownString(l10n.t`Replacing ${oldLineCount} lines with ${newLineCount} lines in ${fileRef}`);
+					invocationMessage = new MarkdownString(
+						l10n.t`Replacing ${oldLineCount} lines with ${newLineCount} lines in ${fileRef}`,
+					);
 				} else if (oldLineCount !== undefined) {
-					invocationMessage = new MarkdownString(l10n.t`Replacing ${oldLineCount} lines in ${fileRef}`);
+					invocationMessage = new MarkdownString(
+						l10n.t`Replacing ${oldLineCount} lines in ${fileRef}`,
+					);
 				} else {
-					invocationMessage = new MarkdownString(l10n.t`Editing ${fileRef}`);
+					invocationMessage = new MarkdownString(
+						l10n.t`Editing ${fileRef}`,
+					);
 				}
 			} else {
 				if (oldLineCount !== undefined && newLineCount !== undefined) {
-					invocationMessage = new MarkdownString(l10n.t`Replacing ${oldLineCount} lines with ${newLineCount} lines`);
+					invocationMessage = new MarkdownString(
+						l10n.t`Replacing ${oldLineCount} lines with ${newLineCount} lines`,
+					);
 				} else if (oldLineCount !== undefined) {
-					invocationMessage = new MarkdownString(l10n.t`Replacing ${oldLineCount} lines`);
+					invocationMessage = new MarkdownString(
+						l10n.t`Replacing ${oldLineCount} lines`,
+					);
 				} else {
-					invocationMessage = new MarkdownString(l10n.t`Editing file`);
+					invocationMessage = new MarkdownString(
+						l10n.t`Editing file`,
+					);
 				}
 			}
 		} else {
@@ -70,8 +103,10 @@ export class ReplaceStringTool<T extends IReplaceStringToolParams = IReplaceStri
 		return { invocationMessage };
 	}
 
-
-	async invoke(options: vscode.LanguageModelToolInvocationOptions<T>, token: vscode.CancellationToken) {
+	async invoke(
+		options: vscode.LanguageModelToolInvocationOptions<T>,
+		token: vscode.CancellationToken,
+	) {
 		const prepared = await this.prepareEdits(options, token);
 		return this.applyAllEdits(options, prepared, token);
 	}

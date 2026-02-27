@@ -10,35 +10,52 @@ export class EditorIntegrationRules extends PromptElement {
 	render() {
 		return (
 			<>
-				Use Markdown formatting in your answers.<br />
-				Make sure to include the programming language name at the start of the Markdown code blocks.<br />
-				Avoid wrapping the whole response in triple backticks.<br />
+				Use Markdown formatting in your answers.
+				<br />
+				Make sure to include the programming language name at the start<br />
+				of the Markdown code blocks.<br />
+				<br />
+				Avoid wrapping the whole response in triple backticks.
+				<br />
 				<MathIntegrationRules />
-				The user works in an IDE called Visual Studio Code which has a concept for editors with open files, integrated unit test support, an output pane that shows the output of running the code as well as an integrated terminal.<br />
-				The active document is the source code the user is looking at right now.<br />
-				You can only give one reply for each conversation turn.<br />
+				The user works in an IDE called Visual Studio Code which has a<br />
+				concept for editors with open files, integrated unit test<br />
+				support, an output pane that shows the output of running the<br />
+				code as well as an integrated terminal.<br />
+				<br />
+				The active document is the source code the user is looking at<br />
+				right now.<br />
+				<br />
+				You can only give one reply for each conversation turn.
+				<br />
 			</>
 		);
 	}
 }
 
 export class MathIntegrationRules extends PromptElement {
-
 	constructor(
 		props: BasePromptElementProps,
-		@IConfigurationService private readonly configService: IConfigurationService
+		@IConfigurationService
+		private readonly configService: IConfigurationService,
 	) {
 		super(props);
 	}
 
 	render() {
-		const mathEnabled = this.configService.getNonExtensionConfig<boolean>('chat.math.enabled');
+		const mathEnabled =
+			this.configService.getNonExtensionConfig<boolean>(
+				'chat.math.enabled',
+			);
 		if (mathEnabled) {
 			return (
 				<>
-					Use KaTeX for math equations in your answers.<br />
-					Wrap inline math equations in $.<br />
-					Wrap more complex blocks of math equations in $$.<br />
+					Use KaTeX for math equations in your answers.
+					<br />
+					Wrap inline math equations in $.
+					<br />
+					Wrap more complex blocks of math equations in $$.
+					<br />
 				</>
 			);
 		}

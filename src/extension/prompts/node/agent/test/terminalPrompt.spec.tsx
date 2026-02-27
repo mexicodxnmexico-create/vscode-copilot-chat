@@ -28,17 +28,32 @@ suite('TerminalStatePromptElement', () => {
 		];
 		terminalService.getLastCommandForTerminal = (term: { id: string }) => {
 			if (term.id === '1') {
-				return { commandLine: 'npm run build', cwd: '/workspace', exitCode: 0 };
+				return {
+					commandLine: 'npm run build',
+					cwd: '/workspace',
+					exitCode: 0,
+				};
 			} else if (term.id === '2') {
-				return { commandLine: 'npm test', cwd: '/workspace', exitCode: 1 };
+				return {
+					commandLine: 'npm test',
+					cwd: '/workspace',
+					exitCode: 1,
+				};
 			}
 			return undefined;
 		};
 
-		const prompt = new TerminalStatePromptElement({}, tasksService, terminalService);
+		const prompt = new TerminalStatePromptElement(
+			{},
+			tasksService,
+			terminalService,
+		);
 		const rendered = await prompt.render();
 
-		const output = typeof rendered === 'string' ? rendered : JSON.stringify(rendered) ?? '';
+		const output =
+			typeof rendered === 'string'
+				? rendered
+				: (JSON.stringify(rendered) ?? '');
 		assert(output.includes('Terminal 1'));
 		assert(output.includes('Terminal 2'));
 	});

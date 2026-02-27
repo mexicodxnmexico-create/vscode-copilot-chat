@@ -22,7 +22,10 @@ export interface ICompactionDataContainerProps extends BasePromptElementProps {
 export class CompactionDataContainer extends PromptElement<ICompactionDataContainerProps> {
 	render() {
 		const { compaction } = this.props;
-		const container: ICompactionDataOpaque = { type: CustomDataPartMimeTypes.ContextManagement, compaction };
+		const container: ICompactionDataOpaque = {
+			type: CustomDataPartMimeTypes.ContextManagement,
+			compaction,
+		};
 		return <opaque value={container} />;
 	}
 }
@@ -30,14 +33,20 @@ export class CompactionDataContainer extends PromptElement<ICompactionDataContai
 /**
  * Attempts to parse a Raw opaque content part into compaction data, if the type matches.
  */
-export function rawPartAsCompactionData(part: Raw.ChatCompletionContentPartOpaque): OpenAIContextManagementResponse | undefined {
+export function rawPartAsCompactionData(
+	part: Raw.ChatCompletionContentPartOpaque,
+): OpenAIContextManagementResponse | undefined {
 	const value = part.value as unknown;
 	if (!value || typeof value !== 'object') {
 		return;
 	}
 
 	const data = value as ICompactionDataOpaque;
-	if (data.type === CustomDataPartMimeTypes.ContextManagement && data.compaction && typeof data.compaction === 'object') {
+	if (
+		data.type === CustomDataPartMimeTypes.ContextManagement &&
+		data.compaction &&
+		typeof data.compaction === 'object'
+	) {
 		return data.compaction;
 	}
 	return;

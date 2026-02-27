@@ -4,7 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import type { CancellationToken, ChatPromptReference, ChatRequest, ChatResponseStream, ChatResult } from 'vscode';
+import type {
+	CancellationToken,
+	ChatPromptReference,
+	ChatRequest,
+	ChatResponseStream,
+	ChatResult,
+} from 'vscode';
 import { IAuthenticationService } from '../../../../platform/authentication/common/authentication';
 import { IChatHookService } from '../../../../platform/chat/common/chatHookService';
 import { ChatLocation } from '../../../../platform/chat/common/commonTypes';
@@ -17,7 +23,11 @@ import { ILogService } from '../../../../platform/log/common/logService';
 import { IRequestLogger } from '../../../../platform/requestLogger/node/requestLogger';
 import { ISurveyService } from '../../../../platform/survey/common/surveyService';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry';
-import { ISetupTestsDetector, isStartSetupTestConfirmation, SetupTestActionType } from '../../../../platform/testing/node/setupTestDetector';
+import {
+	ISetupTestsDetector,
+	isStartSetupTestConfirmation,
+	SetupTestActionType,
+} from '../../../../platform/testing/node/setupTestDetector';
 import { IWorkspaceService } from '../../../../platform/workspace/common/workspaceService';
 import { getLanguage } from '../../../../util/common/languages';
 import { isUri } from '../../../../util/common/types';
@@ -29,16 +39,19 @@ import { Conversation } from '../../../prompt/common/conversation';
 import { ChatTelemetryBuilder } from '../../../prompt/node/chatParticipantTelemetry';
 import { DefaultIntentRequestHandler } from '../../../prompt/node/defaultIntentRequestHandler';
 import { IDocumentContext } from '../../../prompt/node/documentContext';
-import { IIntent, IIntentInvocation, IIntentInvocationContext, IIntentSlashCommandInfo } from '../../../prompt/node/intents';
+import {
+	IIntent,
+	IIntentInvocation,
+	IIntentInvocationContext,
+	IIntentSlashCommandInfo,
+} from '../../../prompt/node/intents';
 import { isTestFile } from '../../../prompt/node/testFiles';
 import { ContributedToolName } from '../../../tools/common/toolNames';
 import { TestFromSourceInvocation } from './testFromSrcInvocation';
 import { TestFromTestInvocation } from './testFromTestInvocation';
 import { UserQueryParser } from './userQueryParser';
 
-
 export class TestsIntent implements IIntent {
-
 	static readonly ID = Intent.Tests;
 
 	readonly id = Intent.Tests;
@@ -47,28 +60,54 @@ export class TestsIntent implements IIntent {
 
 	readonly description = l10n.t('Generate unit tests for the selected code');
 
-	readonly commandInfo: IIntentSlashCommandInfo = { toolEquivalent: ContributedToolName.FindTestFiles };
+	readonly commandInfo: IIntentSlashCommandInfo = {
+		toolEquivalent: ContributedToolName.FindTestFiles,
+	};
 
 	constructor(
-		@IInstantiationService private readonly instantiationService: IInstantiationService,
+		@IInstantiationService
+		private readonly instantiationService: IInstantiationService,
 		@IEndpointProvider private readonly endpointProvider: IEndpointProvider,
 		@IIgnoreService private readonly ignoreService: IIgnoreService,
 		@IWorkspaceService private readonly workspaceService: IWorkspaceService,
 		@ILogService private readonly logService: ILogService,
-	) { }
+	) {}
 
-	handleRequest(conversation: Conversation, request: ChatRequest, stream: ChatResponseStream, token: CancellationToken, documentContext: IDocumentContext | undefined, agentName: string, location: ChatLocation, chatTelemetry: ChatTelemetryBuilder): Promise<ChatResult> {
-		return this.instantiationService.createInstance(RequestHandler, this, conversation, request, stream, token, documentContext, location, chatTelemetry).getResult();
+	handleRequest(
+		conversation: Conversation,
+		request: ChatRequest,
+		stream: ChatResponseStream,
+		token: CancellationToken,
+		documentContext: IDocumentContext | undefined,
+		agentName: string,
+		location: ChatLocation,
+		chatTelemetry: ChatTelemetryBuilder,
+	): Promise<ChatResult> {
+		return this.instantiationService
+			.createInstance(
+				RequestHandler,
+				this,
+				conversation,
+				request,
+				stream,
+				token,
+				documentContext,
+				location,
+				chatTelemetry,
+			)
+			.getResult();
 	}
 
-	async invoke(invocationContext: IIntentInvocationContext): Promise<IIntentInvocation> {
-
+	async invoke(
+		invocationContext: IIntentInvocationContext,
+	): Promise<IIntentInvocation> {
 		let documentContext = invocationContext.documentContext;
 		let alreadyConsumedChatVariable: ChatPromptReference | undefined;
 
 		// try resolving the document context programmatically
 		if (!documentContext) {
-			const r = await this.resolveDocContextProgrammatically(invocationContext);
+			const r =
+				await this.resolveDocContextProgrammatically(invocationContext);
 			if (r) {
 				documentContext = r.documentContext;
 				alreadyConsumedChatVariable = r.alreadyConsumedChatVariable;
@@ -85,24 +124,47 @@ export class TestsIntent implements IIntent {
 		}
 
 		if (!documentContext) {
-			throw new Error('To generate tests, open a file and select code to test.');
+			throw new Error(
+				'To generate tests, open a file and select code to test.',
+			);
 		}
 
-		if (await this.ignoreService.isCopilotIgnored(documentContext.document.uri)) {
+		if (
+			await this.ignoreService.isCopilotIgnored(
+				documentContext.document.uri,
+			)
+		) {
 			throw new Error('Copilot is disabled for this file.');
 		}
 
 		const location = invocationContext.location;
 
-		const endpoint = await this.endpointProvider.getChatEndpoint(invocationContext.request);
+		const endpoint = await this.endpointProvider.getChatEndpoint(
+			invocationContext.request,
+		);
 
 		return isTestFile(documentContext.document)
-			? this.instantiationService.createInstance(TestFromTestInvocation, this, endpoint, location, documentContext, alreadyConsumedChatVariable)
-			: this.instantiationService.createInstance(TestFromSourceInvocation, this, endpoint, location, documentContext, alreadyConsumedChatVariable);
+			? this.instantiationService.createInstance(
+				TestFromTestInvocation,
+				this,
+				endpoint,
+				location,
+				documentContext,
+				alreadyConsumedChatVariable,
+			)
+			: this.instantiationService.createInstance(
+				TestFromSourceInvocation,
+				this,
+				endpoint,
+				location,
+				documentContext,
+				alreadyConsumedChatVariable,
+			);
 	}
 
-	private async resolveDocContextProgrammatically(invocationContext: IIntentInvocationContext) {
-
+	private async resolveDocContextProgrammatically(
+		invocationContext: IIntentInvocationContext,
+	) {
 		const refs = invocationContext.request.references;
 
 		// find a #file to use for testing
@@ -129,8 +191,9 @@ export class TestsIntent implements IIntent {
 			}
 		}
 
-		if (hashFileCount > 1  // use LLM if there's more than 1 file reference
-			|| fileRefs.length === 0
+		if (
+			hashFileCount > 1 || // use LLM if there's more than 1 file reference
+			fileRefs.length === 0
 		) {
 			return;
 		}
@@ -143,17 +206,21 @@ export class TestsIntent implements IIntent {
 		};
 	}
 
-	private async resolveDocContextUsingLlm(invocationContext: IIntentInvocationContext) {
-
-		const queryParser = this.instantiationService.createInstance(UserQueryParser);
-		const parsedQuery = await queryParser.parse(invocationContext.request.prompt);
+	private async resolveDocContextUsingLlm(
+		invocationContext: IIntentInvocationContext,
+	) {
+		const queryParser =
+			this.instantiationService.createInstance(UserQueryParser);
+		const parsedQuery = await queryParser.parse(
+			invocationContext.request.prompt,
+		);
 
 		if (parsedQuery === null) {
 			return;
 		}
 
 		// FIXME@ulugbekna: UserQueryParser also returns symbols that need testing; we should use that info
-		const { fileToTest, } = parsedQuery;
+		const { fileToTest } = parsedQuery;
 
 		// if parser couldn't identify the file, if there's only one file referenced, use that
 		if (fileToTest === undefined) {
@@ -161,7 +228,6 @@ export class TestsIntent implements IIntent {
 		}
 
 		for (let i = 0; i < invocationContext.request.references.length; i++) {
-
 			const ref = invocationContext.request.references[i];
 
 			// FIXME@ulugbekna: I don't like how I fish for #file references
@@ -171,9 +237,10 @@ export class TestsIntent implements IIntent {
 			}
 
 			const [kind, fileName] = ref.name.trim().split(':');
-			if (kind !== 'file' ||
+			if (
+				kind !== 'file' ||
 				fileName === undefined ||
-				!(URI.isUri(ref.value)) ||
+				!URI.isUri(ref.value) ||
 				fileName !== fileToTest
 			) {
 				continue;
@@ -195,14 +262,21 @@ export class TestsIntent implements IIntent {
 		try {
 			td = await this.workspaceService.openTextDocumentAndSnapshot(file);
 		} catch (e) {
-			this.log(`Tried opening file ${file.toString()} but got error: ${e}`);
+			this.log(
+				`Tried opening file ${file.toString()} but got error: ${e}`,
+			);
 			return;
 		}
 
-		const wholeFile = selection ?? new Range(
-			new Position(0, 0),
-			new Position(td.lineCount - 1, td.lineAt(td.lineCount - 1).text.length)
-		);
+		const wholeFile =
+			selection ??
+			new Range(
+				new Position(0, 0),
+				new Position(
+					td.lineCount - 1,
+					td.lineAt(td.lineCount - 1).text.length,
+				),
+			);
 
 		return {
 			document: td,
@@ -214,7 +288,11 @@ export class TestsIntent implements IIntent {
 	}
 
 	private log(...args: any[]): void {
-		const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, '\t') : arg).join('\n');
+		const message = args
+			.map((arg) =>
+				typeof arg === 'object' ? JSON.stringify(arg, null, '\t') : arg,
+			)
+			.join('\n');
 		this.logService.debug(`[TestsIntent] ${message}`);
 	}
 }
@@ -234,13 +312,35 @@ class RequestHandler extends DefaultIntentRequestHandler {
 		@ITelemetryService telemetryService: ITelemetryService,
 		@ILogService logService: ILogService,
 		@ISurveyService surveyService: ISurveyService,
-		@ISetupTestsDetector private readonly setupTestsDetector: ISetupTestsDetector,
+		@ISetupTestsDetector
+		private readonly setupTestsDetector: ISetupTestsDetector,
 		@IRequestLogger requestLogger: IRequestLogger,
-		@IEditSurvivalTrackerService editSurvivalTrackerService: IEditSurvivalTrackerService,
+		@IEditSurvivalTrackerService
+		editSurvivalTrackerService: IEditSurvivalTrackerService,
 		@IAuthenticationService authenticationService: IAuthenticationService,
 		@IChatHookService chatHookService: IChatHookService,
 	) {
-		super(intent, conversation, request, stream, token, documentContext, location, chatTelemetry, undefined, undefined, instantiationService, conversationOptions, telemetryService, logService, surveyService, requestLogger, editSurvivalTrackerService, authenticationService, chatHookService);
+		super(
+			intent,
+			conversation,
+			request,
+			stream,
+			token,
+			documentContext,
+			location,
+			chatTelemetry,
+			undefined,
+			undefined,
+			instantiationService,
+			conversationOptions,
+			telemetryService,
+			logService,
+			surveyService,
+			requestLogger,
+			editSurvivalTrackerService,
+			authenticationService,
+			chatHookService,
+		);
 	}
 
 	/**
@@ -252,7 +352,11 @@ class RequestHandler extends DefaultIntentRequestHandler {
 	public override async getResult(): Promise<ChatResult> {
 		// if the user is starting test setup, we need to finish this request
 		// before they can prompt us with the new one
-		if (this.request.acceptedConfirmationData?.some(isStartSetupTestConfirmation)) {
+		if (
+			this.request.acceptedConfirmationData?.some(
+				isStartSetupTestConfirmation,
+			)
+		) {
 			setTimeout(() => this.getResultInner());
 			return {};
 		}
@@ -260,7 +364,13 @@ class RequestHandler extends DefaultIntentRequestHandler {
 		return this.getResultInner();
 	}
 	private async getResultInner(): Promise<ChatResult> {
-		const suggestion = this.documentContext && await this.setupTestsDetector.shouldSuggestSetup(this.documentContext, this.request, this.stream);
+		const suggestion =
+			this.documentContext &&
+			(await this.setupTestsDetector.shouldSuggestSetup(
+				this.documentContext,
+				this.request,
+				this.stream,
+			));
 		if (!suggestion) {
 			return super.getResult();
 		}
@@ -270,7 +380,9 @@ class RequestHandler extends DefaultIntentRequestHandler {
 			result = await super.getResult();
 		}
 
-		this.setupTestsDetector.showSuggestion(suggestion).forEach(p => this.stream.push(p));
+		this.setupTestsDetector
+			.showSuggestion(suggestion)
+			.forEach((p) => this.stream.push(p));
 
 		return result;
 	}

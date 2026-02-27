@@ -17,8 +17,8 @@ const keypress = async () => {
 		process.stdin.setRawMode(true);
 	}
 
-	return new Promise<void>(resolve =>
-		process.stdin.once('data', data => {
+	return new Promise<void>((resolve) =>
+		process.stdin.once('data', (data) => {
 			const byteArray = [...data];
 			if (byteArray.length > 0 && byteArray[0] === 3) {
 				console.log('^C');
@@ -28,7 +28,7 @@ const keypress = async () => {
 				process.stdin.setRawMode(false);
 			}
 			resolve();
-		})
+		}),
 	);
 };
 
@@ -48,10 +48,16 @@ async function main(): Promise<void> {
 	const request1 = await fetch(REQUEST1_URL, requestOptions);
 	const response1 = (await request1.json()) as any;
 	console.log(`Copy this code: ${response1.user_code}`);
-	console.log('Then press any key to launch the authorization page, paste the code in and approve the access.');
-	console.log(`It will take up to ${response1.interval} seconds after approval for the token to be retrieved.`);
+	console.log(
+		'Then press any key to launch the authorization page, paste the code in and approve the access.',
+	);
+	console.log(
+		`It will take up to ${response1.interval} seconds after approval for the token to be retrieved.`,
+	);
 	await keypress();
-	console.log(`Attempting to open ${response1.verification_uri}, if it doesn't open please manually navigate to the link and paste the code.`);
+	console.log(
+		`Attempting to open ${response1.verification_uri}, if it doesn't open please manually navigate to the link and paste the code.`,
+	);
 	const timeout = new Promise((resolve) => setTimeout(resolve, 5000));
 	await Promise.race([open(response1.verification_uri), timeout]);
 	let expiresIn = response1.expires_in;
@@ -69,9 +75,13 @@ async function main(): Promise<void> {
 				'Content-Type': 'application/json',
 			},
 		};
-		const response2 = (await (await fetch(REQUEST2_URL, requestOptions)).json()) as any;
+		const response2 = (await (
+			await fetch(REQUEST2_URL, requestOptions)
+		).json()) as any;
 		expiresIn -= response1.interval;
-		await new Promise(resolve => setTimeout(resolve, 1000 * response1.interval));
+		await new Promise((resolve) =>
+			setTimeout(resolve, 1000 * response1.interval),
+		);
 		if (response2.access_token) {
 			accessToken = response2.access_token;
 			break;
@@ -81,11 +91,14 @@ async function main(): Promise<void> {
 		console.log('Timed out waiting for authorization');
 		process.exit(1);
 	} else {
-		const raw = fs.existsSync('.env') ? fs.readFileSync('.env', 'utf8') : '';
-		const result = raw.split('\n')
-			.filter(line => !line.startsWith('GITHUB_OAUTH_TOKEN='))
+		const raw = fs.existsSync('.env')
+			? fs.readFileSync('.env', 'utf8')
+			: '';
+		const result = raw
+			.split('\n')
+			.filter((line) => !line.startsWith('GITHUB_OAUTH_TOKEN='))
 			.concat([`GITHUB_OAUTH_TOKEN=${accessToken}`])
-			.filter(line => line.trim() !== '') // Remove empty lines
+			.filter((line) => line.trim() !== '') // Remove empty lines
 			.join('\n');
 
 		fs.writeFileSync('.env', result);

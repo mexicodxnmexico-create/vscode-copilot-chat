@@ -19,7 +19,10 @@ import { extractNodesWitPath } from '../../../../../prompt/src/test/components/t
 import { TelemetryWithExp } from '../../../telemetry';
 import { createLibTestingContext } from '../../../test/context';
 import { querySnapshot } from '../../../test/snapshot';
-import { createTextDocument, TestTextDocumentManager } from '../../../test/textDocument';
+import {
+	createTextDocument,
+	TestTextDocumentManager,
+} from '../../../test/textDocument';
 import { ICompletionsTextDocumentManagerService } from '../../../textDocumentManager';
 
 suite('Code Snippets Component', function () {
@@ -34,7 +37,11 @@ suite('Code Snippets Component', function () {
 			const snapshot = await renderCodeSnippets(accessor);
 			querySnapshot(snapshot.snapshot!, 'CodeSnippets');
 		} catch (e) {
-			assert.ok((e as Error).message.startsWith('No children found at path segment '));
+			assert.ok(
+				(e as Error).message.startsWith(
+					'No children found at path segment ',
+				),
+			);
 		}
 	});
 
@@ -43,7 +50,11 @@ suite('Code Snippets Component', function () {
 			const snapshot = await renderCodeSnippets(accessor, []);
 			querySnapshot(snapshot.snapshot!, 'CodeSnippets');
 		} catch (e) {
-			assert.ok((e as Error).message.startsWith('No children found at path segment '));
+			assert.ok(
+				(e as Error).message.startsWith(
+					'No children found at path segment ',
+				),
+			);
 		}
 	});
 
@@ -63,20 +74,29 @@ suite('Code Snippets Component', function () {
 
 		const snapshot = await renderCodeSnippets(accessor, codeSnippets);
 
-		const chunks = querySnapshot(snapshot.snapshot!, 'CodeSnippets[*]') as PromptSnapshotNode[];
+		const chunks = querySnapshot(
+			snapshot.snapshot!,
+			'CodeSnippets[*]',
+		) as PromptSnapshotNode[];
 		assert.deepStrictEqual(chunks.length, 1);
-		const chunk = querySnapshot(snapshot.snapshot!, 'CodeSnippets[0].Chunk[*]') as PromptSnapshotNode[];
+		const chunk = querySnapshot(
+			snapshot.snapshot!,
+			'CodeSnippets[0].Chunk[*]',
+		) as PromptSnapshotNode[];
 		assert.deepStrictEqual(chunk.length, 2);
 		assert.deepStrictEqual(chunk[1].props?.key, '1');
 		assert.deepStrictEqual(chunk[1].props?.source, codeSnippets[0]);
 		// Assert content
 		assert.deepStrictEqual(
 			querySnapshot(snapshot.snapshot!, 'CodeSnippets[0].Chunk[0].Text'),
-			'Compare this snippet from something.ts:'
+			'Compare this snippet from something.ts:',
 		);
 		assert.deepStrictEqual(
-			querySnapshot(snapshot.snapshot!, 'CodeSnippets[0].Chunk["1"].Text'),
-			'function foo() {\n\treturn 1;\n}'
+			querySnapshot(
+				snapshot.snapshot!,
+				'CodeSnippets[0].Chunk["1"].Text',
+			),
+			'function foo() {\n\treturn 1;\n}',
 		);
 	});
 
@@ -104,22 +124,39 @@ suite('Code Snippets Component', function () {
 			},
 		];
 
-		const tdm = accessor.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager;
+		const tdm = accessor.get(
+			ICompletionsTextDocumentManagerService,
+		) as TestTextDocumentManager;
 		tdm.init([{ uri: 'file:///c:/root' }]);
 
 		const snapshot = await renderCodeSnippets(accessor, codeSnippets);
-		const chunks = querySnapshot(snapshot.snapshot!, 'CodeSnippets[*]') as PromptSnapshotNode[];
+		const chunks = querySnapshot(
+			snapshot.snapshot!,
+			'CodeSnippets[*]',
+		) as PromptSnapshotNode[];
 		assert.deepStrictEqual(chunks.length, 2);
 
-		const firstChunk = querySnapshot(snapshot.snapshot!, 'CodeSnippets[0].Chunk[*]') as PromptSnapshotNode[];
+		const firstChunk = querySnapshot(
+			snapshot.snapshot!,
+			'CodeSnippets[0].Chunk[*]',
+		) as PromptSnapshotNode[];
 		assert.deepStrictEqual(firstChunk.length, 2);
-		assert.deepStrictEqual(firstChunk[0].children?.[0].value, 'Compare this snippet from subfolder/something.ts:');
+		assert.deepStrictEqual(
+			firstChunk[0].children?.[0].value,
+			'Compare this snippet from subfolder/something.ts:',
+		);
 		assert.deepStrictEqual(firstChunk[1].props?.key, '2');
 		assert.deepStrictEqual(firstChunk[1].props?.source, codeSnippets[1]);
 
-		const secondChunk = querySnapshot(snapshot.snapshot!, 'CodeSnippets[1].Chunk[*]') as PromptSnapshotNode[];
+		const secondChunk = querySnapshot(
+			snapshot.snapshot!,
+			'CodeSnippets[1].Chunk[*]',
+		) as PromptSnapshotNode[];
 		assert.deepStrictEqual(secondChunk.length, 2);
-		assert.deepStrictEqual(secondChunk[0].children?.[0].value, 'Compare this snippet from same.ts:');
+		assert.deepStrictEqual(
+			secondChunk[0].children?.[0].value,
+			'Compare this snippet from same.ts:',
+		);
 		assert.deepStrictEqual(secondChunk[1].props?.key, '1');
 		assert.deepStrictEqual(secondChunk[1].props?.source, codeSnippets[0]);
 	});
@@ -150,16 +187,31 @@ suite('Code Snippets Component', function () {
 
 		const snapshot = await renderCodeSnippets(accessor, codeSnippets);
 
-		const snippets = querySnapshot(snapshot.snapshot!, 'CodeSnippets[*]') as PromptSnapshotNode[];
+		const snippets = querySnapshot(
+			snapshot.snapshot!,
+			'CodeSnippets[*]',
+		) as PromptSnapshotNode[];
 		assert.deepStrictEqual(snippets.length, 2);
 
-		const firstChunk = querySnapshot(snapshot.snapshot!, 'CodeSnippets[0].Chunk[*]') as PromptSnapshotNode[];
-		assert.deepStrictEqual(firstChunk[0].children?.[0].value, 'Compare this snippet from somethingElse.ts:');
+		const firstChunk = querySnapshot(
+			snapshot.snapshot!,
+			'CodeSnippets[0].Chunk[*]',
+		) as PromptSnapshotNode[];
+		assert.deepStrictEqual(
+			firstChunk[0].children?.[0].value,
+			'Compare this snippet from somethingElse.ts:',
+		);
 		assert.deepStrictEqual(firstChunk[1].props?.key, '2');
 		assert.deepStrictEqual(firstChunk[1].props?.source, codeSnippets[1]);
 
-		const secondChunk = querySnapshot(snapshot.snapshot!, 'CodeSnippets[1].Chunk[*]') as PromptSnapshotNode[];
-		assert.deepStrictEqual(secondChunk[0].children?.[0].value, 'Compare this snippet from something.ts:');
+		const secondChunk = querySnapshot(
+			snapshot.snapshot!,
+			'CodeSnippets[1].Chunk[*]',
+		) as PromptSnapshotNode[];
+		assert.deepStrictEqual(
+			secondChunk[0].children?.[0].value,
+			'Compare this snippet from something.ts:',
+		);
 		assert.deepStrictEqual(secondChunk[1].props?.key, '1');
 		assert.deepStrictEqual(secondChunk[1].props?.source, codeSnippets[0]);
 	});
@@ -189,12 +241,21 @@ suite('Code Snippets Component', function () {
 		];
 
 		const snapshot = await renderCodeSnippets(accessor, codeSnippets);
-		const result = querySnapshot(snapshot.snapshot!, 'CodeSnippets[*]') as PromptSnapshotNode[];
+		const result = querySnapshot(
+			snapshot.snapshot!,
+			'CodeSnippets[*]',
+		) as PromptSnapshotNode[];
 		assert.deepStrictEqual(result.length, 1);
 
-		const chunk = querySnapshot(snapshot.snapshot!, 'CodeSnippets[0].Chunk[*]') as PromptSnapshotNode[];
+		const chunk = querySnapshot(
+			snapshot.snapshot!,
+			'CodeSnippets[0].Chunk[*]',
+		) as PromptSnapshotNode[];
 		assert.deepStrictEqual(chunk.length, 4);
-		assert.deepStrictEqual(chunk[0].children?.[0].value, 'Compare these snippets from something.ts:');
+		assert.deepStrictEqual(
+			chunk[0].children?.[0].value,
+			'Compare these snippets from something.ts:',
+		);
 		assert.deepStrictEqual(chunk[1].props?.key, '1');
 		assert.deepStrictEqual(chunk[1].props?.source, codeSnippets[0]);
 		assert.deepStrictEqual(chunk[2].children?.[0].value, '---');
@@ -241,7 +302,10 @@ suite('Code Snippets Component', function () {
 
 		const snapshot = await renderCodeSnippets(accessor, codeSnippets);
 
-		const result = querySnapshot(snapshot.snapshot!, 'CodeSnippets[*]') as PromptSnapshotNode[];
+		const result = querySnapshot(
+			snapshot.snapshot!,
+			'CodeSnippets[*]',
+		) as PromptSnapshotNode[];
 		assert.deepStrictEqual(result.length, 2);
 
 		assert.deepStrictEqual(extractNodesWitPath(snapshot.snapshot!), [
@@ -264,7 +328,10 @@ suite('Code Snippets Component', function () {
 	});
 });
 
-async function renderCodeSnippets(accessor: ServicesAccessor, codeSnippets?: CodeSnippetWithId[]) {
+async function renderCodeSnippets(
+	accessor: ServicesAccessor,
+	codeSnippets?: CodeSnippetWithId[],
+) {
 	const document = createTextDocument(
 		'file:///path/foo.ts',
 		'typescript',
@@ -273,7 +340,7 @@ async function renderCodeSnippets(accessor: ServicesAccessor, codeSnippets?: Cod
 		const a = 1;
 		function f|
 		const b = 2;
-	`
+	`,
 	);
 	const position = document.positionAt(document.getText().indexOf('|'));
 

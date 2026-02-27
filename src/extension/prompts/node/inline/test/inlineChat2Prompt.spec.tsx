@@ -10,14 +10,16 @@ import { URI } from '../../../../../util/vs/base/common/uri';
 import { Position, Range } from '../../../../../vscodeTypes';
 import { FileContextElement, FileSelectionElement } from '../inlineChat2Prompt';
 
-function createSnapshot(content: string, languageId: string = 'typescript'): TextDocumentSnapshot {
+function createSnapshot(
+	content: string,
+	languageId: string = 'typescript',
+): TextDocumentSnapshot {
 	const uri = URI.file('/workspace/file.ts');
 	const docData = createTextDocumentData(uri, content, languageId);
 	return TextDocumentSnapshot.create(docData.document);
 }
 
 suite('FileContextElement', () => {
-
 	test('cursor at the beginning of the file', async () => {
 		const content = `line 1
 line 2
@@ -28,9 +30,16 @@ line 5`;
 		const position = new Position(0, 0);
 
 		const element = new FileContextElement({ snapshot, position });
-		const rendered = await element.render(undefined, { tokenBudget: 1000, countTokens: () => Promise.resolve(0), endpoint: {} as any });
+		const rendered = await element.render(undefined, {
+			tokenBudget: 1000,
+			countTokens: () => Promise.resolve(0),
+			endpoint: {} as any,
+		});
 
-		const output = typeof rendered === 'string' ? rendered : JSON.stringify(rendered) ?? '';
+		const output =
+			typeof rendered === 'string'
+				? rendered
+				: (JSON.stringify(rendered) ?? '');
 		expect(output).toContain('$CURSOR$');
 		expect(output).toContain('line 1');
 		expect(output).toContain('line 2');
@@ -49,9 +58,16 @@ line 7`;
 		const position = new Position(3, 2); // after "li" in "line 4"
 
 		const element = new FileContextElement({ snapshot, position });
-		const rendered = await element.render(undefined, { tokenBudget: 1000, countTokens: () => Promise.resolve(0), endpoint: {} as any });
+		const rendered = await element.render(undefined, {
+			tokenBudget: 1000,
+			countTokens: () => Promise.resolve(0),
+			endpoint: {} as any,
+		});
 
-		const output = typeof rendered === 'string' ? rendered : JSON.stringify(rendered) ?? '';
+		const output =
+			typeof rendered === 'string'
+				? rendered
+				: (JSON.stringify(rendered) ?? '');
 		expect(output).toContain('$CURSOR$');
 		// Should include lines before and after cursor
 		expect(output).toContain('line 2');
@@ -72,9 +88,16 @@ line 5`;
 		const position = new Position(4, 6); // end of "line 5"
 
 		const element = new FileContextElement({ snapshot, position });
-		const rendered = await element.render(undefined, { tokenBudget: 1000, countTokens: () => Promise.resolve(0), endpoint: {} as any });
+		const rendered = await element.render(undefined, {
+			tokenBudget: 1000,
+			countTokens: () => Promise.resolve(0),
+			endpoint: {} as any,
+		});
 
-		const output = typeof rendered === 'string' ? rendered : JSON.stringify(rendered) ?? '';
+		const output =
+			typeof rendered === 'string'
+				? rendered
+				: (JSON.stringify(rendered) ?? '');
 		expect(output).toContain('$CURSOR$');
 		expect(output).toContain('line 3');
 		expect(output).toContain('line 4');
@@ -92,9 +115,16 @@ line 4
 		const position = new Position(2, 0); // start of "line 3"
 
 		const element = new FileContextElement({ snapshot, position });
-		const rendered = await element.render(undefined, { tokenBudget: 1000, countTokens: () => Promise.resolve(0), endpoint: {} as any });
+		const rendered = await element.render(undefined, {
+			tokenBudget: 1000,
+			countTokens: () => Promise.resolve(0),
+			endpoint: {} as any,
+		});
 
-		const output = typeof rendered === 'string' ? rendered : JSON.stringify(rendered) ?? '';
+		const output =
+			typeof rendered === 'string'
+				? rendered
+				: (JSON.stringify(rendered) ?? '');
 		expect(output).toContain('$CURSOR$');
 		expect(output).toContain('line 3');
 		expect(output).toContain('line 4');
@@ -106,9 +136,16 @@ line 4
 		const position = new Position(0, 5); // middle of line
 
 		const element = new FileContextElement({ snapshot, position });
-		const rendered = await element.render(undefined, { tokenBudget: 1000, countTokens: () => Promise.resolve(0), endpoint: {} as any });
+		const rendered = await element.render(undefined, {
+			tokenBudget: 1000,
+			countTokens: () => Promise.resolve(0),
+			endpoint: {} as any,
+		});
 
-		const output = typeof rendered === 'string' ? rendered : JSON.stringify(rendered) ?? '';
+		const output =
+			typeof rendered === 'string'
+				? rendered
+				: (JSON.stringify(rendered) ?? '');
 		expect(output).toContain('only $CURSOR$one line');
 	});
 
@@ -118,15 +155,21 @@ line 4
 		const position = new Position(0, 6); // after "hello "
 
 		const element = new FileContextElement({ snapshot, position });
-		const rendered = await element.render(undefined, { tokenBudget: 1000, countTokens: () => Promise.resolve(0), endpoint: {} as any });
+		const rendered = await element.render(undefined, {
+			tokenBudget: 1000,
+			countTokens: () => Promise.resolve(0),
+			endpoint: {} as any,
+		});
 
-		const output = typeof rendered === 'string' ? rendered : JSON.stringify(rendered) ?? '';
+		const output =
+			typeof rendered === 'string'
+				? rendered
+				: (JSON.stringify(rendered) ?? '');
 		expect(output).toContain('hello $CURSOR$world');
 	});
 });
 
 suite('FileSelectionElement', () => {
-
 	test('single line selection', async () => {
 		const content = `line 1
 line 2
@@ -137,9 +180,16 @@ line 5`;
 		const selection = new Range(1, 0, 1, 6); // "line 2"
 
 		const element = new FileSelectionElement({ snapshot, selection });
-		const rendered = await element.render(undefined, { tokenBudget: 1000, countTokens: () => Promise.resolve(0), endpoint: {} as any });
+		const rendered = await element.render(undefined, {
+			tokenBudget: 1000,
+			countTokens: () => Promise.resolve(0),
+			endpoint: {} as any,
+		});
 
-		const output = typeof rendered === 'string' ? rendered : JSON.stringify(rendered) ?? '';
+		const output =
+			typeof rendered === 'string'
+				? rendered
+				: (JSON.stringify(rendered) ?? '');
 		expect(output).toContain('line 2');
 		expect(output).not.toContain('line 1');
 		expect(output).not.toContain('line 3');
@@ -155,9 +205,16 @@ line 5`;
 		const selection = new Range(1, 0, 3, 6); // "line 2" through "line 4"
 
 		const element = new FileSelectionElement({ snapshot, selection });
-		const rendered = await element.render(undefined, { tokenBudget: 1000, countTokens: () => Promise.resolve(0), endpoint: {} as any });
+		const rendered = await element.render(undefined, {
+			tokenBudget: 1000,
+			countTokens: () => Promise.resolve(0),
+			endpoint: {} as any,
+		});
 
-		const output = typeof rendered === 'string' ? rendered : JSON.stringify(rendered) ?? '';
+		const output =
+			typeof rendered === 'string'
+				? rendered
+				: (JSON.stringify(rendered) ?? '');
 		expect(output).toContain('line 2');
 		expect(output).toContain('line 3');
 		expect(output).toContain('line 4');
@@ -174,9 +231,16 @@ line 3`;
 		const selection = new Range(1, 2, 1, 4);
 
 		const element = new FileSelectionElement({ snapshot, selection });
-		const rendered = await element.render(undefined, { tokenBudget: 1000, countTokens: () => Promise.resolve(0), endpoint: {} as any });
+		const rendered = await element.render(undefined, {
+			tokenBudget: 1000,
+			countTokens: () => Promise.resolve(0),
+			endpoint: {} as any,
+		});
 
-		const output = typeof rendered === 'string' ? rendered : JSON.stringify(rendered) ?? '';
+		const output =
+			typeof rendered === 'string'
+				? rendered
+				: (JSON.stringify(rendered) ?? '');
 		// Should include the full line, not just "ne"
 		expect(output).toContain('line 2');
 	});
@@ -189,9 +253,16 @@ line 3`;
 		const selection = new Range(0, 0, 0, 6);
 
 		const element = new FileSelectionElement({ snapshot, selection });
-		const rendered = await element.render(undefined, { tokenBudget: 1000, countTokens: () => Promise.resolve(0), endpoint: {} as any });
+		const rendered = await element.render(undefined, {
+			tokenBudget: 1000,
+			countTokens: () => Promise.resolve(0),
+			endpoint: {} as any,
+		});
 
-		const output = typeof rendered === 'string' ? rendered : JSON.stringify(rendered) ?? '';
+		const output =
+			typeof rendered === 'string'
+				? rendered
+				: (JSON.stringify(rendered) ?? '');
 		expect(output).toContain('line 1');
 		expect(output).not.toContain('line 2');
 	});
@@ -204,9 +275,16 @@ line 3`;
 		const selection = new Range(2, 0, 2, 6);
 
 		const element = new FileSelectionElement({ snapshot, selection });
-		const rendered = await element.render(undefined, { tokenBudget: 1000, countTokens: () => Promise.resolve(0), endpoint: {} as any });
+		const rendered = await element.render(undefined, {
+			tokenBudget: 1000,
+			countTokens: () => Promise.resolve(0),
+			endpoint: {} as any,
+		});
 
-		const output = typeof rendered === 'string' ? rendered : JSON.stringify(rendered) ?? '';
+		const output =
+			typeof rendered === 'string'
+				? rendered
+				: (JSON.stringify(rendered) ?? '');
 		expect(output).toContain('line 3');
 		expect(output).not.toContain('line 2');
 	});
@@ -220,9 +298,16 @@ third line here`;
 		const selection = new Range(0, 6, 1, 7);
 
 		const element = new FileSelectionElement({ snapshot, selection });
-		const rendered = await element.render(undefined, { tokenBudget: 1000, countTokens: () => Promise.resolve(0), endpoint: {} as any });
+		const rendered = await element.render(undefined, {
+			tokenBudget: 1000,
+			countTokens: () => Promise.resolve(0),
+			endpoint: {} as any,
+		});
 
-		const output = typeof rendered === 'string' ? rendered : JSON.stringify(rendered) ?? '';
+		const output =
+			typeof rendered === 'string'
+				? rendered
+				: (JSON.stringify(rendered) ?? '');
 		// Should include full lines
 		expect(output).toContain('first line here');
 		expect(output).toContain('second line here');
@@ -235,9 +320,16 @@ third line here`;
 		const selection = new Range(0, 0, 0, 12);
 
 		const element = new FileSelectionElement({ snapshot, selection });
-		const rendered = await element.render(undefined, { tokenBudget: 1000, countTokens: () => Promise.resolve(0), endpoint: {} as any });
+		const rendered = await element.render(undefined, {
+			tokenBudget: 1000,
+			countTokens: () => Promise.resolve(0),
+			endpoint: {} as any,
+		});
 
-		const output = typeof rendered === 'string' ? rendered : JSON.stringify(rendered) ?? '';
+		const output =
+			typeof rendered === 'string'
+				? rendered
+				: (JSON.stringify(rendered) ?? '');
 		expect(output).toContain('javascript');
 	});
 });

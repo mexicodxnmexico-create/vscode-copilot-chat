@@ -7,7 +7,7 @@ import { spawn } from 'child_process';
 
 export const openVscodeUri = (remoteCommand: string | undefined, uri: string): Promise<void> => {
 	let command: string;
-	let shell = false;
+	const shell = false;
 	let args = [uri];
 	if (remoteCommand) {
 		const [cmd, ...cmdArgs] = remoteCommand.split(' ');

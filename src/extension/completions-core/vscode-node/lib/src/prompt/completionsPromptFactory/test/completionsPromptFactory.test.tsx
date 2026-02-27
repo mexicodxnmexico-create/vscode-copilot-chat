@@ -9,44 +9,85 @@ import * as assert from 'assert';
 import * as sinon from 'sinon';
 import dedent from 'ts-dedent';
 import { Diagnostic, DiagnosticSeverity, Range, Uri } from 'vscode';
-import { CancellationTokenSource, Position } from 'vscode-languageserver-protocol';
+import {
+	CancellationTokenSource,
+	Position,
+} from 'vscode-languageserver-protocol';
 import { MutableObservableWorkspace } from '../../../../../../../../platform/inlineEdits/common/observableWorkspace';
 import { ILanguageDiagnosticsService } from '../../../../../../../../platform/languages/common/languageDiagnosticsService';
 import { TestingServiceCollection } from '../../../../../../../../platform/test/node/services';
 import { URI } from '../../../../../../../../util/vs/base/common/uri';
-import { IInstantiationService, ServicesAccessor } from '../../../../../../../../util/vs/platform/instantiation/common/instantiation';
-import { ComponentContext, PromptElementProps, Text } from '../../../../../prompt/src/components/components';
-import { Dispatch, StateUpdater } from '../../../../../prompt/src/components/hooks';
+import {
+	IInstantiationService,
+	ServicesAccessor,
+} from '../../../../../../../../util/vs/platform/instantiation/common/instantiation';
+import {
+	ComponentContext,
+	PromptElementProps,
+	Text,
+} from '../../../../../prompt/src/components/components';
+import {
+	Dispatch,
+	StateUpdater,
+} from '../../../../../prompt/src/components/hooks';
 import { VirtualPrompt } from '../../../../../prompt/src/components/virtualPrompt';
 import { DEFAULT_MAX_COMPLETION_LENGTH } from '../../../../../prompt/src/prompt';
-import { getTokenizer, TokenizerName } from '../../../../../prompt/src/tokenization';
-import { CodeSnippet, ContextProvider, SupportedContextItem, Trait, type DiagnosticBag } from '../../../../../types/src';
+import {
+	getTokenizer,
+	TokenizerName,
+} from '../../../../../prompt/src/tokenization';
+import {
+	CodeSnippet,
+	ContextProvider,
+	SupportedContextItem,
+	Trait,
+	type DiagnosticBag,
+} from '../../../../../types/src';
 import { ICompletionsObservableWorkspace } from '../../../completionsObservableWorkspace';
-import { createCompletionState, type CompletionState } from '../../../completionState';
-import { ConfigKey, ICompletionsConfigProvider, InMemoryConfigProvider } from '../../../config';
+import {
+	createCompletionState,
+	type CompletionState,
+} from '../../../completionState';
+import {
+	ConfigKey,
+	ICompletionsConfigProvider,
+	InMemoryConfigProvider,
+} from '../../../config';
 import { ICompletionsFeaturesService } from '../../../experiments/featuresService';
 import { TelemetryWithExp } from '../../../telemetry';
 import { createLibTestingContext } from '../../../test/context';
 import { withInMemoryTelemetry } from '../../../test/telemetry';
-import { createTextDocument, TestTextDocumentManager } from '../../../test/textDocument';
+import {
+	createTextDocument,
+	TestTextDocumentManager,
+} from '../../../test/textDocument';
 import { ITextDocument } from '../../../textDocument';
 import { ICompletionsTextDocumentManagerService } from '../../../textDocumentManager';
 import { CompletionsContext } from '../../components/completionsContext';
 import { ICompletionsContextProviderBridgeService } from '../../components/contextProviderBridge';
 import { CurrentFile } from '../../components/currentFile';
-import { ContextProviderTelemetry, ICompletionsContextProviderRegistryService, type DefaultDiagnosticSettings, type ResolvedContextItem } from '../../contextProviderRegistry';
+import {
+	ContextProviderTelemetry,
+	ICompletionsContextProviderRegistryService,
+	type DefaultDiagnosticSettings,
+	type ResolvedContextItem,
+} from '../../contextProviderRegistry';
 import type { DiagnosticBagWithId } from '../../contextProviders/contextItemSchemas';
 import { _contextTooShort, _promptCancelled, _promptError } from '../../prompt';
-import { FullRecentEditsProvider, ICompletionsRecentEditsProviderService } from '../../recentEdits/recentEditsProvider';
+import {
+	FullRecentEditsProvider,
+	ICompletionsRecentEditsProviderService,
+} from '../../recentEdits/recentEditsProvider';
 import { NeighborSource } from '../../similarFiles/neighborFiles';
 import {
-	DEFAULT_PROMPT_TIMEOUT, IPromptFactory,
-	TestCompletionsPromptFactory
+	DEFAULT_PROMPT_TIMEOUT,
+	IPromptFactory,
+	TestCompletionsPromptFactory,
 } from '../completionsPromptFactory';
 import {
 	isCompletionRequestData,
 	PromptOrdering,
-	TestComponentsCompletionsPromptFactory
+	TestComponentsCompletionsPromptFactory,
 } from '../componentsCompletionsPromptFactory';
 
 suite('Completions Prompt Factory', function () {
@@ -55,7 +96,10 @@ suite('Completions Prompt Factory', function () {
 	let serviceCollection: TestingServiceCollection;
 	let clock: sinon.SinonFakeTimers | undefined;
 	let cts: CancellationTokenSource;
-	const longPrefix = Array.from({ length: 60 }, (_, i) => `const a${i} = ${i};`).join('\n');
+	const longPrefix = Array.from(
+		{ length: 60 },
+		(_, i) => `const a${i} = ${i};`,
+	).join('\n');
 	const defaultTextDocument = createTextDocument(
 		'file:///path/basename',
 		'typescript',
@@ -64,7 +108,7 @@ suite('Completions Prompt Factory', function () {
 			${longPrefix}
 			function f|
 			const b = 2;
-		`
+		`,
 	);
 	let promptFactory: IPromptFactory;
 
@@ -78,15 +122,29 @@ suite('Completions Prompt Factory', function () {
 		factory: IPromptFactory = promptFactory,
 	) {
 		const textDocument = opts.textDocument ?? defaultTextDocument;
-		const position = opts.position ?? textDocument.positionAt(textDocument.getText().indexOf('|'));
+		const position =
+			opts.position ??
+			textDocument.positionAt(textDocument.getText().indexOf('|'));
 		const completionState = createCompletionState(textDocument, position);
 		const separateContext = opts.separateContext ?? false;
 		const completionId = opts.completionId ?? 'completion_id';
-		const contextProviderBridge = accessor.get(ICompletionsContextProviderBridgeService);
-		contextProviderBridge.schedule(completionState, completionId, 'opId', telemetryData);
+		const contextProviderBridge = accessor.get(
+			ICompletionsContextProviderBridgeService,
+		);
+		contextProviderBridge.schedule(
+			completionState,
+			completionId,
+			'opId',
+			telemetryData,
+		);
 		return factory.prompt(
-			{ completionId, completionState, telemetryData, promptOpts: { separateContext } },
-			cts.token
+			{
+				completionId,
+				completionState,
+				telemetryData,
+				promptOpts: { separateContext },
+			},
+			cts.token,
 		);
 	}
 
@@ -95,7 +153,9 @@ suite('Completions Prompt Factory', function () {
 		accessor = serviceCollection.createTestingAccessor();
 		telemetryData = TelemetryWithExp.createEmptyConfigForTesting();
 		cts = new CancellationTokenSource();
-		promptFactory = accessor.get(IInstantiationService).createInstance(TestCompletionsPromptFactory, undefined, undefined);
+		promptFactory = accessor
+			.get(IInstantiationService)
+			.createInstance(TestCompletionsPromptFactory, undefined, undefined);
 	});
 
 	teardown(function () {
@@ -108,15 +168,24 @@ suite('Completions Prompt Factory', function () {
 		const result = await invokePromptFactory();
 
 		assert.deepStrictEqual(result.type, 'prompt');
-		assert.deepStrictEqual(result.prompt.prefix, `// Path: basename\n${longPrefix}\nfunction f`);
+		assert.deepStrictEqual(
+			result.prompt.prefix,
+			`// Path: basename\n${longPrefix}\nfunction f`,
+		);
 		assert.deepStrictEqual(result.prompt.prefixTokens, 427);
 		assert.deepStrictEqual(result.prompt.suffix, 'const b = 2;');
 		assert.deepStrictEqual(result.prompt.suffixTokens, 6);
 	});
 
 	test('prompt should include neighboring files', async function () {
-		const tdm = accessor.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager;
-		tdm.setTextDocument('file:///something.ts', 'typescript', '// match function f\nfunction foo() {}');
+		const tdm = accessor.get(
+			ICompletionsTextDocumentManagerService,
+		) as TestTextDocumentManager;
+		tdm.setTextDocument(
+			'file:///something.ts',
+			'typescript',
+			'// match function f\nfunction foo() {}',
+		);
 
 		const result = await invokePromptFactory();
 
@@ -130,7 +199,7 @@ suite('Completions Prompt Factory', function () {
 				// function foo() {}
 				${longPrefix}
 				function f
-			`
+			`,
 		);
 		assert.deepStrictEqual(result.prompt.prefixTokens, 446);
 		assert.deepStrictEqual(result.prompt.suffix, 'const b = 2;');
@@ -140,26 +209,43 @@ suite('Completions Prompt Factory', function () {
 	test('prompt should include recent edits', async function () {
 		const serviceCollectionClone = serviceCollection.clone();
 		const workspace = new CompletionsMutableObservableWorkspace();
-		serviceCollectionClone.define(ICompletionsObservableWorkspace, workspace);
+		serviceCollectionClone.define(
+			ICompletionsObservableWorkspace,
+			workspace,
+		);
 
 		// TODO: figure out how to simulate real document update events
 		const rep = new MockRecentEditsProvider(undefined, workspace);
-		serviceCollectionClone.define(ICompletionsRecentEditsProviderService, rep);
+		serviceCollectionClone.define(
+			ICompletionsRecentEditsProviderService,
+			rep,
+		);
 
 		const accessorClone = serviceCollectionClone.createTestingAccessor();
-		const promptFactory = accessorClone.get(IInstantiationService).createInstance(TestCompletionsPromptFactory, undefined, undefined);
+		const promptFactory = accessorClone
+			.get(IInstantiationService)
+			.createInstance(TestCompletionsPromptFactory, undefined, undefined);
 
 		// Ensure the document is open
-		const tdm = accessorClone.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager;
-		tdm.setTextDocument(defaultTextDocument.uri, defaultTextDocument.languageId, defaultTextDocument.getText());
+		const tdm = accessorClone.get(
+			ICompletionsTextDocumentManagerService,
+		) as TestTextDocumentManager;
+		tdm.setTextDocument(
+			defaultTextDocument.uri,
+			defaultTextDocument.languageId,
+			defaultTextDocument.getText(),
+		);
 
 		// Update the distance setting to avoid having to create a huge document
 		rep.config.activeDocDistanceLimitFromCursor = 10;
 
-		rep.testUpdateRecentEdits(defaultTextDocument.uri, defaultTextDocument.getText());
 		rep.testUpdateRecentEdits(
 			defaultTextDocument.uri,
-			defaultTextDocument.getText().replace('const a0', 'const c1')
+			defaultTextDocument.getText(),
+		);
+		rep.testUpdateRecentEdits(
+			defaultTextDocument.uri,
+			defaultTextDocument.getText().replace('const a0', 'const c1'),
 		);
 
 		const result = await invokePromptFactory({}, promptFactory);
@@ -182,7 +268,7 @@ suite('Completions Prompt Factory', function () {
 				// End of recent edits
 				${longPrefix}
 				function f
-			`
+			`,
 		);
 		assert.deepStrictEqual(result.prompt.suffix, 'const b = 2;');
 	});
@@ -190,29 +276,47 @@ suite('Completions Prompt Factory', function () {
 	test('recent edits are removed as a chunk', async function () {
 		const serviceCollectionClone = serviceCollection.clone();
 		const workspace = new CompletionsMutableObservableWorkspace();
-		serviceCollectionClone.define(ICompletionsObservableWorkspace, workspace);
+		serviceCollectionClone.define(
+			ICompletionsObservableWorkspace,
+			workspace,
+		);
 		// TODO: figure out how to simulate real document update events
 		const rep = new MockRecentEditsProvider(undefined, workspace);
-		serviceCollectionClone.define(ICompletionsRecentEditsProviderService, rep);
+		serviceCollectionClone.define(
+			ICompletionsRecentEditsProviderService,
+			rep,
+		);
 
 		const accessorClone = serviceCollectionClone.createTestingAccessor();
-		const promptFactory = accessorClone.get(IInstantiationService).createInstance(TestCompletionsPromptFactory, undefined, undefined);
+		const promptFactory = accessorClone
+			.get(IInstantiationService)
+			.createInstance(TestCompletionsPromptFactory, undefined, undefined);
 		const featuresService = accessorClone.get(ICompletionsFeaturesService);
 
 		// Ensure the document is open
-		const tdm = accessorClone.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager;
-		tdm.setTextDocument(defaultTextDocument.uri, defaultTextDocument.languageId, defaultTextDocument.getText());
+		const tdm = accessorClone.get(
+			ICompletionsTextDocumentManagerService,
+		) as TestTextDocumentManager;
+		tdm.setTextDocument(
+			defaultTextDocument.uri,
+			defaultTextDocument.languageId,
+			defaultTextDocument.getText(),
+		);
 
 		// Update the distance setting to avoid having to create a huge document
 		rep.config.activeDocDistanceLimitFromCursor = 10;
 
-		rep.testUpdateRecentEdits(defaultTextDocument.uri, defaultTextDocument.getText());
 		rep.testUpdateRecentEdits(
 			defaultTextDocument.uri,
-			defaultTextDocument.getText().replace('const a0', 'const c1')
+			defaultTextDocument.getText(),
+		);
+		rep.testUpdateRecentEdits(
+			defaultTextDocument.uri,
+			defaultTextDocument.getText().replace('const a0', 'const c1'),
 		);
 
-		featuresService.maxPromptCompletionTokens = () => 530 + DEFAULT_MAX_COMPLETION_LENGTH;
+		featuresService.maxPromptCompletionTokens = () =>
+			530 + DEFAULT_MAX_COMPLETION_LENGTH;
 		featuresService.suffixPercent = () => 0;
 
 		const result = await invokePromptFactory({}, promptFactory);
@@ -224,7 +328,7 @@ suite('Completions Prompt Factory', function () {
 				// Path: basename
 				${longPrefix}
 				function f
-			`
+			`,
 		);
 	});
 
@@ -232,7 +336,10 @@ suite('Completions Prompt Factory', function () {
 		const result = await invokePromptFactory({ separateContext: true });
 
 		assert.deepStrictEqual(result.type, 'prompt');
-		assert.deepStrictEqual(result.prompt.prefix, `${longPrefix}\nfunction f`);
+		assert.deepStrictEqual(
+			result.prompt.prefix,
+			`${longPrefix}\nfunction f`,
+		);
 		assert.deepStrictEqual(result.prompt.context, ['Path: basename']);
 		assert.deepStrictEqual(result.prompt.suffix, 'const b = 2;');
 	});
@@ -258,7 +365,7 @@ suite('Completions Prompt Factory', function () {
 				const a = 1;
 				function f|
 				const b = 1;
-			`
+			`,
 		);
 
 		const result = await invokePromptFactory({ textDocument });
@@ -269,23 +376,30 @@ suite('Completions Prompt Factory', function () {
 
 	test('produces timeout prompt if timeout is exceeded', async function () {
 		clock = sinon.useFakeTimers();
-		const TimeoutComponent = (_: PromptElementProps, context: ComponentContext) => {
-			context.useData(isCompletionRequestData, async _ => {
+		const TimeoutComponent = (
+			_: PromptElementProps,
+			context: ComponentContext,
+		) => {
+			context.useData(isCompletionRequestData, async (_) => {
 				await clock?.tickAsync(DEFAULT_PROMPT_TIMEOUT + 1);
 			});
 			return <Text>A really cool prompt</Text>;
 		};
 		const virtualPrompt = new VirtualPrompt(
-			(
-				<>
-					<CompletionsContext>
-						<TimeoutComponent />
-					</CompletionsContext>
-					<CurrentFile />
-				</>
-			)
+			<>
+				<CompletionsContext>
+					<TimeoutComponent />
+				</CompletionsContext>
+				<CurrentFile />
+			</>,
 		);
-		promptFactory = accessor.get(IInstantiationService).createInstance(TestCompletionsPromptFactory, virtualPrompt, undefined);
+		promptFactory = accessor
+			.get(IInstantiationService)
+			.createInstance(
+				TestCompletionsPromptFactory,
+				virtualPrompt,
+				undefined,
+			);
 		const result = await invokePromptFactory();
 
 		assert.deepStrictEqual(result.type, 'promptTimeout');
@@ -294,7 +408,12 @@ suite('Completions Prompt Factory', function () {
 	test('produces valid prompts with multiple promises racing', async function () {
 		const promises = [];
 		for (let i = 0; i < 3; i++) {
-			const textDocument = createTextDocument(`file:///path/basename${i}`, 'typescript', 0, `const a = ${i}|;`);
+			const textDocument = createTextDocument(
+				`file:///path/basename${i}`,
+				'typescript',
+				0,
+				`const a = ${i}|;`,
+			);
 			const promise = invokePromptFactory({ textDocument });
 			promises.push(promise);
 		}
@@ -304,33 +423,58 @@ suite('Completions Prompt Factory', function () {
 		for (let i = 0; i < 3; i++) {
 			const result = results[i];
 			assert.deepStrictEqual(result.type, 'prompt');
-			assert.deepStrictEqual(result.prompt.prefix, `// Path: basename${i}\nconst a = ${i}`);
+			assert.deepStrictEqual(
+				result.prompt.prefix,
+				`// Path: basename${i}\nconst a = ${i}`,
+			);
 		}
 	});
 
 	test('handles errors with multiple promises racing', async function () {
 		sinon
-			.stub(TestComponentsCompletionsPromptFactory.prototype, 'createPromptUnsafe')
+			.stub(
+				TestComponentsCompletionsPromptFactory.prototype,
+				'createPromptUnsafe',
+			)
 			.callThrough()
 			.onFirstCall()
 			.throws(new Error('Intentional error'));
 
-		const doc = createTextDocument('file:///path/basename', 'typescript', 0, `const a = 1|;`);
+		const doc = createTextDocument(
+			'file:///path/basename',
+			'typescript',
+			0,
+			`const a = 1|;`,
+		);
 
-		const smallDoc = createTextDocument('file:///path/basename', 'typescript', 0, `c|`);
+		const smallDoc = createTextDocument(
+			'file:///path/basename',
+			'typescript',
+			0,
+			`c|`,
+		);
 
 		const errorPromise = invokePromptFactory({ textDocument: doc });
 		const goodPromise = invokePromptFactory({ textDocument: doc });
-		const shortContextPromise = invokePromptFactory({ textDocument: smallDoc });
+		const shortContextPromise = invokePromptFactory({
+			textDocument: smallDoc,
+		});
 
-		const results = await Promise.all([errorPromise, goodPromise, shortContextPromise]);
+		const results = await Promise.all([
+			errorPromise,
+			goodPromise,
+			shortContextPromise,
+		]);
 
 		assert.deepStrictEqual(results[0], _promptError);
 		assert.deepStrictEqual(results[2], _contextTooShort);
 
 		const firstResult = results[1];
 		assert.deepStrictEqual(firstResult.type, 'prompt');
-		assert.deepStrictEqual(firstResult.prompt.prefix, `// Path: basename\nconst a = 1`);
+		assert.deepStrictEqual(
+			firstResult.prompt.prefix,
+			`// Path: basename\nconst a = 1`,
+		);
 	});
 
 	test('produces valid prompts with sequential context provider calls', async function () {
@@ -345,17 +489,31 @@ suite('Completions Prompt Factory', function () {
 				resolve: () => {
 					const traitId = id++;
 					return Promise.resolve([
-						{ name: `test_trait${traitId}`, value: 'test_value', id: `trait${traitId}` },
+						{
+							name: `test_trait${traitId}`,
+							value: 'test_value',
+							id: `trait${traitId}`,
+						},
 					]);
 				},
 			},
 		};
-		accessor.get(ICompletionsContextProviderRegistryService).registerContextProvider(traitsProvider);
+		accessor
+			.get(ICompletionsContextProviderRegistryService)
+			.registerContextProvider(traitsProvider);
 
 		const promises = [];
 		for (let i = 0; i < 3; i++) {
-			const textDocument = createTextDocument(`file:///path/basename${i}`, 'typescript', 0, `const a = ${i}|;`);
-			const promise = invokePromptFactory({ textDocument, completionId: `completion_id_${i}` });
+			const textDocument = createTextDocument(
+				`file:///path/basename${i}`,
+				'typescript',
+				0,
+				`const a = ${i}|;`,
+			);
+			const promise = invokePromptFactory({
+				textDocument,
+				completionId: `completion_id_${i}`,
+			});
 			promises.push(promise);
 		}
 
@@ -366,19 +524,28 @@ suite('Completions Prompt Factory', function () {
 			assert.deepStrictEqual(result.type, 'prompt');
 			assert.deepStrictEqual(
 				result.prompt.prefix,
-				`// Path: basename${i}\n// Consider this related information:\n// test_trait${i}: test_value\nconst a = ${i}`
+				`// Path: basename${i}\n// Consider this related information:\n// test_trait${i}: test_value\nconst a = ${i}`,
 			);
 			assert.deepStrictEqual(result.contextProvidersTelemetry?.length, 1);
-			assert.deepStrictEqual(result.contextProvidersTelemetry?.[0].usageDetails?.length, 1);
-			assert.deepStrictEqual(result.contextProvidersTelemetry?.[0].usageDetails?.[0].id, `trait${i}`);
+			assert.deepStrictEqual(
+				result.contextProvidersTelemetry?.[0].usageDetails?.length,
+				1,
+			);
+			assert.deepStrictEqual(
+				result.contextProvidersTelemetry?.[0].usageDetails?.[0].id,
+				`trait${i}`,
+			);
 		}
 	});
 
 	test('produces valid prompts with multiple promises racing, one blocking', async function () {
 		clock = sinon.useFakeTimers();
 		let timeoutMs = DEFAULT_PROMPT_TIMEOUT + 1;
-		const TimeoutComponent = (_: PromptElementProps, context: ComponentContext) => {
-			context.useData(isCompletionRequestData, async _ => {
+		const TimeoutComponent = (
+			_: PromptElementProps,
+			context: ComponentContext,
+		) => {
+			context.useData(isCompletionRequestData, async (_) => {
 				const timeoutPromise = clock?.tickAsync(timeoutMs);
 				timeoutMs = 0;
 				await timeoutPromise;
@@ -387,20 +554,29 @@ suite('Completions Prompt Factory', function () {
 			return <Text>A really cool prompt</Text>;
 		};
 		const virtualPrompt = new VirtualPrompt(
-			(
-				<>
-					<CompletionsContext>
-						<TimeoutComponent />
-					</CompletionsContext>
-					<CurrentFile />
-				</>
-			)
+			<>
+				<CompletionsContext>
+					<TimeoutComponent />
+				</CompletionsContext>
+				<CurrentFile />
+			</>,
 		);
-		promptFactory = accessor.get(IInstantiationService).createInstance(TestCompletionsPromptFactory, virtualPrompt, undefined);
+		promptFactory = accessor
+			.get(IInstantiationService)
+			.createInstance(
+				TestCompletionsPromptFactory,
+				virtualPrompt,
+				undefined,
+			);
 
 		const promises = [];
 		for (let i = 0; i < 2; i++) {
-			const textDocument = createTextDocument(`file:///${i}`, 'typescript', 0, `const a = ${i}|;`);
+			const textDocument = createTextDocument(
+				`file:///${i}`,
+				'typescript',
+				0,
+				`const a = ${i}|;`,
+			);
 			const promise = invokePromptFactory({ textDocument });
 			promises.push(promise);
 		}
@@ -409,23 +585,37 @@ suite('Completions Prompt Factory', function () {
 
 		assert.deepStrictEqual(results[0].type, 'promptTimeout');
 		assert.deepStrictEqual(results[1].type, 'prompt');
-		assert.deepStrictEqual(results[1].prompt.prefix, '// A really cool prompt\nconst a = 1');
+		assert.deepStrictEqual(
+			results[1].prompt.prefix,
+			'// A really cool prompt\nconst a = 1',
+		);
 	});
 
 	test('token limits can be controlled via EXP', async function () {
 		const tokenizer = getTokenizer();
-		const longText = Array.from({ length: 1000 }, (_, i) => `const a${i} = ${i};`).join('\n');
+		const longText = Array.from(
+			{ length: 1000 },
+			(_, i) => `const a${i} = ${i};`,
+		).join('\n');
 		const longTextDocument = createTextDocument(
 			'file:///path/basename',
 			'typescript',
 			0,
-			longText + 'function f|\nconst b = 2;'
+			longText + 'function f|\nconst b = 2;',
 		);
-		const defaultLimitsPrompt = await invokePromptFactory({ textDocument: longTextDocument });
+		const defaultLimitsPrompt = await invokePromptFactory({
+			textDocument: longTextDocument,
+		});
 
 		assert.deepStrictEqual(defaultLimitsPrompt.type, 'prompt');
-		assert.deepStrictEqual(tokenizer.tokenLength(defaultLimitsPrompt.prompt.prefix), 7007);
-		assert.deepStrictEqual(tokenizer.tokenLength(defaultLimitsPrompt.prompt.suffix), 6);
+		assert.deepStrictEqual(
+			tokenizer.tokenLength(defaultLimitsPrompt.prompt.prefix),
+			7007,
+		);
+		assert.deepStrictEqual(
+			tokenizer.tokenLength(defaultLimitsPrompt.prompt.suffix),
+			6,
+		);
 
 		// 100 tokens are left for the prompt, 5 are used for the suffix token, so 95 are left
 		telemetryData.filtersAndExp.exp.variables.maxpromptcompletionTokens =
@@ -434,24 +624,47 @@ suite('Completions Prompt Factory', function () {
 			DEFAULT_MAX_COMPLETION_LENGTH;
 		telemetryData.filtersAndExp.exp.variables.CopilotSuffixPercent = 2;
 
-		const expLimitsPrompt = await invokePromptFactory({ textDocument: longTextDocument });
+		const expLimitsPrompt = await invokePromptFactory({
+			textDocument: longTextDocument,
+		});
 
 		assert.deepStrictEqual(expLimitsPrompt.type, 'prompt');
-		assert.deepStrictEqual(tokenizer.tokenLength(expLimitsPrompt.prompt.prefix), 98);
-		assert.deepStrictEqual(tokenizer.tokenLength(expLimitsPrompt.prompt.suffix), 2);
+		assert.deepStrictEqual(
+			tokenizer.tokenLength(expLimitsPrompt.prompt.prefix),
+			98,
+		);
+		assert.deepStrictEqual(
+			tokenizer.tokenLength(expLimitsPrompt.prompt.suffix),
+			2,
+		);
 	});
 
 	test('produces context too short', async function () {
-		const tinyTextDocument = createTextDocument('file:///path/basename', 'typescript', 0, '');
-		const result = await invokePromptFactory({ textDocument: tinyTextDocument });
+		const tinyTextDocument = createTextDocument(
+			'file:///path/basename',
+			'typescript',
+			0,
+			'',
+		);
+		const result = await invokePromptFactory({
+			textDocument: tinyTextDocument,
+		});
 
 		assert.deepStrictEqual(result, _contextTooShort);
 	});
 
 	test('errors when hitting fault barrier', async function () {
 		const virtualPrompt = new VirtualPrompt(<></>);
-		virtualPrompt.snapshot = sinon.stub().throws(new Error('Intentional snapshot error'));
-		promptFactory = accessor.get(IInstantiationService).createInstance(TestCompletionsPromptFactory, virtualPrompt, undefined);
+		virtualPrompt.snapshot = sinon
+			.stub()
+			.throws(new Error('Intentional snapshot error'));
+		promptFactory = accessor
+			.get(IInstantiationService)
+			.createInstance(
+				TestCompletionsPromptFactory,
+				virtualPrompt,
+				undefined,
+			);
 
 		const result = await invokePromptFactory();
 
@@ -460,8 +673,16 @@ suite('Completions Prompt Factory', function () {
 
 	test('recovers from error when hitting fault barrier', async function () {
 		const virtualPrompt = new VirtualPrompt(<></>);
-		virtualPrompt.snapshot = sinon.stub().throws(new Error('Intentional snapshot error'));
-		promptFactory = accessor.get(IInstantiationService).createInstance(TestCompletionsPromptFactory, virtualPrompt, undefined);
+		virtualPrompt.snapshot = sinon
+			.stub()
+			.throws(new Error('Intentional snapshot error'));
+		promptFactory = accessor
+			.get(IInstantiationService)
+			.createInstance(
+				TestCompletionsPromptFactory,
+				virtualPrompt,
+				undefined,
+			);
 
 		let result = await invokePromptFactory();
 		assert.deepStrictEqual(result, _promptError);
@@ -474,8 +695,18 @@ suite('Completions Prompt Factory', function () {
 		const virtualPrompt = new VirtualPrompt(<></>);
 		virtualPrompt.snapshot = sinon
 			.stub()
-			.returns({ snapshot: undefined, status: 'error', error: new Error('Intentional snapshot error') });
-		promptFactory = accessor.get(IInstantiationService).createInstance(TestCompletionsPromptFactory, virtualPrompt, undefined);
+			.returns({
+				snapshot: undefined,
+				status: 'error',
+				error: new Error('Intentional snapshot error'),
+			});
+		promptFactory = accessor
+			.get(IInstantiationService)
+			.createInstance(
+				TestCompletionsPromptFactory,
+				virtualPrompt,
+				undefined,
+			);
 
 		const result = await invokePromptFactory();
 
@@ -486,8 +717,18 @@ suite('Completions Prompt Factory', function () {
 		const virtualPrompt = new VirtualPrompt(<></>);
 		virtualPrompt.snapshot = sinon
 			.stub()
-			.returns({ snapshot: undefined, status: 'error', error: new Error('Intentional snapshot error') });
-		promptFactory = accessor.get(IInstantiationService).createInstance(TestCompletionsPromptFactory, virtualPrompt, undefined);
+			.returns({
+				snapshot: undefined,
+				status: 'error',
+				error: new Error('Intentional snapshot error'),
+			});
+		promptFactory = accessor
+			.get(IInstantiationService)
+			.createInstance(
+				TestCompletionsPromptFactory,
+				virtualPrompt,
+				undefined,
+			);
 
 		let result = await invokePromptFactory();
 		assert.deepStrictEqual(result, _promptError);
@@ -504,30 +745,43 @@ suite('Completions Prompt Factory', function () {
 	});
 
 	test('handles cancellation during update data', async function () {
-		const CancellationComponent = (_: PromptElementProps, context: ComponentContext) => {
-			context.useData(isCompletionRequestData, _ => {
+		const CancellationComponent = (
+			_: PromptElementProps,
+			context: ComponentContext,
+		) => {
+			context.useData(isCompletionRequestData, (_) => {
 				cts.cancel();
 			});
 			return <Text>A really cool prompt</Text>;
 		};
 		const virtualPrompt = new VirtualPrompt(
-			(
-				<>
-					<CancellationComponent />
-					<CurrentFile />
-				</>
-			)
+			<>
+				<CancellationComponent />
+				<CurrentFile />
+			</>,
 		);
-		promptFactory = accessor.get(IInstantiationService).createInstance(TestCompletionsPromptFactory, virtualPrompt, undefined);
+		promptFactory = accessor
+			.get(IInstantiationService)
+			.createInstance(
+				TestCompletionsPromptFactory,
+				virtualPrompt,
+				undefined,
+			);
 		const result = await invokePromptFactory();
 
 		assert.deepStrictEqual(result, _promptCancelled);
 	});
 
 	test('error in snapshot leads to prompt error', async function () {
-		let outerSetShouldThrowError: Dispatch<StateUpdater<boolean>> = () => { };
-		const ErrorThrowingComponent = (_props: PromptElementProps, context: ComponentContext) => {
-			const [shouldThrowError, setShouldThrowError] = context.useState(false);
+		let outerSetShouldThrowError: Dispatch<
+			StateUpdater<boolean>
+		> = () => {};
+		const ErrorThrowingComponent = (
+			_props: PromptElementProps,
+			context: ComponentContext,
+		) => {
+			const [shouldThrowError, setShouldThrowError] =
+				context.useState(false);
 			outerSetShouldThrowError = setShouldThrowError;
 
 			if (shouldThrowError) {
@@ -536,7 +790,13 @@ suite('Completions Prompt Factory', function () {
 			return <></>;
 		};
 		const virtualPrompt = new VirtualPrompt(<ErrorThrowingComponent />);
-		promptFactory = accessor.get(IInstantiationService).createInstance(TestCompletionsPromptFactory, virtualPrompt, undefined);
+		promptFactory = accessor
+			.get(IInstantiationService)
+			.createInstance(
+				TestCompletionsPromptFactory,
+				virtualPrompt,
+				undefined,
+			);
 
 		outerSetShouldThrowError(true);
 		const result = await invokePromptFactory();
@@ -545,24 +805,34 @@ suite('Completions Prompt Factory', function () {
 	});
 
 	test('prompt should not include context provider info if the context provider API is not enabled', async function () {
-		const configProvider = accessor.get(ICompletionsConfigProvider) as InMemoryConfigProvider;
+		const configProvider = accessor.get(
+			ICompletionsConfigProvider,
+		) as InMemoryConfigProvider;
 		configProvider.setConfig(ConfigKey.ContextProviders, []);
 
 		telemetryData.filtersAndExp.exp.variables.copilotcontextproviders = '';
 
 		const result = await invokePromptFactory();
 		assert.deepStrictEqual(result.type, 'prompt');
-		assert.ok(result.prompt.prefix.includes('Consider this related information:') === false);
+		assert.ok(
+			result.prompt.prefix.includes(
+				'Consider this related information:',
+			) === false,
+		);
 	});
 
 	test('prompt should include traits, diagnostics and code snippets if the context provider API is enabled', async function () {
-		telemetryData.filtersAndExp.exp.variables.copilotcontextproviders = 'traitsProvider,diagnosticsProvider,codeSnippetsProvider';
+		telemetryData.filtersAndExp.exp.variables.copilotcontextproviders =
+			'traitsProvider,diagnosticsProvider,codeSnippetsProvider';
 
 		const traitsProvider: ContextProvider<Trait> = {
 			id: 'traitsProvider',
 			selector: [{ language: 'typescript' }],
 			resolver: {
-				resolve: () => Promise.resolve([{ name: 'test_trait', value: 'test_value' }]),
+				resolve: () =>
+					Promise.resolve([
+						{ name: 'test_trait', value: 'test_value' },
+					]),
 			},
 		};
 		const diagnosticsProvider: ContextProvider<DiagnosticBag> = {
@@ -570,12 +840,25 @@ suite('Completions Prompt Factory', function () {
 			selector: [{ language: 'typescript' }],
 			resolver: {
 				resolve: () => {
-					const diag1 = new Diagnostic(new Range(0, 10, 0, 20), 'type exists', DiagnosticSeverity.Error);
+					const diag1 = new Diagnostic(
+						new Range(0, 10, 0, 20),
+						'type exists',
+						DiagnosticSeverity.Error,
+					);
 					diag1.code = 1017;
 					diag1.source = 'ts';
-					const diag2 = new Diagnostic(new Range(0, 20, 0, 25), 'unknown type', DiagnosticSeverity.Warning);
+					const diag2 = new Diagnostic(
+						new Range(0, 20, 0, 25),
+						'unknown type',
+						DiagnosticSeverity.Warning,
+					);
 					diag2.code = 2017;
-					return Promise.resolve([{ uri: Uri.file('something.ts'), values: [diag1, diag2] }]);
+					return Promise.resolve([
+						{
+							uri: Uri.file('something.ts'),
+							values: [diag1, diag2],
+						},
+					]);
 				},
 			},
 		};
@@ -583,17 +866,31 @@ suite('Completions Prompt Factory', function () {
 			id: 'codeSnippetsProvider',
 			selector: [{ language: 'typescript' }],
 			resolver: {
-				resolve: () => Promise.resolve([{ uri: 'file:///something.ts', value: 'function foo() { return 1; }' }]),
+				resolve: () =>
+					Promise.resolve([
+						{
+							uri: 'file:///something.ts',
+							value: 'function foo() { return 1; }',
+						},
+					]),
 			},
 		};
-		const contextProviderRegistry = accessor.get(ICompletionsContextProviderRegistryService);
+		const contextProviderRegistry = accessor.get(
+			ICompletionsContextProviderRegistryService,
+		);
 		contextProviderRegistry.registerContextProvider(traitsProvider);
 		contextProviderRegistry.registerContextProvider(diagnosticsProvider);
 		contextProviderRegistry.registerContextProvider(codeSnippetsProvider);
 
 		// Register the documents for content exclusion
-		const tdm = accessor.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager;
-		tdm.setTextDocument('file:///something.ts', 'typescript', 'does not matter');
+		const tdm = accessor.get(
+			ICompletionsTextDocumentManagerService,
+		) as TestTextDocumentManager;
+		tdm.setTextDocument(
+			'file:///something.ts',
+			'typescript',
+			'does not matter',
+		);
 
 		const result = await invokePromptFactory();
 		assert.deepStrictEqual(result.type, 'prompt');
@@ -608,34 +905,50 @@ suite('Completions Prompt Factory', function () {
 				// 1:21 - warning 2017: unknown type
 				// Compare this snippet from something.ts:
 				// function foo() { return 1; }
-			` + `\n${longPrefix}\nfunction f`
+			` + `\n${longPrefix}\nfunction f`,
 		);
 	});
 
 	test('should still produce a prompt if a context provider errors', async function () {
-		telemetryData.filtersAndExp.exp.variables.copilotcontextproviders = 'errorProvider,codeSnippetsProvider';
+		telemetryData.filtersAndExp.exp.variables.copilotcontextproviders =
+			'errorProvider,codeSnippetsProvider';
 
 		const errorProvider: ContextProvider<SupportedContextItem> = {
 			id: 'errorProvider',
 			selector: [{ language: 'typescript' }],
 			resolver: {
-				resolve: (): Promise<never> => Promise.reject(new Error('Intentional error')),
+				resolve: (): Promise<never> =>
+					Promise.reject(new Error('Intentional error')),
 			},
 		};
 		const codeSnippetsProvider: ContextProvider<CodeSnippet> = {
 			id: 'codeSnippetsProvider',
 			selector: [{ language: 'typescript' }],
 			resolver: {
-				resolve: () => Promise.resolve([{ uri: 'file:///something.ts', value: 'function foo() { return 1; }' }]),
+				resolve: () =>
+					Promise.resolve([
+						{
+							uri: 'file:///something.ts',
+							value: 'function foo() { return 1; }',
+						},
+					]),
 			},
 		};
-		const contextProviderRegistry = accessor.get(ICompletionsContextProviderRegistryService);
+		const contextProviderRegistry = accessor.get(
+			ICompletionsContextProviderRegistryService,
+		);
 		contextProviderRegistry.registerContextProvider(errorProvider);
 		contextProviderRegistry.registerContextProvider(codeSnippetsProvider);
 
 		// Register the documents for content exclusion
-		const tdm = accessor.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager;
-		tdm.setTextDocument('file:///something.ts', 'typescript', 'does not matter');
+		const tdm = accessor.get(
+			ICompletionsTextDocumentManagerService,
+		) as TestTextDocumentManager;
+		tdm.setTextDocument(
+			'file:///something.ts',
+			'typescript',
+			'does not matter',
+		);
 
 		const result = await invokePromptFactory();
 		assert.deepStrictEqual(result.type, 'prompt');
@@ -645,7 +958,7 @@ suite('Completions Prompt Factory', function () {
 				// Path: basename
 				// Compare this snippet from something.ts:
 				// function foo() { return 1; }
-			` + `\n${longPrefix}\nfunction f`
+			` + `\n${longPrefix}\nfunction f`,
 		);
 	});
 
@@ -661,12 +974,18 @@ suite('Completions Prompt Factory', function () {
 			'file:///path/basename',
 			'typescript',
 			0,
-			`const a = 1;\nfunction f\n    const b = 2;\n    `
+			`const a = 1;\nfunction f\n    const b = 2;\n    `,
 		);
-		const result = await invokePromptFactory({ textDocument, position: Position.create(3, 4) });
+		const result = await invokePromptFactory({
+			textDocument,
+			position: Position.create(3, 4),
+		});
 
 		assert.deepStrictEqual(result.type, 'prompt');
-		assert.deepStrictEqual(result.prompt.prefix, '// Path: basename\nconst a = 1;\nfunction f\n    const b = 2;\n');
+		assert.deepStrictEqual(
+			result.prompt.prefix,
+			'// Path: basename\nconst a = 1;\nfunction f\n    const b = 2;\n',
+		);
 		assert.deepStrictEqual(result.trailingWs, '    ');
 	});
 
@@ -687,11 +1006,20 @@ suite('Completions Prompt Factory', function () {
 
 		const virtualPrompt = new VirtualPrompt(splitContextPrompt());
 
-		promptFactory = accessor.get(IInstantiationService).createInstance(TestCompletionsPromptFactory, virtualPrompt, PromptOrdering.SplitContext);
+		promptFactory = accessor
+			.get(IInstantiationService)
+			.createInstance(
+				TestCompletionsPromptFactory,
+				virtualPrompt,
+				PromptOrdering.SplitContext,
+			);
 		const result = await invokePromptFactory({ separateContext: true });
 
 		assert.deepStrictEqual(result.type, 'prompt');
-		assert.deepStrictEqual(result.prompt.context, ['First context block', 'Second context block']);
+		assert.deepStrictEqual(result.prompt.context, [
+			'First context block',
+			'Second context block',
+		]);
 	});
 
 	test('prompt does not output separate context blocks if separateContext is not specified', async function () {
@@ -711,7 +1039,13 @@ suite('Completions Prompt Factory', function () {
 
 		const virtualPrompt = new VirtualPrompt(splitContextPrompt());
 
-		promptFactory = accessor.get(IInstantiationService).createInstance(TestCompletionsPromptFactory, virtualPrompt, PromptOrdering.SplitContext);
+		promptFactory = accessor
+			.get(IInstantiationService)
+			.createInstance(
+				TestCompletionsPromptFactory,
+				virtualPrompt,
+				PromptOrdering.SplitContext,
+			);
 		const result = await invokePromptFactory();
 
 		assert.deepStrictEqual(result.type, 'prompt');
@@ -733,15 +1067,17 @@ suite('Completions Prompt Factory', function () {
 
 		const componentsUpdateDataTimeMs = metadata.componentStatistics.reduce(
 			(acc, { updateDataTimeMs }) => acc + (updateDataTimeMs ?? 0),
-			0
+			0,
 		);
 		assert.ok(componentsUpdateDataTimeMs > 0);
-		const actualStatsFiltered = metadata.componentStatistics.map(stats => {
-			if (stats.updateDataTimeMs) {
-				stats.updateDataTimeMs = 42;
-			}
-			return stats;
-		});
+		const actualStatsFiltered = metadata.componentStatistics.map(
+			(stats) => {
+				if (stats.updateDataTimeMs) {
+					stats.updateDataTimeMs = 42;
+				}
+				return stats;
+			},
+		);
 
 		assert.deepStrictEqual(actualStatsFiltered, [
 			{
@@ -773,17 +1109,20 @@ suite('Completions Prompt Factory', function () {
 				updateDataTimeMs: 42,
 			},
 			{
-				componentPath: '$.f[0].CompletionsContext[0].DocumentMarker[0].PathMarker[0].Text[0]',
+				componentPath:
+					'$.f[0].CompletionsContext[0].DocumentMarker[0].PathMarker[0].Text[0]',
 				expectedTokens: 5,
 				actualTokens: 5,
 			},
 			{
-				componentPath: '$.f[1].CurrentFile[0].f[0].BeforeCursor[0].Text[0]',
+				componentPath:
+					'$.f[1].CurrentFile[0].f[0].BeforeCursor[0].Text[0]',
 				expectedTokens: 422,
 				actualTokens: 422,
 			},
 			{
-				componentPath: '$.f[1].CurrentFile[0].f[1].AfterCursor[0].Text[0]',
+				componentPath:
+					'$.f[1].CurrentFile[0].f[1].AfterCursor[0].Text[0]',
 				expectedTokens: 6,
 				actualTokens: 6,
 			},
@@ -791,13 +1130,21 @@ suite('Completions Prompt Factory', function () {
 	});
 
 	test('telemetry should include context providers', async function () {
-		telemetryData.filtersAndExp.exp.variables.copilotcontextproviders = 'traitsProvider,codeSnippetsProvider';
+		telemetryData.filtersAndExp.exp.variables.copilotcontextproviders =
+			'traitsProvider,codeSnippetsProvider';
 
 		const traitsContextProvider: ContextProvider<Trait> = {
 			id: 'traitsProvider',
 			selector: [{ language: 'typescript' }],
 			resolver: {
-				resolve: () => Promise.resolve([{ name: 'test_trait', value: 'test_value', id: 'trait1' }]),
+				resolve: () =>
+					Promise.resolve([
+						{
+							name: 'test_trait',
+							value: 'test_value',
+							id: 'trait1',
+						},
+					]),
 			},
 		};
 		const codeSnippetsProvider: ContextProvider<CodeSnippet> = {
@@ -829,9 +1176,17 @@ suite('Completions Prompt Factory', function () {
 			},
 		};
 		// Register the documents for content exclusion
-		const contextProviderRegistry = accessor.get(ICompletionsContextProviderRegistryService);
-		const tdm = accessor.get(ICompletionsTextDocumentManagerService) as TestTextDocumentManager;
-		tdm.setTextDocument('file:///something.ts', 'typescript', 'does not matter');
+		const contextProviderRegistry = accessor.get(
+			ICompletionsContextProviderRegistryService,
+		);
+		const tdm = accessor.get(
+			ICompletionsTextDocumentManagerService,
+		) as TestTextDocumentManager;
+		tdm.setTextDocument(
+			'file:///something.ts',
+			'typescript',
+			'does not matter',
+		);
 
 		contextProviderRegistry.registerContextProvider(traitsContextProvider);
 		contextProviderRegistry.registerContextProvider(codeSnippetsProvider);
@@ -848,7 +1203,15 @@ suite('Completions Prompt Factory', function () {
 				numResolvedItems: 1,
 				numUsedItems: 1,
 				numPartiallyUsedItems: 0,
-				usageDetails: [{ id: 'trait1', usage: 'full', expectedTokens: 7, actualTokens: 7, type: 'Trait' }],
+				usageDetails: [
+					{
+						id: 'trait1',
+						usage: 'full',
+						expectedTokens: 7,
+						actualTokens: 7,
+						type: 'Trait',
+					},
+				],
 			},
 			{
 				providerId: 'codeSnippetsProvider',
@@ -860,24 +1223,38 @@ suite('Completions Prompt Factory', function () {
 				numUsedItems: 2,
 				numPartiallyUsedItems: 0,
 				usageDetails: [
-					{ id: 'cs1', usage: 'full', expectedTokens: 13, actualTokens: 13, type: 'CodeSnippet' },
-					{ id: 'cs2', usage: 'full', expectedTokens: 13, actualTokens: 13, type: 'CodeSnippet', origin: 'update' },
+					{
+						id: 'cs1',
+						usage: 'full',
+						expectedTokens: 13,
+						actualTokens: 13,
+						type: 'CodeSnippet',
+					},
+					{
+						id: 'cs2',
+						usage: 'full',
+						expectedTokens: 13,
+						actualTokens: 13,
+						type: 'CodeSnippet',
+						origin: 'update',
+					},
 				],
 			},
 		];
 
 		assert.deepStrictEqual(prompt.type, 'prompt');
 		assert.deepStrictEqual(
-			prompt.contextProvidersTelemetry?.map(pt => {
+			prompt.contextProvidersTelemetry?.map((pt) => {
 				pt.resolutionTimeMs = -1;
 				return pt;
 			}),
-			expectedTelemetry
+			expectedTelemetry,
 		);
 	});
 
 	test('Test only sanctioned traits are included in telemetry', async function () {
-		telemetryData.filtersAndExp.exp.variables.copilotcontextproviders = 'traitsProvider';
+		telemetryData.filtersAndExp.exp.variables.copilotcontextproviders =
+			'traitsProvider';
 
 		const traitsProvider: ContextProvider<Trait> = {
 			id: 'traitsProvider',
@@ -892,33 +1269,47 @@ suite('Completions Prompt Factory', function () {
 					]),
 			},
 		};
-		const contextProviderRegistry = accessor.get(ICompletionsContextProviderRegistryService);
+		const contextProviderRegistry = accessor.get(
+			ICompletionsContextProviderRegistryService,
+		);
 		contextProviderRegistry.registerContextProvider(traitsProvider);
 
-		const { reporter } = await withInMemoryTelemetry(accessor, async _ => {
-			const response = await invokePromptFactory();
-			assert.deepStrictEqual(response.type, 'prompt');
-			assert.deepStrictEqual(
-				response.prompt.prefix,
-				dedent`
+		const { reporter } = await withInMemoryTelemetry(
+			accessor,
+			async (_) => {
+				const response = await invokePromptFactory();
+				assert.deepStrictEqual(response.type, 'prompt');
+				assert.deepStrictEqual(
+					response.prompt.prefix,
+					dedent`
 					// Path: basename
 					// Consider this related information:
 					// trait1: value1
 					// TargetFrameworks: framework value
 					// trait2: value2
 					// LanguageVersion: language version
-				` + `\n${longPrefix}\nfunction f`
-			);
-		});
+				` + `\n${longPrefix}\nfunction f`,
+				);
+			},
+		);
 
 		// the event should only contains sanctioned trait with expected property names.
 		assert.strictEqual(reporter.hasEvent, true);
 		assert.strictEqual(reporter.events.length, 1);
 
 		assert.strictEqual(reporter.events[0].name, 'contextProvider.traits');
-		assert.strictEqual(reporter.events[0].properties['targetFrameworks'], 'framework value');
-		assert.strictEqual(reporter.events[0].properties['languageVersion'], 'language version');
-		assert.strictEqual(reporter.events[0].properties['languageId'], 'typescript');
+		assert.strictEqual(
+			reporter.events[0].properties['targetFrameworks'],
+			'framework value',
+		);
+		assert.strictEqual(
+			reporter.events[0].properties['languageVersion'],
+			'language version',
+		);
+		assert.strictEqual(
+			reporter.events[0].properties['languageId'],
+			'typescript',
+		);
 
 		assert.strictEqual(reporter.events[0].properties['trait1'], undefined);
 		assert.strictEqual(reporter.events[0].properties['trait2'], undefined);
@@ -934,7 +1325,7 @@ suite('getDefaultDiagnostics', function () {
 			bags: DiagnosticBagWithId[] | undefined,
 			completionId: string,
 			completionState: CompletionState,
-			settings: DefaultDiagnosticSettings
+			settings: DefaultDiagnosticSettings,
 		): DiagnosticBagWithId[] | undefined;
 	};
 	let accessor: ServicesAccessor;
@@ -945,7 +1336,13 @@ suite('getDefaultDiagnostics', function () {
 	setup(function () {
 		serviceCollection = createLibTestingContext();
 		accessor = serviceCollection.createTestingAccessor();
-		promptFactory = accessor.get(IInstantiationService).createInstance(TestComponentsCompletionsPromptFactory, undefined, undefined);
+		promptFactory = accessor
+			.get(IInstantiationService)
+			.createInstance(
+				TestComponentsCompletionsPromptFactory,
+				undefined,
+				undefined,
+			);
 	});
 
 	teardown(function () {
@@ -953,76 +1350,133 @@ suite('getDefaultDiagnostics', function () {
 	});
 
 	test('should return undefined when diagnostics array is empty', function () {
-		const document = createTextDocument('file:///test.ts', 'typescript', 0, 'function foo() {}\n');
+		const document = createTextDocument(
+			'file:///test.ts',
+			'typescript',
+			0,
+			'function foo() {}\n',
+		);
 		const position = Position.create(0, 10);
 		const completionState = createCompletionState(document, position);
-		const settings: DefaultDiagnosticSettings = { warnings: 'yes', maxLineDistance: 10, maxDiagnostics: 5 };
+		const settings: DefaultDiagnosticSettings = {
+			warnings: 'yes',
+			maxLineDistance: 10,
+			maxDiagnostics: 5,
+		};
 
 		// Set empty diagnostics
-		const languageDiagnosticsService = accessor.get(ILanguageDiagnosticsService);
-		(languageDiagnosticsService as any).setDiagnostics(Uri.parse(document.uri), []);
+		const languageDiagnosticsService = accessor.get(
+			ILanguageDiagnosticsService,
+		);
+		(languageDiagnosticsService as any).setDiagnostics(
+			Uri.parse(document.uri),
+			[],
+		);
 
-		const result = promptFactory.addDefaultDiagnosticBag([], undefined, completionId, completionState, settings);
+		const result = promptFactory.addDefaultDiagnosticBag(
+			[],
+			undefined,
+			completionId,
+			completionState,
+			settings,
+		);
 		assert.strictEqual(result, undefined);
 	});
 
 	test('should return undefined when bags already contains document', function () {
-		const document = createTextDocument('file:///test.ts', 'typescript', 0, 'function foo() {}\n');
+		const document = createTextDocument(
+			'file:///test.ts',
+			'typescript',
+			0,
+			'function foo() {}\n',
+		);
 		const position = Position.create(0, 10);
 		const completionState = createCompletionState(document, position);
-		const settings: DefaultDiagnosticSettings = { warnings: 'yes', maxLineDistance: 10, maxDiagnostics: 5 };
+		const settings: DefaultDiagnosticSettings = {
+			warnings: 'yes',
+			maxLineDistance: 10,
+			maxDiagnostics: 5,
+		};
 
-		const bags = [{
-			type: 'DiagnosticBag' as const,
-			uri: URI.parse(document.uri),
-			values: [],
-			id: 'test-id'
-		}];
+		const bags = [
+			{
+				type: 'DiagnosticBag' as const,
+				uri: URI.parse(document.uri),
+				values: [],
+				id: 'test-id',
+			},
+		];
 
-		const result = promptFactory.addDefaultDiagnosticBag([], bags, completionId, completionState, settings);
+		const result = promptFactory.addDefaultDiagnosticBag(
+			[],
+			bags,
+			completionId,
+			completionState,
+			settings,
+		);
 		assert.strictEqual(result, bags);
 	});
 
 	test('should filter out diagnostics outside maxLineDistance', function () {
-		const document = createTextDocument('file:///test.ts', 'typescript', 0, dedent`
+		const document = createTextDocument(
+			'file:///test.ts',
+			'typescript',
+			0,
+			dedent`
 			line 0
 			line 1
 			line 2
 			line 3
 			line 4
 			line 5
-		`);
+		`,
+		);
 		const position = Position.create(2, 0); // At line 2
 		const completionState = createCompletionState(document, position);
-		const settings: DefaultDiagnosticSettings = { warnings: 'yes', maxLineDistance: 1, maxDiagnostics: 5 };
+		const settings: DefaultDiagnosticSettings = {
+			warnings: 'yes',
+			maxLineDistance: 1,
+			maxDiagnostics: 5,
+		};
 
 		const diagnostics: Diagnostic[] = [
 			{
 				range: new Range(0, 0, 0, 5), // Distance: 2, should be filtered out
 				message: 'Error at line 0',
-				severity: DiagnosticSeverity.Error
+				severity: DiagnosticSeverity.Error,
 			},
 			{
 				range: new Range(1, 0, 1, 5), // Distance: 1, should be included
 				message: 'Error at line 1',
-				severity: DiagnosticSeverity.Error
+				severity: DiagnosticSeverity.Error,
 			},
 			{
 				range: new Range(3, 0, 3, 5), // Distance: 1, should be included
 				message: 'Error at line 3',
-				severity: DiagnosticSeverity.Error
+				severity: DiagnosticSeverity.Error,
 			},
 			{
 				range: new Range(5, 0, 5, 5), // Distance: 3, should be filtered out
 				message: 'Error at line 5',
-				severity: DiagnosticSeverity.Error
-			}
+				severity: DiagnosticSeverity.Error,
+			},
 		];
 
-		const languageDiagnosticsService = accessor.get(ILanguageDiagnosticsService);
-		(languageDiagnosticsService as any).setDiagnostics(Uri.parse(document.uri), diagnostics);
+		const languageDiagnosticsService = accessor.get(
+			ILanguageDiagnosticsService,
+		);
+		(languageDiagnosticsService as any).setDiagnostics(
+			Uri.parse(document.uri),
+			diagnostics,
+		);
 
-		const result = promptFactory.addDefaultDiagnosticBag([], undefined, completionId, completionState, settings)![0];
+		const result = promptFactory.addDefaultDiagnosticBag(
+			[],
+			undefined,
+			completionId,
+			completionState,
+			settings,
+		)![0];
 		assert.notStrictEqual(result, undefined);
 		assert.strictEqual(result!.values.length, 2);
 		assert.strictEqual(result!.values[0].message, 'Error at line 1');
@@ -1030,196 +1484,334 @@ suite('getDefaultDiagnostics', function () {
 	});
 
 	test('should only include errors when warnings mode is "no"', function () {
-		const document = createTextDocument('file:///test.ts', 'typescript', 0, 'function foo() {}\n');
+		const document = createTextDocument(
+			'file:///test.ts',
+			'typescript',
+			0,
+			'function foo() {}\n',
+		);
 		const position = Position.create(0, 10);
 		const completionState = createCompletionState(document, position);
-		const settings: DefaultDiagnosticSettings = { warnings: 'no', maxLineDistance: 10, maxDiagnostics: 5 };
+		const settings: DefaultDiagnosticSettings = {
+			warnings: 'no',
+			maxLineDistance: 10,
+			maxDiagnostics: 5,
+		};
 
 		const diagnostics: Diagnostic[] = [
 			{
 				range: new Range(0, 0, 0, 5),
 				message: 'Error message',
-				severity: DiagnosticSeverity.Error
+				severity: DiagnosticSeverity.Error,
 			},
 			{
 				range: new Range(0, 6, 0, 10),
 				message: 'Warning message',
-				severity: DiagnosticSeverity.Warning
-			}
+				severity: DiagnosticSeverity.Warning,
+			},
 		];
 
-		const languageDiagnosticsService = accessor.get(ILanguageDiagnosticsService);
-		(languageDiagnosticsService as any).setDiagnostics(Uri.parse(document.uri), diagnostics);
+		const languageDiagnosticsService = accessor.get(
+			ILanguageDiagnosticsService,
+		);
+		(languageDiagnosticsService as any).setDiagnostics(
+			Uri.parse(document.uri),
+			diagnostics,
+		);
 
-		const result = promptFactory.addDefaultDiagnosticBag([], undefined, completionId, completionState, settings)![0];
+		const result = promptFactory.addDefaultDiagnosticBag(
+			[],
+			undefined,
+			completionId,
+			completionState,
+			settings,
+		)![0];
 		assert.notStrictEqual(result, undefined);
 		assert.strictEqual(result!.values.length, 1);
-		assert.strictEqual(result!.values[0].severity, DiagnosticSeverity.Error);
+		assert.strictEqual(
+			result!.values[0].severity,
+			DiagnosticSeverity.Error,
+		);
 	});
 
 	test('should include both errors and warnings when warnings mode is "yes"', function () {
-		const document = createTextDocument('file:///test.ts', 'typescript', 0, 'function foo() {}\n');
+		const document = createTextDocument(
+			'file:///test.ts',
+			'typescript',
+			0,
+			'function foo() {}\n',
+		);
 		const position = Position.create(0, 10);
 		const completionState = createCompletionState(document, position);
-		const settings: DefaultDiagnosticSettings = { warnings: 'yes', maxLineDistance: 10, maxDiagnostics: 5 };
+		const settings: DefaultDiagnosticSettings = {
+			warnings: 'yes',
+			maxLineDistance: 10,
+			maxDiagnostics: 5,
+		};
 
 		const diagnostics: Diagnostic[] = [
 			{
 				range: new Range(0, 0, 0, 5),
 				message: 'Error message',
-				severity: DiagnosticSeverity.Error
+				severity: DiagnosticSeverity.Error,
 			},
 			{
 				range: new Range(0, 6, 0, 10),
 				message: 'Warning message',
-				severity: DiagnosticSeverity.Warning
-			}
+				severity: DiagnosticSeverity.Warning,
+			},
 		];
 
-		const languageDiagnosticsService = accessor.get(ILanguageDiagnosticsService);
-		(languageDiagnosticsService as any).setDiagnostics(Uri.parse(document.uri), diagnostics);
+		const languageDiagnosticsService = accessor.get(
+			ILanguageDiagnosticsService,
+		);
+		(languageDiagnosticsService as any).setDiagnostics(
+			Uri.parse(document.uri),
+			diagnostics,
+		);
 
-		const result = promptFactory.addDefaultDiagnosticBag([], undefined, completionId, completionState, settings)![0];
+		const result = promptFactory.addDefaultDiagnosticBag(
+			[],
+			undefined,
+			completionId,
+			completionState,
+			settings,
+		)![0];
 		assert.notStrictEqual(result, undefined);
 		assert.strictEqual(result!.values.length, 2);
-		assert.strictEqual(result!.values[0].severity, DiagnosticSeverity.Error);
-		assert.strictEqual(result!.values[1].severity, DiagnosticSeverity.Warning);
+		assert.strictEqual(
+			result!.values[0].severity,
+			DiagnosticSeverity.Error,
+		);
+		assert.strictEqual(
+			result!.values[1].severity,
+			DiagnosticSeverity.Warning,
+		);
 	});
 
 	test('should include only errors when warnings mode is "yesIfNoErrors" and errors exist', function () {
-		const document = createTextDocument('file:///test.ts', 'typescript', 0, 'function foo() {}\n');
+		const document = createTextDocument(
+			'file:///test.ts',
+			'typescript',
+			0,
+			'function foo() {}\n',
+		);
 		const position = Position.create(0, 10);
 		const completionState = createCompletionState(document, position);
-		const settings: DefaultDiagnosticSettings = { warnings: 'yesIfNoErrors', maxLineDistance: 10, maxDiagnostics: 5 };
+		const settings: DefaultDiagnosticSettings = {
+			warnings: 'yesIfNoErrors',
+			maxLineDistance: 10,
+			maxDiagnostics: 5,
+		};
 
 		const diagnostics: Diagnostic[] = [
 			{
 				range: new Range(0, 0, 0, 5),
 				message: 'Error message',
-				severity: DiagnosticSeverity.Error
+				severity: DiagnosticSeverity.Error,
 			},
 			{
 				range: new Range(0, 6, 0, 10),
 				message: 'Warning message',
-				severity: DiagnosticSeverity.Warning
-			}
+				severity: DiagnosticSeverity.Warning,
+			},
 		];
 
-		const languageDiagnosticsService = accessor.get(ILanguageDiagnosticsService);
-		(languageDiagnosticsService as any).setDiagnostics(Uri.parse(document.uri), diagnostics);
+		const languageDiagnosticsService = accessor.get(
+			ILanguageDiagnosticsService,
+		);
+		(languageDiagnosticsService as any).setDiagnostics(
+			Uri.parse(document.uri),
+			diagnostics,
+		);
 
-		const result = promptFactory.addDefaultDiagnosticBag([], undefined, completionId, completionState, settings)![0];
+		const result = promptFactory.addDefaultDiagnosticBag(
+			[],
+			undefined,
+			completionId,
+			completionState,
+			settings,
+		)![0];
 		assert.notStrictEqual(result, undefined);
 		assert.strictEqual(result!.values.length, 1);
-		assert.strictEqual(result!.values[0].severity, DiagnosticSeverity.Error);
+		assert.strictEqual(
+			result!.values[0].severity,
+			DiagnosticSeverity.Error,
+		);
 	});
 
 	test('should include warnings when warnings mode is "yesIfNoErrors" and no errors exist', function () {
-		const document = createTextDocument('file:///test.ts', 'typescript', 0, 'function foo() {}\n');
+		const document = createTextDocument(
+			'file:///test.ts',
+			'typescript',
+			0,
+			'function foo() {}\n',
+		);
 		const position = Position.create(0, 10);
 		const completionState = createCompletionState(document, position);
-		const settings: DefaultDiagnosticSettings = { warnings: 'yesIfNoErrors', maxLineDistance: 10, maxDiagnostics: 5 };
+		const settings: DefaultDiagnosticSettings = {
+			warnings: 'yesIfNoErrors',
+			maxLineDistance: 10,
+			maxDiagnostics: 5,
+		};
 
 		const diagnostics: Diagnostic[] = [
 			{
 				range: new Range(0, 0, 0, 5),
 				message: 'Warning message 1',
-				severity: DiagnosticSeverity.Warning
+				severity: DiagnosticSeverity.Warning,
 			},
 			{
 				range: new Range(0, 6, 0, 10),
 				message: 'Warning message 2',
-				severity: DiagnosticSeverity.Warning
-			}
+				severity: DiagnosticSeverity.Warning,
+			},
 		];
 
-		const languageDiagnosticsService = accessor.get(ILanguageDiagnosticsService);
-		(languageDiagnosticsService as any).setDiagnostics(Uri.parse(document.uri), diagnostics);
+		const languageDiagnosticsService = accessor.get(
+			ILanguageDiagnosticsService,
+		);
+		(languageDiagnosticsService as any).setDiagnostics(
+			Uri.parse(document.uri),
+			diagnostics,
+		);
 
-		const result = promptFactory.addDefaultDiagnosticBag([], undefined, completionId, completionState, settings)![0];
+		const result = promptFactory.addDefaultDiagnosticBag(
+			[],
+			undefined,
+			completionId,
+			completionState,
+			settings,
+		)![0];
 		assert.notStrictEqual(result, undefined);
 		assert.strictEqual(result!.values.length, 2);
-		assert.strictEqual(result!.values[0].severity, DiagnosticSeverity.Warning);
-		assert.strictEqual(result!.values[1].severity, DiagnosticSeverity.Warning);
+		assert.strictEqual(
+			result!.values[0].severity,
+			DiagnosticSeverity.Warning,
+		);
+		assert.strictEqual(
+			result!.values[1].severity,
+			DiagnosticSeverity.Warning,
+		);
 	});
 
 	test('should respect maxDiagnostics limit', function () {
-		const document = createTextDocument('file:///test.ts', 'typescript', 0, 'function foo() {}\n');
+		const document = createTextDocument(
+			'file:///test.ts',
+			'typescript',
+			0,
+			'function foo() {}\n',
+		);
 		const position = Position.create(0, 10);
 		const completionState = createCompletionState(document, position);
-		const settings: DefaultDiagnosticSettings = { warnings: 'yes', maxLineDistance: 10, maxDiagnostics: 2 };
+		const settings: DefaultDiagnosticSettings = {
+			warnings: 'yes',
+			maxLineDistance: 10,
+			maxDiagnostics: 2,
+		};
 
 		const diagnostics: Diagnostic[] = [
 			{
 				range: new Range(0, 0, 0, 2),
 				message: 'Error 1',
-				severity: DiagnosticSeverity.Error
+				severity: DiagnosticSeverity.Error,
 			},
 			{
 				range: new Range(0, 3, 0, 5),
 				message: 'Error 2',
-				severity: DiagnosticSeverity.Error
+				severity: DiagnosticSeverity.Error,
 			},
 			{
 				range: new Range(0, 6, 0, 8),
 				message: 'Error 3',
-				severity: DiagnosticSeverity.Error
+				severity: DiagnosticSeverity.Error,
 			},
 			{
 				range: new Range(0, 9, 0, 11),
 				message: 'Error 4',
-				severity: DiagnosticSeverity.Error
-			}
+				severity: DiagnosticSeverity.Error,
+			},
 		];
 
-		const languageDiagnosticsService = accessor.get(ILanguageDiagnosticsService);
-		(languageDiagnosticsService as any).setDiagnostics(Uri.parse(document.uri), diagnostics);
+		const languageDiagnosticsService = accessor.get(
+			ILanguageDiagnosticsService,
+		);
+		(languageDiagnosticsService as any).setDiagnostics(
+			Uri.parse(document.uri),
+			diagnostics,
+		);
 
-		const result = promptFactory.addDefaultDiagnosticBag([], undefined, completionId, completionState, settings)![0];
+		const result = promptFactory.addDefaultDiagnosticBag(
+			[],
+			undefined,
+			completionId,
+			completionState,
+			settings,
+		)![0];
 		assert.notStrictEqual(result, undefined);
 		assert.strictEqual(result!.values.length, 2);
 	});
 
 	test('should sort diagnostics by distance from cursor position', function () {
-		const document = createTextDocument('file:///test.ts', 'typescript', 0, dedent`
+		const document = createTextDocument(
+			'file:///test.ts',
+			'typescript',
+			0,
+			dedent`
 			line 0
 			line 1
 			line 2
 			line 3
 			line 4
 			line 5
-		`);
+		`,
+		);
 		const position = Position.create(2, 0); // At line 2
 		const completionState = createCompletionState(document, position);
-		const settings: DefaultDiagnosticSettings = { warnings: 'yes', maxLineDistance: 5, maxDiagnostics: 10 };
+		const settings: DefaultDiagnosticSettings = {
+			warnings: 'yes',
+			maxLineDistance: 5,
+			maxDiagnostics: 10,
+		};
 
 		const diagnostics: Diagnostic[] = [
 			{
 				range: new Range(5, 0, 5, 5), // Distance: 3
 				message: 'Error at line 5',
-				severity: DiagnosticSeverity.Error
+				severity: DiagnosticSeverity.Error,
 			},
 			{
 				range: new Range(2, 0, 2, 5), // Distance: 0 (same line)
 				message: 'Error at line 2',
-				severity: DiagnosticSeverity.Error
+				severity: DiagnosticSeverity.Error,
 			},
 			{
 				range: new Range(0, 0, 0, 5), // Distance: 2
 				message: 'Error at line 0',
-				severity: DiagnosticSeverity.Error
+				severity: DiagnosticSeverity.Error,
 			},
 			{
 				range: new Range(3, 0, 3, 5), // Distance: 1
 				message: 'Error at line 3',
-				severity: DiagnosticSeverity.Error
-			}
+				severity: DiagnosticSeverity.Error,
+			},
 		];
 
-		const languageDiagnosticsService = accessor.get(ILanguageDiagnosticsService);
-		(languageDiagnosticsService as any).setDiagnostics(Uri.parse(document.uri), diagnostics);
+		const languageDiagnosticsService = accessor.get(
+			ILanguageDiagnosticsService,
+		);
+		(languageDiagnosticsService as any).setDiagnostics(
+			Uri.parse(document.uri),
+			diagnostics,
+		);
 
-		const result = promptFactory.addDefaultDiagnosticBag([], undefined, completionId, completionState, settings)![0];
+		const result = promptFactory.addDefaultDiagnosticBag(
+			[],
+			undefined,
+			completionId,
+			completionState,
+			settings,
+		)![0];
 		assert.notStrictEqual(result, undefined);
 		assert.strictEqual(result!.values.length, 4);
 		// Should be sorted by distance: 0, 1, 2, 3
@@ -1230,52 +1822,95 @@ suite('getDefaultDiagnostics', function () {
 	});
 
 	test('should return undefined when all diagnostics are filtered out', function () {
-		const document = createTextDocument('file:///test.ts', 'typescript', 0, 'function foo() {}\n');
+		const document = createTextDocument(
+			'file:///test.ts',
+			'typescript',
+			0,
+			'function foo() {}\n',
+		);
 		const position = Position.create(0, 10);
 		const completionState = createCompletionState(document, position);
-		const settings: DefaultDiagnosticSettings = { warnings: 'no', maxLineDistance: 10, maxDiagnostics: 5 };
+		const settings: DefaultDiagnosticSettings = {
+			warnings: 'no',
+			maxLineDistance: 10,
+			maxDiagnostics: 5,
+		};
 
 		const diagnostics: Diagnostic[] = [
 			{
 				range: new Range(0, 0, 0, 5),
 				message: 'Warning message',
-				severity: DiagnosticSeverity.Warning
+				severity: DiagnosticSeverity.Warning,
 			},
 			{
 				range: new Range(0, 6, 0, 10),
 				message: 'Info message',
-				severity: DiagnosticSeverity.Information
-			}
+				severity: DiagnosticSeverity.Information,
+			},
 		];
 
-		const languageDiagnosticsService = accessor.get(ILanguageDiagnosticsService);
-		(languageDiagnosticsService as any).setDiagnostics(Uri.parse(document.uri), diagnostics);
+		const languageDiagnosticsService = accessor.get(
+			ILanguageDiagnosticsService,
+		);
+		(languageDiagnosticsService as any).setDiagnostics(
+			Uri.parse(document.uri),
+			diagnostics,
+		);
 
-		const result = promptFactory.addDefaultDiagnosticBag([], undefined, completionId, completionState, settings);
+		const result = promptFactory.addDefaultDiagnosticBag(
+			[],
+			undefined,
+			completionId,
+			completionState,
+			settings,
+		);
 		assert.strictEqual(result, undefined);
 	});
 
 	test('should include uri and generate id in result', function () {
-		const document = createTextDocument('file:///test.ts', 'typescript', 0, 'function foo() {}\n');
+		const document = createTextDocument(
+			'file:///test.ts',
+			'typescript',
+			0,
+			'function foo() {}\n',
+		);
 		const position = Position.create(0, 10);
 		const completionState = createCompletionState(document, position);
-		const settings: DefaultDiagnosticSettings = { warnings: 'yes', maxLineDistance: 10, maxDiagnostics: 5 };
+		const settings: DefaultDiagnosticSettings = {
+			warnings: 'yes',
+			maxLineDistance: 10,
+			maxDiagnostics: 5,
+		};
 
 		const diagnostics: Diagnostic[] = [
 			{
 				range: new Range(0, 0, 0, 5),
 				message: 'Error message',
-				severity: DiagnosticSeverity.Error
-			}
+				severity: DiagnosticSeverity.Error,
+			},
 		];
 
-		const languageDiagnosticsService = accessor.get(ILanguageDiagnosticsService);
-		(languageDiagnosticsService as any).setDiagnostics(Uri.parse(document.uri), diagnostics);
+		const languageDiagnosticsService = accessor.get(
+			ILanguageDiagnosticsService,
+		);
+		(languageDiagnosticsService as any).setDiagnostics(
+			Uri.parse(document.uri),
+			diagnostics,
+		);
 
-		const result = promptFactory.addDefaultDiagnosticBag([], undefined, completionId, completionState, settings)![0];
+		const result = promptFactory.addDefaultDiagnosticBag(
+			[],
+			undefined,
+			completionId,
+			completionState,
+			settings,
+		)![0];
 		assert.notStrictEqual(result, undefined);
 		assert.strictEqual(result!.type, 'DiagnosticBag');
-		assert.strictEqual(result!.uri.toString(), URI.parse(document.uri).toString());
+		assert.strictEqual(
+			result!.uri.toString(),
+			URI.parse(document.uri).toString(),
+		);
 		assert.ok(result!.id); // Should have a generated id
 		assert.ok(typeof result!.id === 'string');
 	});
@@ -1287,6 +1922,9 @@ class MockRecentEditsProvider extends FullRecentEditsProvider {
 	}
 }
 
-export class CompletionsMutableObservableWorkspace extends MutableObservableWorkspace implements ICompletionsObservableWorkspace {
+export class CompletionsMutableObservableWorkspace
+	extends MutableObservableWorkspace
+	implements ICompletionsObservableWorkspace
+{
 	declare _serviceBrand: undefined;
 }
