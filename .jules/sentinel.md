@@ -7,3 +7,8 @@
 **Vulnerability:** The `CommandExecutor` class in `src/extension/mcp/vscode-node/util.ts` propagated the full `process.env` to child processes (e.g., via `cp.spawn`), creating a potential security risk for environment variable leakage of extension-specific secrets (e.g., IPC hooks, auth tokens) to external tools and MCP servers.
 **Learning:** Blindly passing `{ ...process.env }` to child processes can inadvertently leak sensitive context information, but over-aggressively stripping all environment variables (like `TOKEN` or `PASSWORD`) breaks underlying authorized tool functionality (like custom NuGet sources or GitHub CLI).
 **Prevention:** Rather than a blanket filter of all variables matching generic terms, specifically filter out framework/application-specific secrets (e.g., variables starting with `VSCODE_`, `GITHUB_`, or `COPILOT_`). Additionally, APIs that spawn processes should accept an explicit `env` parameter to allow intentional overrides by callers.
+
+## $(date +%Y-%m-%d) - Webview Message Validation Pitfall
+**Vulnerability:** Missing input validation on webview `message` event payload (`event.data`) leading to potential TypeError crashes on malformed data.
+**Learning:** In VS Code webviews, doing typical web-style origin validation (`event.origin === window.location.origin`) is a critical anti-pattern because the VS Code extension host dispatches messages from varied or `null` origins. Enforcing origin checks silently drops valid messages, breaking core extension-webview communication.
+**Prevention:** Validate that the payload (`event.data`) is a valid object (`!event.data || typeof event.data !== 'object'`) but do not strictly validate `event.origin` against `window.location.origin` inside VS Code webviews.

@@ -32,6 +32,11 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 window.addEventListener('message', (event) => {
+	// Validate message payload to prevent errors on malformed payloads
+	if (!event.data || typeof event.data !== 'object') {
+		return;
+	}
+
 	const message = event.data as Message; // The JSON data our extension sent
 
 	switch (message.command) {
