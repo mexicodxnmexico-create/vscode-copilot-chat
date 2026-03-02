@@ -12,3 +12,6 @@
 ## 2026-03-01 - [Generic link labels with target=\"_blank\"]
 **Learning:** "Inspect source code" links opening in a new tab without context violate accessibility guidelines for screen reader users by hiding the destination context and behavior.
 **Action:** Add descriptive `aria-label`s to generic links indicating the specific item it belongs to and that it `(opens in new tab)`. Ensure `aria-label` is allowed in DOMPurify configuration.
+## 2025-03-02 - Webview Component Accessibility and ARIA
+**Learning:** `aria-label` attribute additions to dynamic list items and custom button elements (`<vscode-button>`) within webview UI toolkit contexts can be applied iteratively while generating dynamic content.
+**Action:** Always provide informative `aria-label` and `title` properties on iteratively generated custom UI items to ensure robust accessibility within extensions' webview contexts.
