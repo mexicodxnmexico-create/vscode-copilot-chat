@@ -51,6 +51,11 @@ function handleSolutionUpdate(message: Message) {
 	updateLoadingContainer(message);
 
 	if (solutionsContainer) {
+		if (message.percentage >= 100 && message.solutions.length === 0) {
+			solutionsContainer.innerHTML = `<p class="emptyState" style="text-align: center; margin-top: 2rem; color: var(--vscode-descriptionForeground);">No code suggestions could be generated for the current context. Try modifying your code and requesting suggestions again.</p>`;
+			return;
+		}
+
 		solutionsContainer.innerHTML = message.solutions
 			.map((solution, index) => {
 				const citationUrl = solution.citation?.url ?? '';
@@ -83,7 +88,11 @@ function navigatePreviousSolution() {
 	const snippets = document.querySelectorAll<HTMLElement>('.snippetContainer pre');
 	const prevIndex = currentFocusIndex - 1;
 
-	snippets[prevIndex]?.focus();
+	if (snippets[prevIndex]) {
+		snippets[prevIndex].focus();
+	} else if (snippets.length > 0) {
+		snippets[snippets.length - 1].focus();
+	}
 }
 
 function getSafeUrl(url: string): string | undefined {
@@ -116,8 +125,12 @@ function updateLoadingContainer(message: Message) {
 		return;
 	}
 	if (message.percentage >= 100) {
-		loadingContainer.innerHTML = `${message.solutions.length} Suggestions`;
+		const count = message.solutions.length;
+		loadingContainer.innerHTML = count === 0
+			? 'No suggestions found'
+			: `${count} ${count === 1 ? 'Suggestion' : 'Suggestions'}`;
 		solutionsContainer?.setAttribute('aria-busy', 'false');
+		solutionsContainer?.removeAttribute('aria-describedby');
 	} else {
 		const loadingLabelElement = loadingContainer.querySelector('label') as HTMLLabelElement;
 		if (loadingLabelElement.textContent !== 'Loading suggestions:\u00A0') {
