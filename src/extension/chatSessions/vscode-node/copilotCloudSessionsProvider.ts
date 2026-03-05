@@ -1952,11 +1952,11 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 	 */
 	private async extractReferences(references: readonly vscode.ChatPromptReference[] | undefined, pushedInProgressBranch: boolean): Promise<{ result: string; processedReferences: readonly vscode.ChatPromptReference[] }> {
 		// 'file:///Users/jospicer/dev/joshbot/.github/workflows/build-vsix.yml'  -> '.github/workflows/build-vsix.yml'
-		const fileRefs: string[] = [];
-		const fullFileParts: string[] = [];
-		const processedReferences: vscode.ChatPromptReference[] = [];
 		const git = this._gitExtensionService.getExtensionApi();
-		for (const ref of references || []) {
+
+		const results = await Promise.all((references || []).map(async ref => {
+			const res = { fileRefs: [] as string[], fullFileParts: [] as string[], processedReferences: [] as vscode.ChatPromptReference[] };
+
 			if (ref.value instanceof vscode.Uri && ref.value.scheme === 'file') {
 				const fileUri = ref.value;
 				const repositoryForFile = git?.getRepository(fileUri);
@@ -1975,20 +1975,20 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 							}
 
 							if (diff && diff.trim()) {
-								fullFileParts.push(`<file-diff-start>${relativePath}</file-diff-start>`);
-								fullFileParts.push(diff);
-								fullFileParts.push(`<file-diff-end>${relativePath}</file-diff-end>`);
+								res.fullFileParts.push(`<file-diff-start>${relativePath}</file-diff-start>`);
+								res.fullFileParts.push(diff);
+								res.fullFileParts.push(`<file-diff-end>${relativePath}</file-diff-end>`);
 							} else {
 								// If diff is empty, fall back to file reference
-								fileRefs.push(` - ${relativePath}`);
+								res.fileRefs.push(` - ${relativePath}`);
 							}
-							processedReferences.push(ref);
+							res.processedReferences.push(ref);
 						} catch (error) {
 							this.logService.error(`Error reading file diff for reference: ${fileUri.toString()}: ${error}`);
 						}
 					} else {
-						fileRefs.push(` - ${relativePath}`);
-						processedReferences.push(ref);
+						res.fileRefs.push(` - ${relativePath}`);
+						res.processedReferences.push(ref);
 					}
 				}
 			} else if (ref.value instanceof vscode.Uri && ref.value.scheme === 'github-remote-file') {
@@ -1997,23 +1997,29 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 				const parts = ref.value.path.split('/').filter(Boolean); // ['owner', 'repo', 'ref', ...path]
 				if (parts.length >= 4) {
 					const relativePath = parts.slice(3).join('/');
-					fileRefs.push(` - ${relativePath}`);
-					processedReferences.push(ref);
+					res.fileRefs.push(` - ${relativePath}`);
+					res.processedReferences.push(ref);
 				}
 			} else if (ref.value instanceof vscode.Uri && ref.value.scheme === 'untitled') {
 				// Get full content of untitled file
 				try {
 					const document = await vscode.workspace.openTextDocument(ref.value);
 					const content = document.getText();
-					fullFileParts.push(`<file-start>${ref.value.path}</file-start>`);
-					fullFileParts.push(content);
-					fullFileParts.push(`<file-end>${ref.value.path}</file-end>`);
-					processedReferences.push(ref);
+					res.fullFileParts.push(`<file-start>${ref.value.path}</file-start>`);
+					res.fullFileParts.push(content);
+					res.fullFileParts.push(`<file-end>${ref.value.path}</file-end>`);
+					res.processedReferences.push(ref);
 				} catch (error) {
 					this.logService.error(`Error reading untitled file content for reference: ${ref.value.toString()}: ${error}`);
 				}
 			}
-		}
+
+			return res;
+		}));
+
+		const fileRefs = results.flatMap(r => r.fileRefs);
+		const fullFileParts = results.flatMap(r => r.fullFileParts);
+		const processedReferences = results.flatMap(r => r.processedReferences);
 
 		const parts: string[] = [
 			...(fullFileParts.length ? ['The user has attached the following uncommitted or modified files as relevant context:', ...fullFileParts] : []),
