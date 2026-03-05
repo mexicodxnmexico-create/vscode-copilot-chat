@@ -10,6 +10,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as tar from 'tar';
 import * as vscode from 'vscode';
+import { generateUuid } from '../../../util/vs/base/common/uuid';
 import { IVSCodeExtensionContext } from '../../../platform/extContext/common/extensionContext';
 import { outputChannel } from '../../../platform/log/vscode/outputChannelLogTarget';
 import { CapturingToken } from '../../../platform/requestLogger/common/capturingToken';
@@ -290,7 +291,7 @@ export class RequestLogTree extends Disposable implements IExtensionContribution
 
 			try {
 				// Create temporary directory for files
-				const tempDir = path.join(os.tmpdir(), `vscode-copilot-export-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`);
+				const tempDir = path.join(os.tmpdir(), `vscode-copilot-export-${Date.now()}-${generateUuid().substring(0, 8)}`);
 				await vscode.workspace.fs.createDirectory(vscode.Uri.file(tempDir));
 
 				const filesToArchive: string[] = [];
