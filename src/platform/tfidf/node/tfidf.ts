@@ -309,8 +309,16 @@ export class PersistentTfIdf {
 								// The challenge is that we need to also update the `chunkOccurrences`
 								// and all of those updates need to get flushed before the real tfidf of
 								// anything is computed.
-								const tf = termFrequencies(chunk.text);
-								chunks.push({ chunk, tf });
+								let _tf: TermFrequencies | undefined;
+								chunks.push({
+									chunk,
+									get tf() {
+										if (!_tf) {
+											_tf = termFrequencies(chunk.text);
+										}
+										return _tf;
+									}
+								});
 							}
 							return ({ contentVersionId: await doc.getContentVersionId(), chunks });
 						}
