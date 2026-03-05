@@ -63,6 +63,7 @@ export async function findAllReferencedFunctionImplementationsInSelection(
 
 	// since language service gives us only links to identifiers, expand to whole implementation/definition using tree-sitter
 	const functionImplementations = [];
+	const cachedFunctionDefinitions = new Map<string, TreeSitterExpressionInfo[]>();
 	for (let i = 0; i < implementations.length; i++) {
 		const callExpr = callExprs[i];
 		const impl = implementations[i];
@@ -71,7 +72,12 @@ export async function findAllReferencedFunctionImplementationsInSelection(
 			const textDocument = await workspaceService.openTextDocumentAndSnapshot(uri);
 			const treeSitterAST = parserService.getTreeSitterAST(textDocument);
 			if (treeSitterAST) {
-				const functionDefinitions = await treeSitterAST.getFunctionDefinitions(); // TODO: we should do this once per document, not once per call expression
+				const uriStr = uri.toString();
+				let functionDefinitions = cachedFunctionDefinitions.get(uriStr);
+				if (!functionDefinitions) {
+					functionDefinitions = await treeSitterAST.getFunctionDefinitions();
+					cachedFunctionDefinitions.set(uriStr, functionDefinitions);
+				}
 				const functionDefinition = functionDefinitions.find((fn) => fn.identifier === callExpr.identifier); // FIXME: this's incorrect because it doesn't count for import aliases (e.g., `import { foo as bar } from 'baz'`)
 				if (functionDefinition) {
 					const treeSitterRange = vscodeToTreeSitterOffsetRange(range, textDocument);
@@ -148,6 +154,7 @@ export async function findAllReferencedClassDeclarationsInSelection(
 		[]
 	);
 	const classDeclarations = [];
+	const cachedClassDeclarations = new Map<string, TreeSitterExpressionInfo[]>();
 	for (let i = 0; i < implementations.length; i++) {
 		const match = matches[i];
 		const impl = implementations[i];
@@ -156,7 +163,13 @@ export async function findAllReferencedClassDeclarationsInSelection(
 			const textDocument = await workspaceService.openTextDocumentAndSnapshot(uri);
 			const treeSitterAST = parserService.getTreeSitterAST(textDocument);
 			if (treeSitterAST) {
-				const classDeclaration = (await treeSitterAST.getClassDeclarations()).find((fn) => fn.identifier === match.identifier);
+				const uriStr = uri.toString();
+				let classDeclarationsAST = cachedClassDeclarations.get(uriStr);
+				if (!classDeclarationsAST) {
+					classDeclarationsAST = await treeSitterAST.getClassDeclarations();
+					cachedClassDeclarations.set(uriStr, classDeclarationsAST);
+				}
+				const classDeclaration = classDeclarationsAST.find((fn) => fn.identifier === match.identifier);
 				if (classDeclaration) {
 					const treeSitterRange = vscodeToTreeSitterOffsetRange(range, textDocument);
 					classDeclarations.push({
