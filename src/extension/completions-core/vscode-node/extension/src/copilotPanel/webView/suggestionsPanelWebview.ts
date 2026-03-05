@@ -51,7 +51,7 @@ function handleSolutionUpdate(message: Message) {
 	updateLoadingContainer(message);
 
 	if (solutionsContainer) {
-		solutionsContainer.innerHTML = message.solutions
+		const rawHtml = message.solutions
 			.map((solution, index) => {
 				const citationUrl = solution.citation?.url ?? '';
 				const safeUrl = getSafeUrl(citationUrl) ?? '#';
@@ -72,6 +72,10 @@ function handleSolutionUpdate(message: Message) {
 					}</vscode-button>`;
 			})
 			.join('');
+		solutionsContainer.innerHTML = DOMPurify.sanitize(rawHtml, {
+			ADD_TAGS: ['vscode-button'],
+			ADD_ATTR: ['target', 'aria-label', 'role', 'data-solution-index', 'title', 'appearance', 'aria-labelledby', 'aria-hidden']
+		});
 
 		solutionsContainer.querySelectorAll('pre').forEach((pre) => {
 			pre.tabIndex = 0;
@@ -116,7 +120,7 @@ function updateLoadingContainer(message: Message) {
 		return;
 	}
 	if (message.percentage >= 100) {
-		loadingContainer.innerHTML = `${message.solutions.length} Suggestions`;
+		loadingContainer.textContent = `${message.solutions.length} Suggestions`;
 		solutionsContainer?.setAttribute('aria-busy', 'false');
 	} else {
 		const loadingLabelElement = loadingContainer.querySelector('label') as HTMLLabelElement;
