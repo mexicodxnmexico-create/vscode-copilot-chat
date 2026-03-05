@@ -15,7 +15,7 @@ import { basename } from '../../../../util/vs/base/common/path';
 import { URI } from '../../../../util/vs/base/common/uri';
 import { IInstantiationService } from '../../../../util/vs/platform/instantiation/common/instantiation';
 import { createExtensionUnitTestingServices } from '../../../test/node/services';
-import { DebuggableCommandIdentifier } from '../../node/debuggableCommandIdentifier';
+import { DebuggableCommandIdentifier, extractCommandNameFromCLI } from '../../node/debuggableCommandIdentifier';
 import { ILanguageToolsProvider } from '../../node/languageToolsProvider';
 
 describe('DebuggableCommandIdentifier', () => {
@@ -132,4 +132,37 @@ describe('DebuggableCommandIdentifier', () => {
 	// 	const result = await debuggableCommandIdentifier.isDebuggable(undefined, 'unknowncommand', CancellationToken.None);
 	// 	expect(result).to.be.true;
 	// });
+});
+
+
+describe('extractCommandNameFromCLI', () => {
+	it('extracts basic commands', () => {
+		expect(extractCommandNameFromCLI('node index.js')).to.equal('node');
+		expect(extractCommandNameFromCLI('  node index.js')).to.equal('node');
+	});
+
+	it('extracts quoted commands', () => {
+		expect(extractCommandNameFromCLI('"C:\\Program Files\\nodejs\\node.exe" index.js')).to.equal('C:\\Program Files\\nodejs\\node.exe');
+		expect(extractCommandNameFromCLI("'C:\\Program Files\\nodejs\\node.exe' index.js")).to.equal('C:\\Program Files\\nodejs\\node.exe');
+	});
+
+	it('skips environment variables', () => {
+		expect(extractCommandNameFromCLI('FOO=bar node index.js')).to.equal('node');
+		expect(extractCommandNameFromCLI('FOO=bar BAZ=qux node index.js')).to.equal('node');
+		expect(extractCommandNameFromCLI('FOO="bar baz" node index.js')).to.equal('node');
+		expect(extractCommandNameFromCLI("FOO='bar baz' node index.js")).to.equal('node');
+		expect(extractCommandNameFromCLI("NODE_ENV=production npm run build")).to.equal('npm');
+	});
+
+	it('handles mixed quotes and env vars', () => {
+		expect(extractCommandNameFromCLI("FOO='bar baz' \"C:\\Program Files\\node.exe\"")).to.equal('C:\\Program Files\\node.exe');
+	});
+
+	it('handles only env vars', () => {
+		expect(extractCommandNameFromCLI('VAR=1')).to.equal('VAR=1');
+	});
+
+	it('handles empty string', () => {
+		expect(extractCommandNameFromCLI('')).to.equal('');
+	});
 });
