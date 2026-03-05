@@ -1,3 +1,6 @@
 ## 2023-10-27 - [Avoid redundant aria-labels or titles on textual buttons]
 **Learning:** Adding a title or aria-label that exactly matches the visible text of a button is redundant and can cause screen readers to announce the text twice.
 **Action:** Reserve title attributes for icon-only buttons or use them to provide *additional* contextual information (e.g., "Click to insert this suggestion into your code" instead of "Accept suggestion 1").
+## 2024-05-18 - Keyboard Accessibility Context for Focusable Structures
+**Learning:** In webview HTML strings, dynamically generated focusable structural elements (like `<pre tabindex='0'>`) should use `title='Use arrow keys to scroll'` rather than `aria-label`. Using `aria-label` incorrectly overrides the element's actual textual content for screen readers, hiding the code snippet from the user. `title` provides both a visual tooltip for mouse users and helpful context for screen readers without replacing the primary text content.
+**Action:** When making elements focusable with `tabindex="0"`, especially container elements like `<pre>` or `<div>` that contain text content, evaluate if a `title` attribute is more appropriate than an `aria-label` to provide navigation hints without obscuring the content.
