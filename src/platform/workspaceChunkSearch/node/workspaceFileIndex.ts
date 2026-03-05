@@ -362,47 +362,19 @@ class TextDocumentFileRepresentation extends FileRepresentation {
 	}
 
 	private readonly _text = new Lazy((): string => {
-		const truncate = (originalText: string, data: Uint8Array): FileTextContent => {
-			if (data.length <= maxIndexableFileSize) {
-				return { text: originalText };
-			}
-
-			const truncated = data.slice(0, maxIndexableFileSize);
-			return {
-				text: new TextDecoder().decode(truncated),
-				truncated: { originalByteLength: data.byteLength }
-			};
-		};
-
 		const doRead = (): FileTextContent => {
 			const text = this._textDocument.getText();
+			const byteLength = Buffer.byteLength(text);
 
-			// Check size of the file
-			// TODO: For /chunks, should all of these checks actually be in utf8?
-			// TODO: should we truncate files instead of returning empty strings?
-
-			// First do a fast check based on maximum size of the string in bytes.
-			// utf-16 strings have at most 4 bytes per character (2 * 2)
-			const upperEstimatedByteLength = text.length * 4;
-			if (upperEstimatedByteLength < maxIndexableFileSize) {
+			if (byteLength <= maxIndexableFileSize) {
 				return { text };
 			}
 
-			// Do another fast check based on shortest possible size of the string in bytes.
-			// utf-8 strings have at least 2 bytes per character
-			const lowerEstimatedByteLength = text.length * 2;
-			if (lowerEstimatedByteLength >= maxIndexableFileSize) {
-				return truncate(text, new TextEncoder().encode(text));
-			}
-
-			// Finally fall back to a real (expensive) check
-			const encoder = new TextEncoder();
-			const encodedStr = encoder.encode(text);
-			if (encodedStr.length >= maxIndexableFileSize) {
-				return truncate(text, encodedStr);
-			}
-
-			return { text };
+			const slicedText = text.slice(0, maxIndexableFileSize);
+			return {
+				text: Buffer.from(slicedText).slice(0, maxIndexableFileSize).toString(),
+				truncated: { originalByteLength: byteLength }
+			};
 		};
 
 		const content = doRead();
