@@ -88,8 +88,7 @@ export function createMessagesRequestBody(accessor: ServicesAccessor, options: I
 
 	const toolSearchEnabled = isAnthropicToolSearchEnabled(endpoint, configurationService);
 	const isAllowedConversationAgent = options.location === ChatLocation.Agent || options.location === ChatLocation.MessagesProxy;
-	// TODO: Use a dedicated flag on options instead of relying on telemetry subType
-	const isSubagent = options.telemetryProperties?.subType?.startsWith('subagent') ?? false;
+	const isSubagent = options.requestKindOptions?.kind === 'subagent';
 
 	const anthropicTools = options.requestOptions?.tools
 		?.filter(tool => tool.function.name && tool.function.name.length > 0)
