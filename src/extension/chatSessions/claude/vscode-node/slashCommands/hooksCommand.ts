@@ -859,23 +859,29 @@ export class HooksSlashCommand implements IClaudeSlashCommandHandler {
 		const matchers: MatcherWithSource[] = [];
 		const allLocations = this._getAllSettingsLocations();
 
-		for (const location of allLocations) {
-			try {
-				const settings = await this._loadSettings(location.settingsPath);
-				if (settings.hooks?.[event]) {
-					for (const matcherConfig of settings.hooks[event]!) {
-						// Check if we already have this matcher from a higher-priority location
-						const existing = matchers.find(m => m.matcher === matcherConfig.matcher);
-						if (!existing) {
-							matchers.push({
-								matcher: matcherConfig.matcher,
-								location,
-							});
-						}
+		const settingsResults = await Promise.all(
+			allLocations.map(async location => {
+				try {
+					const settings = await this._loadSettings(location.settingsPath);
+					return { location, settings };
+				} catch {
+					return { location, settings: null };
+				}
+			})
+		);
+
+		for (const { location, settings } of settingsResults) {
+			if (settings?.hooks?.[event]) {
+				for (const matcherConfig of settings.hooks[event]!) {
+					// Check if we already have this matcher from a higher-priority location
+					const existing = matchers.find(m => m.matcher === matcherConfig.matcher);
+					if (!existing) {
+						matchers.push({
+							matcher: matcherConfig.matcher,
+							location,
+						});
 					}
 				}
-			} catch {
-				// Ignore errors, settings file might not exist
 			}
 		}
 
@@ -889,22 +895,28 @@ export class HooksSlashCommand implements IClaudeSlashCommandHandler {
 		const hooks: HookWithSource[] = [];
 		const allLocations = this._getAllSettingsLocations();
 
-		for (const location of allLocations) {
-			try {
-				const settings = await this._loadSettings(location.settingsPath);
-				if (settings.hooks?.[event]) {
-					const matcherConfig = settings.hooks[event]!.find(m => m.matcher === matcher);
-					if (matcherConfig) {
-						for (const hook of matcherConfig.hooks) {
-							hooks.push({
-								command: hook.command,
-								location,
-							});
-						}
+		const settingsResults = await Promise.all(
+			allLocations.map(async location => {
+				try {
+					const settings = await this._loadSettings(location.settingsPath);
+					return { location, settings };
+				} catch {
+					return { location, settings: null };
+				}
+			})
+		);
+
+		for (const { location, settings } of settingsResults) {
+			if (settings?.hooks?.[event]) {
+				const matcherConfig = settings.hooks[event]!.find(m => m.matcher === matcher);
+				if (matcherConfig) {
+					for (const hook of matcherConfig.hooks) {
+						hooks.push({
+							command: hook.command,
+							location,
+						});
 					}
 				}
-			} catch {
-				// Ignore errors, settings file might not exist
 			}
 		}
 
