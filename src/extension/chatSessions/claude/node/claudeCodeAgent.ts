@@ -135,12 +135,23 @@ export class ClaudeAgentManager extends Disposable {
 		const extraRefsTexts: string[] = [];
 		const uriToString = (uri: URI) => uri.scheme === 'file' ? uri.fsPath : uri.toString();
 		let prompt = request.prompt;
-		for (const ref of request.references) {
+
+		const resolvedReferences = await Promise.all(request.references.map(async (ref) => {
 			let refValue = ref.value;
 			if (refValue instanceof ChatReferenceBinaryData) {
 				const mediaType = toAnthropicImageMediaType(refValue.mimeType);
 				if (mediaType) {
 					const data = await refValue.data();
+					return { ref, mediaType, data };
+				}
+			}
+			return { ref, mediaType: undefined, data: undefined };
+		}));
+
+		for (const { ref, mediaType, data } of resolvedReferences) {
+			let refValue = ref.value;
+			if (refValue instanceof ChatReferenceBinaryData) {
+				if (mediaType && data) {
 					contentBlocks.push({
 						type: 'image',
 						source: {
