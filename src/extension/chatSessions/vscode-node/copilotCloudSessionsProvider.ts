@@ -673,37 +673,36 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 			return { matches, localOnly };
 		}
 
-		// Only check the first workspace folder (consistent with how we query GitHub for custom agents)
-		// TODO: Expand to multi-root workspaces, etc...
-		const folder = workspaceFolders[0];
-		try {
-			// Find all .md files in .github/agents/
-			const pattern = new vscode.RelativePattern(folder, '.github/agents/*.md');
-			const files = await vscode.workspace.findFiles(pattern);
+		await Promise.all(workspaceFolders.map(async (folder) => {
+			try {
+				// Find all .md files in .github/agents/
+				const pattern = new vscode.RelativePattern(folder, '.github/agents/*.md');
+				const files = await vscode.workspace.findFiles(pattern);
 
-			for (const file of files) {
-				// Extract agent name from filename (e.g., "my-agent.md" -> "my-agent" or "myagent.agent.md" -> "myagent")
-				const fileName = pathLib.basename(file.fsPath);
-				const agentName = fileName.replace(/\.agent\.md$/i, '').replace(/\.md$/i, '');
+				for (const file of files) {
+					// Extract agent name from filename (e.g., "my-agent.md" -> "my-agent" or "myagent.agent.md" -> "myagent")
+					const fileName = pathLib.basename(file.fsPath);
+					const agentName = fileName.replace(/\.agent\.md$/i, '').replace(/\.md$/i, '');
 
-				if (!agentName) {
-					continue;
+					if (!agentName) {
+						continue;
+					}
+
+					if (remoteAgentNames.has(agentName.toLowerCase())) {
+						// This local file matches a remote agent
+						matches.add(agentName.toLowerCase());
+					} else {
+						// This local file has no corresponding remote agent
+						localOnly.push({
+							name: agentName,
+							path: vscode.workspace.asRelativePath(file)
+						});
+					}
 				}
-
-				if (remoteAgentNames.has(agentName.toLowerCase())) {
-					// This local file matches a remote agent
-					matches.add(agentName.toLowerCase());
-				} else {
-					// This local file has no corresponding remote agent
-					localOnly.push({
-						name: agentName,
-						path: vscode.workspace.asRelativePath(file)
-					});
-				}
+			} catch (error) {
+				this.logService.warn(`Error scanning for local agents in ${folder.uri.fsPath}: ${error}`);
 			}
-		} catch (error) {
-			this.logService.warn(`Error scanning for local agents in ${folder.uri.fsPath}: ${error}`);
-		}
+		}));
 
 		return { matches, localOnly };
 	}
