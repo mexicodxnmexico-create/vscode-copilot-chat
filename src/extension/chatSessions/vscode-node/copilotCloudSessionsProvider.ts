@@ -1421,11 +1421,12 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 	): Promise<vscode.ChatResponsePullRequestPart> {
 
 		let history: string | undefined;
+		let historyPromise: Promise<string | undefined> | undefined;
 
-		// TODO: Do this async/optimistically before delegation triggered
+		// Do this async/optimistically before delegation triggered
 		if (this.hasHistoryToSummarize(context.history)) {
 			stream.progress(vscode.l10n.t('Analyzing chat history'));
-			history = await this._chatDelegationSummaryService.summarize(context, token);
+			historyPromise = this._chatDelegationSummaryService.summarize(context, token);
 		}
 
 		// Get the chat resource from context or metadata
@@ -1467,6 +1468,10 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 			}
 			const { default_branch } = await this._githubRepositoryService.getRepositoryInfo(repoOwner, repoName);
 			base_ref = default_branch;
+		}
+
+		if (historyPromise) {
+			history = await historyPromise;
 		}
 
 		const { number, sessionId } = await this.invokeRemoteAgent(
