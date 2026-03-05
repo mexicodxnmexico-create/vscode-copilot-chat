@@ -940,17 +940,18 @@ export class CodeSearchChunkSearch extends Disposable implements IWorkspaceChunk
 			return;
 		}
 
-		// TODO: only handles first repos of each type, but our other services also don't track tokens for multiple
-		// repos in a workspace right now
-		const firstGithubRepo = notAuthorizedRepos.find(repo => repo.remoteInfo?.repoId.type === 'github');
-		if (firstGithubRepo) {
-			await this._codeSearchAuthService.tryAuthenticating(firstGithubRepo.remoteInfo);
-		}
-
-		const firstAdoRepo = notAuthorizedRepos.find(repo => repo.remoteInfo?.repoId.type === 'ado');
-		if (firstAdoRepo) {
-			await this._codeSearchAuthService.tryAuthenticating(firstAdoRepo.remoteInfo);
-		}
+		await Promise.all(
+			notAuthorizedRepos.map(async (repo) => {
+				if (!repo.remoteInfo) {
+					return;
+				}
+				try {
+					await this._codeSearchAuthService.tryAuthenticating(repo.remoteInfo);
+				} catch (e) {
+					this._logService.trace(`CodeSearchChunkSearch.tryAuthIfNeeded: Failed to authenticate for repo ${repo.repoInfo.rootUri}: ${e}`);
+				}
+			})
+		);
 	}
 
 	private async diffWithIndexedCommit(repo: CodeSearchRepo): Promise<CodeSearchDiff | undefined> {
