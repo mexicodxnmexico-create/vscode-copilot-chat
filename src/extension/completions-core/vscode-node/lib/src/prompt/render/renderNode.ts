@@ -194,9 +194,16 @@ export function render(node: RenderNode, options: RenderOptions = {}): RenderedT
 			return renderEmpty(node, costFunction);
 		}
 		const text = renderParts.join('');
-		const cost = costFunction
-			? costFunction(text)
-			: [...renderedNodes.values()].reduce((sum, n) => sum + n.cost, 0);
+		let cost;
+		if (costFunction) {
+			cost = costFunction(text);
+		} else {
+			cost = 0;
+			// Bolt: Optimization - Using for...of avoids intermediate array allocation compared to [...renderedNodes.values()].reduce(...)
+			for (const n of renderedNodes.values()) {
+				cost += n.cost;
+			}
+		}
 		return { text, cost, renderedNodes };
 	}
 
@@ -240,7 +247,11 @@ export function render(node: RenderNode, options: RenderOptions = {}): RenderedT
 		const text = renderParts.join('');
 		if (costFunction === undefined) {
 			// Within budget by construction
-			const cost = [...renderedNodes.values()].reduce((sum, n) => sum + n.cost, 0);
+			let cost = 0;
+			// Bolt: Optimization - Using for...of avoids intermediate array allocation compared to [...renderedNodes.values()].reduce(...)
+			for (const n of renderedNodes.values()) {
+				cost += n.cost;
+			}
 			return { text, cost, renderedNodes };
 		}
 
