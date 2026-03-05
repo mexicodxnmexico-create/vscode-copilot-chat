@@ -89,15 +89,17 @@ export class ClaudeSettingsChangeTracker {
 	private async _getAllPaths(): Promise<URI[]> {
 		const syncPaths = this._pathResolvers.flatMap(resolver => resolver());
 
-		// Enumerate all directories
-		const directoryFiles: URI[] = [];
+		// Enumerate all directories concurrently
+		const dirPromises: Promise<URI[]>[] = [];
 		for (const config of this._directoryResolvers) {
 			const dirs = config.resolver();
 			for (const dir of dirs) {
-				const files = await this._enumerateDirectory(dir, config.extension);
-				directoryFiles.push(...files);
+				dirPromises.push(this._enumerateDirectory(dir, config.extension));
 			}
 		}
+
+		const dirResults = await Promise.all(dirPromises);
+		const directoryFiles = dirResults.flat();
 
 		return [...syncPaths, ...directoryFiles];
 	}
@@ -111,7 +113,7 @@ export class ClaudeSettingsChangeTracker {
 
 		const allPaths = await this._getAllPaths();
 
-		for (const uri of allPaths) {
+		await Promise.all(allPaths.map(async (uri) => {
 			try {
 				const stat = await this.fileSystemService.stat(uri);
 				this._snapshot.set(uri.toString(), stat.mtime);
@@ -121,7 +123,7 @@ export class ClaudeSettingsChangeTracker {
 				this._snapshot.set(uri.toString(), 0);
 				this.logService.trace(`[ClaudeSettingsChangeTracker] Snapshot: ${uri.fsPath} (does not exist)`);
 			}
-		}
+		}));
 	}
 
 	/**
@@ -159,27 +161,45 @@ export class ClaudeSettingsChangeTracker {
 	private async *_changedFilesGenerator(): AsyncGenerator<URI> {
 		const seenPaths = new Set<string>();
 
-		// Lazily iterate through path resolvers
-		for (const resolver of this._pathResolvers) {
-			for (const uri of resolver()) {
+		// Kick off all path checks concurrently but process them lazily
+		// We map them to promises immediately to start the I/O operations
+		const pathPromises = this._pathResolvers.flatMap(resolver =>
+			resolver().map(uri => {
 				seenPaths.add(uri.toString());
-				const changed = await this._checkUri(uri);
-				if (changed) {
-					yield changed;
-				}
+				return this._checkUri(uri);
+			})
+		);
+
+		// Kick off all directory enumerations concurrently
+		const dirEnumerationPromises = this._directoryResolvers.flatMap(config =>
+			config.resolver().map(async dir => {
+				const files = await this._enumerateDirectory(dir, config.extension);
+				// Map the resolved files to stat promises immediately to start I/O
+				return files.map(uri => {
+					seenPaths.add(uri.toString());
+					return this._checkUri(uri);
+				});
+			})
+		);
+
+		// Process path stat promises as they resolve (technically in order, but they all run concurrently)
+		for (const checkPromise of pathPromises) {
+			const changed = await checkPromise;
+			if (changed) {
+				yield changed;
 			}
 		}
 
-		// Lazily iterate through directory resolvers
-		for (const config of this._directoryResolvers) {
-			for (const dir of config.resolver()) {
-				const files = await this._enumerateDirectory(dir, config.extension);
-				for (const uri of files) {
-					seenPaths.add(uri.toString());
-					const changed = await this._checkUri(uri);
-					if (changed) {
-						yield changed;
-					}
+		// Process directory enumerations and their resulting stat promises
+		for (const filePromisesPromise of dirEnumerationPromises) {
+			// Await the directory enumeration + mapping to stat promises
+			const checkPromises = await filePromisesPromise;
+
+			// Await each stat check
+			for (const checkPromise of checkPromises) {
+				const changed = await checkPromise;
+				if (changed) {
+					yield changed;
 				}
 			}
 		}
