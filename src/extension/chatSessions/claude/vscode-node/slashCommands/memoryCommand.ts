@@ -156,19 +156,16 @@ export class MemorySlashCommand implements IClaudeSlashCommandHandler {
 	}
 
 	private async _buildQuickPickItems(locations: MemoryLocation[]): Promise<(vscode.QuickPickItem & { location: MemoryLocation })[]> {
-		const items: (vscode.QuickPickItem & { location: MemoryLocation })[] = [];
-
-		for (const location of locations) {
-			const exists = await this._fileExists(location.path);
-
-			items.push({
-				label: exists ? `$(file) ${location.label}` : `$(file-add) ${location.label}`,
-				description: exists ? location.description : vscode.l10n.t('{0} (will be created)', location.description),
-				location,
-			});
-		}
-
-		return items;
+		return Promise.all(
+			locations.map(async location => {
+				const exists = await this._fileExists(location.path);
+				return {
+					label: exists ? `$(file) ${location.label}` : `$(file-add) ${location.label}`,
+					description: exists ? location.description : vscode.l10n.t('{0} (will be created)', location.description),
+					location,
+				};
+			})
+		);
 	}
 
 	private async _fileExists(path: URI): Promise<boolean> {
