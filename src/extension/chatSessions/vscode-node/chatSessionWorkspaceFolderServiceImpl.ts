@@ -106,25 +106,28 @@ export class ChatSessionWorkspaceFolderService extends Disposable implements ICh
 
 			this.logService.trace(`[ChatSessionWorkspaceFolderService ${sessionId}][getWorkspaceChanges] Repository found for ${workspaceFolderUri.toString()}: indexChanges=${repository.changes.indexChanges.length}, workingTree=${repository.changes.workingTree.length}`);
 
-			const changes: ChatSessionWorktreeFile[] = [];
-			for (const change of [...repository.changes.indexChanges, ...repository.changes.workingTree]) {
-				try {
-					const fileStats = await this.gitService.diffIndexWithHEADShortStats(change.uri);
-					changes.push({
-						filePath: change.uri.fsPath,
-						originalFilePath: change.status !== 1 /* INDEX_ADDED */
-							? change.originalUri?.fsPath
-							: undefined,
-						modifiedFilePath: change.status !== 2 /* INDEX_DELETED */
-							? change.uri.fsPath
-							: undefined,
-						statistics: {
-							additions: fileStats?.insertions ?? 0,
-							deletions: fileStats?.deletions ?? 0
-						}
-					} satisfies ChatSessionWorktreeFile);
-				} catch (error) { }
-			}
+			const changes: ChatSessionWorktreeFile[] = (await Promise.all(
+				[...repository.changes.indexChanges, ...repository.changes.workingTree].map(async change => {
+					try {
+						const fileStats = await this.gitService.diffIndexWithHEADShortStats(change.uri);
+						return {
+							filePath: change.uri.fsPath,
+							originalFilePath: change.status !== 1 /* INDEX_ADDED */
+								? change.originalUri?.fsPath
+								: undefined,
+							modifiedFilePath: change.status !== 2 /* INDEX_DELETED */
+								? change.uri.fsPath
+								: undefined,
+							statistics: {
+								additions: fileStats?.insertions ?? 0,
+								deletions: fileStats?.deletions ?? 0
+							}
+						} satisfies ChatSessionWorktreeFile;
+					} catch (error) {
+						return undefined;
+					}
+				})
+			)).filter((c): c is ChatSessionWorktreeFile => c !== undefined);
 
 			this.logService.trace(`[ChatSessionWorkspaceFolderService ${sessionId}][getWorkspaceChanges] Computed ${changes.length} change(s) for ${workspaceFolderUri.toString()}`);
 

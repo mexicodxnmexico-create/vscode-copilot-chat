@@ -277,25 +277,28 @@ export class ChatSessionWorktreeService extends Disposable implements IChatSessi
 			}
 
 			this.logService.trace(`[ChatSessionWorktreeService ${sessionId}][getWorktreeChanges] Session ${sessionId}: indexChanges=${worktreeRepository.changes.indexChanges.length}, workingTree=${worktreeRepository.changes.workingTree.length}`);
-			const changes: ChatSessionWorktreeFile[] = [];
-			for (const change of [...worktreeRepository.changes.indexChanges, ...worktreeRepository.changes.workingTree]) {
-				try {
-					const fileStats = await this.gitService.diffIndexWithHEADShortStats(change.uri);
-					changes.push({
-						filePath: change.uri.fsPath,
-						originalFilePath: change.status !== 1 /* INDEX_ADDED */
-							? change.originalUri?.fsPath
-							: undefined,
-						modifiedFilePath: change.status !== 2 /* INDEX_DELETED */
-							? change.uri.fsPath
-							: undefined,
-						statistics: {
-							additions: fileStats?.insertions ?? 0,
-							deletions: fileStats?.deletions ?? 0
-						}
-					} satisfies ChatSessionWorktreeFile);
-				} catch (error) { }
-			}
+			const changes: ChatSessionWorktreeFile[] = (await Promise.all(
+				[...worktreeRepository.changes.indexChanges, ...worktreeRepository.changes.workingTree].map(async change => {
+					try {
+						const fileStats = await this.gitService.diffIndexWithHEADShortStats(change.uri);
+						return {
+							filePath: change.uri.fsPath,
+							originalFilePath: change.status !== 1 /* INDEX_ADDED */
+								? change.originalUri?.fsPath
+								: undefined,
+							modifiedFilePath: change.status !== 2 /* INDEX_DELETED */
+								? change.uri.fsPath
+								: undefined,
+							statistics: {
+								additions: fileStats?.insertions ?? 0,
+								deletions: fileStats?.deletions ?? 0
+							}
+						} satisfies ChatSessionWorktreeFile;
+					} catch (error) {
+						return undefined;
+					}
+				})
+			)).filter((c): c is ChatSessionWorktreeFile => c !== undefined);
 
 			this.logService.trace(`[ChatSessionWorktreeService ${sessionId}][getWorktreeChanges] Session ${sessionId}: computed ${changes.length} staged change(s)`);
 			this.setWorktreeProperties(sessionId, {
