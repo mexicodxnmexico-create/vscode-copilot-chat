@@ -60,7 +60,7 @@ suite('Traits component', function () {
 
 	test('Renders a single trait', async function () {
 		const snapshot = await renderTrait(accessor, [trait1]);
-		const traits = querySnapshot(snapshot.snapshot!, 'Traits') as PromptSnapshotNode[];
+		const traits = querySnapshot(snapshot.snapshot!, 'Traits.KeepTogether') as PromptSnapshotNode[];
 		assert.deepStrictEqual(traits.length, 2);
 		assert.deepStrictEqual(traits[0].children?.[0].value, 'Consider this related information:\n');
 		assert.deepStrictEqual(traits[1].props?.source, trait1);
@@ -69,22 +69,22 @@ suite('Traits component', function () {
 
 	test('Renders multiple traits', async function () {
 		const snapshot = await renderTrait(accessor, [trait1, trait2]);
-		const result = querySnapshot(snapshot.snapshot!, 'Traits') as PromptSnapshotNode[];
+		const result = querySnapshot(snapshot.snapshot!, 'Traits.KeepTogether') as PromptSnapshotNode[];
 
 		// Assert that keys are in the path
 		assert.deepStrictEqual(extractNodesWitPath(snapshot.snapshot!), [
 			'$[0].Traits',
-			'$[0].Traits[0].f',
-			'$[0].Traits[0].f[0].Text',
-			'$[0].Traits[0].f[0].Text[0]',
-			'$[0].Traits[0].f["traitid1"].Text',
-			'$[0].Traits[0].f["traitid1"].Text[0]',
-			'$[0].Traits[0].f["traitid2"].Text',
-			'$[0].Traits[0].f["traitid2"].Text[0]',
+			'$[0].Traits[0].KeepTogether',
+			'$[0].Traits[0].KeepTogether["header"].Text',
+			'$[0].Traits[0].KeepTogether["header"].Text[0]',
+			'$[0].Traits[0].KeepTogether["traitid1"].Text',
+			'$[0].Traits[0].KeepTogether["traitid1"].Text[0]',
+			'$[0].Traits[0].KeepTogether["traitid2"].Text',
+			'$[0].Traits[0].KeepTogether["traitid2"].Text[0]',
 		]);
 
 		assert.deepStrictEqual(result.length, 3);
-		const traits = querySnapshot(snapshot.snapshot!, 'Traits') as PromptSnapshotNode[];
+		const traits = querySnapshot(snapshot.snapshot!, 'Traits.KeepTogether') as PromptSnapshotNode[];
 		assert.deepStrictEqual(traits.length, 3);
 		assert.deepStrictEqual(traits[0].children?.[0].value, 'Consider this related information:\n');
 		assert.deepStrictEqual(traits[1].props?.source, trait1);

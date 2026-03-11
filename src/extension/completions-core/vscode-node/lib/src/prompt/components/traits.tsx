@@ -5,7 +5,7 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource ../../../../prompt/jsx-runtime/ */
 
-import { ComponentContext, PromptElementProps, Text } from '../../../../prompt/src/components/components';
+import { ComponentContext, KeepTogether, PromptComponentChild, PromptElementProps, Text } from '../../../../prompt/src/components/components';
 import { normalizeLanguageId } from '../../../../prompt/src/prompt';
 import {
 	CompletionRequestData,
@@ -32,15 +32,16 @@ export const Traits = (_props: PromptElementProps, context: ComponentContext) =>
 		return;
 	}
 
-	// TODO: use a `KeepTogether` elision that removes the header if no traits are present
 	return (
-		<>
-			<Text>{'Consider this related information:\n'}</Text>
-			{...traits.map(trait => (
-				<Text key={trait.id} source={trait}>
-					{`${trait.name}: ${trait.value}`}
-				</Text>
-			))}
-		</>
+		<KeepTogether>
+			{[
+				<Text key="header">{'Consider this related information:\n'}</Text>,
+				...traits.map(trait => (
+					<Text key={trait.id} source={trait}>
+						{`${trait.name}: ${trait.value}`}
+					</Text>
+				))
+			] as PromptComponentChild[]}
+		</KeepTogether>
 	);
 };
