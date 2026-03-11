@@ -116,14 +116,21 @@ function updateLoadingContainer(message: Message) {
 	if (!progressBar || !loadingContainer) {
 		return;
 	}
+
+	const loadingLabelElement = loadingContainer.querySelector('label') as HTMLLabelElement;
+	if (!loadingLabelElement) {
+		return;
+	}
+
 	if (message.percentage >= 100) {
-		loadingContainer.textContent = `${message.solutions.length} Suggestions`;
+		loadingLabelElement.textContent = `${message.solutions.length} Suggestions`;
+		progressBar.style.display = 'none';
 		solutionsContainer?.setAttribute('aria-busy', 'false');
 	} else {
-		const loadingLabelElement = loadingContainer.querySelector('label') as HTMLLabelElement;
 		if (loadingLabelElement.textContent !== 'Loading suggestions:\u00A0') {
 			loadingLabelElement.textContent = 'Loading suggestions:\u00A0';
 		}
+		progressBar.style.display = '';
 		progressBar.value = message.percentage;
 		solutionsContainer?.setAttribute('aria-busy', 'true');
 	}
