@@ -113,14 +113,24 @@ function navigateNextSolution() {
 function updateLoadingContainer(message: Message) {
 	const progressBar = document.getElementById('progress-bar') as HTMLProgressElement;
 	const loadingContainer = document.getElementById('loadingContainer') as HTMLDivElement;
-	if (!progressBar || !loadingContainer) {
+	const loadingLabelElement = document.getElementById('loadingLabel') as HTMLLabelElement;
+	const suggestionsCount = document.getElementById('suggestionsCount') as HTMLSpanElement;
+
+	if (!progressBar || !loadingContainer || !loadingLabelElement || !suggestionsCount) {
 		return;
 	}
+
 	if (message.percentage >= 100) {
-		loadingContainer.textContent = `${message.solutions.length} Suggestions`;
+		loadingLabelElement.style.display = 'none';
+		progressBar.style.display = 'none';
+		suggestionsCount.style.display = 'inline';
+		suggestionsCount.textContent = `${message.solutions.length} Suggestions`;
 		solutionsContainer?.setAttribute('aria-busy', 'false');
 	} else {
-		const loadingLabelElement = loadingContainer.querySelector('label') as HTMLLabelElement;
+		loadingLabelElement.style.display = 'inline';
+		progressBar.style.display = 'inline-block';
+		suggestionsCount.style.display = 'none';
+
 		if (loadingLabelElement.textContent !== 'Loading suggestions:\u00A0') {
 			loadingLabelElement.textContent = 'Loading suggestions:\u00A0';
 		}

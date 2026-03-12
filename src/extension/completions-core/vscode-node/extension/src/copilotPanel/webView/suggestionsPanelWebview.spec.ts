@@ -30,8 +30,9 @@ describe('suggestionsPanelWebview', () => {
         // Setup DOM
         document.body.innerHTML = `
             <div id="loadingContainer">
-                <label>Loading suggestions:</label>
+                <label id="loadingLabel" for="progress-bar">Loading suggestions:</label>
                 <progress id="progress-bar"></progress>
+                <span id="suggestionsCount" style="display: none;"></span>
             </div>
             <div id="solutionsContainer"></div>
         `;
