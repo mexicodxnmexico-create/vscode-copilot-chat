@@ -199,8 +199,9 @@ export abstract class BaseSuggestionsPanel<TPanelCompletion extends BasePanelCom
 				<body>
 					<h2>${this.config.panelTitle}</h2>
 					<div id="loadingContainer" aria-live="assertive" aria-atomic="true">
-						<label for="progress-bar">Loading suggestions:</label>
+						<label for="progress-bar" id="loadingLabel">Loading suggestions:</label>
 						<progress id="progress-bar" max="100" value="0"></progress>
+						<span id="suggestionsCount" style="display: none;"></span>
 					</div>
 					<div id="solutionsContainer" aria-busy="true" aria-describedby="progress-bar"></div>
 					<script nonce="${nonce}" type="module" src="${scriptUri.toString()}"></script>
