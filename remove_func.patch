@@ -1,0 +1,20 @@
+--- src/extension/chatSessions/vscode-node/chatHistoryBuilder.ts
++++ src/extension/chatSessions/vscode-node/chatHistoryBuilder.ts
+@@ -112,17 +112,6 @@
+	return text.includes('<system-reminder>');
+ }
+
+-/**
+- * Strips <system-reminder> tags and their content from a string.
+- * Used for backwards compatibility with legacy sessions where system-reminders
+- * were concatenated with user text in a single string.
+- *
+- * TODO: Remove this function after a few releases (added in 0.38.x) once legacy
+- * sessions with concatenated system-reminders are no longer common.
+- */
+-function stripSystemReminders(text: string): string {
+-	return text.replace(/<system-reminder>[\s\S]*?<\/system-reminder>\s*/g, '');
+-}
+-
+ /**
+  * Extracts visible text content from a user message, filtering out system reminders.
