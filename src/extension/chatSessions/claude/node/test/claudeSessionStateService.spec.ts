@@ -298,4 +298,16 @@ describe('ClaudeSessionStateService', () => {
 			assert.strictEqual(service.getUsageHandlerForSession('new-session'), mockHandler);
 		});
 	});
+
+	describe('LRU Cache Behavior', () => {
+		it('should evict the oldest session when the limit is exceeded', () => {
+			for (let i = 0; i < 21; i++) {
+				service.setModelIdForSession(`session-${i}`, 'claude-opus-4-20250514');
+			}
+
+			assert.strictEqual(service.getModelIdForSession('session-0'), undefined);
+			assert.strictEqual(service.getModelIdForSession('session-1'), 'claude-opus-4-20250514');
+			assert.strictEqual(service.getModelIdForSession('session-20'), 'claude-opus-4-20250514');
+		});
+	});
 });
