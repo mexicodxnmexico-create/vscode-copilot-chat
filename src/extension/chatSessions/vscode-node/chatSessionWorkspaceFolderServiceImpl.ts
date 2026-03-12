@@ -106,11 +106,12 @@ export class ChatSessionWorkspaceFolderService extends Disposable implements ICh
 
 			this.logService.trace(`[ChatSessionWorkspaceFolderService ${sessionId}][getWorkspaceChanges] Repository found for ${workspaceFolderUri.toString()}: indexChanges=${repository.changes.indexChanges.length}, workingTree=${repository.changes.workingTree.length}`);
 
-			const changes: ChatSessionWorktreeFile[] = [];
-			for (const change of [...repository.changes.indexChanges, ...repository.changes.workingTree]) {
+			// ⚡ Bolt: Resolve git statistics concurrently to avoid sequential N+1 await latency.
+			const allChanges = [...repository.changes.indexChanges, ...repository.changes.workingTree];
+			const changesPromises = allChanges.map(async (change) => {
 				try {
 					const fileStats = await this.gitService.diffIndexWithHEADShortStats(change.uri);
-					changes.push({
+					return {
 						filePath: change.uri.fsPath,
 						originalFilePath: change.status !== 1 /* INDEX_ADDED */
 							? change.originalUri?.fsPath
@@ -122,9 +123,14 @@ export class ChatSessionWorkspaceFolderService extends Disposable implements ICh
 							additions: fileStats?.insertions ?? 0,
 							deletions: fileStats?.deletions ?? 0
 						}
-					} satisfies ChatSessionWorktreeFile);
-				} catch (error) { }
-			}
+					} satisfies ChatSessionWorktreeFile;
+				} catch (error) {
+					return undefined;
+				}
+			});
+
+			const resolvedChanges = await Promise.all(changesPromises);
+			const changes: ChatSessionWorktreeFile[] = resolvedChanges.filter((change): change is ChatSessionWorktreeFile => change !== undefined);
 
 			this.logService.trace(`[ChatSessionWorkspaceFolderService ${sessionId}][getWorkspaceChanges] Computed ${changes.length} change(s) for ${workspaceFolderUri.toString()}`);
 
