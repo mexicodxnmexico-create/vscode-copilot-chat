@@ -586,8 +586,8 @@ export class RemoteAgentContribution implements IDisposable {
 			return baseUri ? path.relative(baseUri, uri.toString()) : path.basename(uri.path);
 		};
 
-		const addFileReference = async (document: TextDocument, variableName?: string, isImplicit?: boolean) => {
-			clientReferences.push({
+		const getFileReference = async (document: TextDocument, variableName?: string, isImplicit?: boolean) => {
+			const clientRef: IPlatformReference = {
 				type: 'client.file',
 				data: {
 					language: document.languageId,
@@ -595,19 +595,20 @@ export class RemoteAgentContribution implements IDisposable {
 				},
 				is_implicit: Boolean(isImplicit),
 				id: await getImplicitContextId(document.uri)
-			});
+			};
 
-			vscodeReferences.push(variableName
+			const vscodeRef = variableName
 				? { variableName, value: document.uri }
-				: document.uri
-			);
+				: document.uri;
+
+			return { clientRef, vscodeRef };
 		};
 
-		const addSelectionReference = async (activeTextEditor: TextEditor, variableName?: string, reportReference = false, isImplicit?: boolean) => {
+		const getSelectionReference = async (activeTextEditor: TextEditor, variableName?: string, reportReference = false, isImplicit?: boolean) => {
 			const selectionStart = activeTextEditor.selection.start.line;
 			const selection = activeTextEditor.selection.isEmpty ? new Range(new Position(selectionStart, 0), new Position(selectionStart + 1, 0)) : activeTextEditor.selection;
 
-			clientReferences.push({
+			const clientRef: IPlatformReference = {
 				type: 'client.selection',
 				data: {
 					start: { line: selection.start.line, col: selection.start.character },
@@ -616,40 +617,59 @@ export class RemoteAgentContribution implements IDisposable {
 				},
 				is_implicit: Boolean(isImplicit),
 				id: await getImplicitContextId(activeTextEditor.document.uri)
-			});
+			};
 
+			let vscodeRef = undefined;
 			if (reportReference) {
-				vscodeReferences.push(variableName
+				vscodeRef = variableName
 					? { variableName, value: new Location(activeTextEditor.document.uri, selection) }
-					: new Location(activeTextEditor.document.uri, selection)
-				);
+					: new Location(activeTextEditor.document.uri, selection);
 			}
+
+			return { clientRef, vscodeRef };
 		};
 
 		// Check whether we can send file and selection data implicitly
 		if (this.checkAuthorized(slug)) {
 			const { activeTextEditor } = this.tabsAndEditorsService;
 			if (activeTextEditor && variables.find(v => v.id.startsWith('vscode.implicit'))) {
-				await addFileReference(activeTextEditor.document, undefined, true);
-				await addSelectionReference(activeTextEditor, undefined, undefined, true);
+				const [fileRef, selectionRef] = await Promise.all([
+					getFileReference(activeTextEditor.document, undefined, true),
+					getSelectionReference(activeTextEditor, undefined, undefined, true)
+				]);
+				clientReferences.push(fileRef.clientRef, selectionRef.clientRef);
+				vscodeReferences.push(fileRef.vscodeRef);
+				if (selectionRef.vscodeRef) {
+					vscodeReferences.push(selectionRef.vscodeRef);
+				}
 				hasSentImplicitSelectionReference = true;
 			}
 		}
 
-		for (const variable of variables) {
+		const mappedResults = await Promise.all(variables.map(async (variable) => {
 			if (URI.isUri(variable.value)) {
 				const textDocument = await this.workspaceService.openTextDocument(variable.value);
-				await addFileReference(textDocument, variable.name);
+				return await getFileReference(textDocument, variable.name);
 			} else if (variable.name === 'selection') {
 				const { activeTextEditor } = this.tabsAndEditorsService;
 				if (!activeTextEditor) {
-					throw new Error(l10n.t({ message: 'Please open a text editor to use the `#selection` variable.', comment: '{Locked=\'`#selection`\'}' }));
+					throw new Error(l10n.t({ message: 'Please open a text editor to use the `#selection` variable.', comment: '{Locked=`#selection`}' }));
 				}
 				if (!hasSentImplicitSelectionReference) {
-					await addSelectionReference(activeTextEditor, variable.name, true);
+					return await getSelectionReference(activeTextEditor, variable.name, true);
 				}
 			} else if (variable.name === 'editor' && this.tabsAndEditorsService.activeTextEditor) {
-				await addFileReference(this.tabsAndEditorsService.activeTextEditor.document, variable.name);
+				return await getFileReference(this.tabsAndEditorsService.activeTextEditor.document, variable.name);
+			}
+			return undefined;
+		}));
+
+		for (const result of mappedResults) {
+			if (result) {
+				clientReferences.push(result.clientRef);
+				if (result.vscodeRef) {
+					vscodeReferences.push(result.vscodeRef);
+				}
 			}
 		}
 
