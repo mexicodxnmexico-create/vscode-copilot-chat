@@ -401,6 +401,60 @@ describe('ClaudeCodeSession', () => {
 		expect(mockService.lastQueryOptions?.resume).toBe('existing-session');
 		expect(mockService.lastQueryOptions?.sessionId).toBeUndefined();
 	});
+
+	it('handles errors when setModel fails', async () => {
+		const serverConfig = { port: 8080, nonce: 'test-nonce' };
+		const mockServer = createMockLangModelServer();
+		const mockService = instantiationService.invokeFunction(accessor => accessor.get(IClaudeCodeSdkService)) as MockClaudeCodeSdkService;
+		mockService.queryCallCount = 0;
+		mockService.setModelCallCount = 0;
+
+		commitTestState(sessionStateService, 'test-session', 'claude-3-sonnet');
+		const session = store.add(instantiationService.createInstance(ClaudeCodeSession, serverConfig, mockServer, 'test-session', 'claude-3-sonnet', TEST_PERMISSION_MODE, true));
+
+		// First request with initial model
+		const stream1 = new MockChatResponseStream();
+		await session.invoke(createMockChatRequest(), toPromptBlocks('Hello'), {} as vscode.ChatParticipantToolToken, stream1, CancellationToken.None);
+		expect(mockService.queryCallCount).toBe(1);
+
+		// Update model in session state service for the second request and make it fail
+		sessionStateService.setModelIdForSession('test-session', 'claude-3-opus');
+		mockService.shouldFailSetModel = true;
+
+		// Second request should call setModel, fail, log the error but not crash
+		const stream2 = new MockChatResponseStream();
+		await session.invoke(createMockChatRequest(), toPromptBlocks('Hello again'), {} as vscode.ChatParticipantToolToken, stream2, CancellationToken.None);
+		expect(mockService.queryCallCount).toBe(1);
+		expect(mockService.setModelCallCount).toBe(1);
+		expect(stream2.output.join('\n')).toContain('Hello from mock!');
+	});
+
+	it('handles errors when setPermissionMode fails', async () => {
+		const serverConfig = { port: 8080, nonce: 'test-nonce' };
+		const mockServer = createMockLangModelServer();
+		const mockService = instantiationService.invokeFunction(accessor => accessor.get(IClaudeCodeSdkService)) as MockClaudeCodeSdkService;
+		mockService.queryCallCount = 0;
+		mockService.setPermissionModeCallCount = 0;
+
+		commitTestState(sessionStateService, 'test-session', TEST_MODEL_ID, 'acceptEdits');
+		const session = store.add(instantiationService.createInstance(ClaudeCodeSession, serverConfig, mockServer, 'test-session', TEST_MODEL_ID, 'acceptEdits', true));
+
+		// First request with initial permission mode
+		const stream1 = new MockChatResponseStream();
+		await session.invoke(createMockChatRequest(), toPromptBlocks('Hello'), {} as vscode.ChatParticipantToolToken, stream1, CancellationToken.None);
+		expect(mockService.queryCallCount).toBe(1);
+
+		// Update permission mode and make it fail
+		sessionStateService.setPermissionModeForSession('test-session', 'acceptAll');
+		mockService.shouldFailSetPermissionMode = true;
+
+		// Second request should call setPermissionMode, fail, log the error but not crash
+		const stream2 = new MockChatResponseStream();
+		await session.invoke(createMockChatRequest(), toPromptBlocks('Hello again'), {} as vscode.ChatParticipantToolToken, stream2, CancellationToken.None);
+		expect(mockService.queryCallCount).toBe(1);
+		expect(mockService.setPermissionModeCallCount).toBe(1);
+		expect(stream2.output.join('\n')).toContain('Hello from mock!');
+	});
 });
 
 describe('ClaudeAgentManager - error handling', () => {

@@ -13,9 +13,14 @@ export class MockClaudeCodeSdkService implements IClaudeCodeSdkService {
 	readonly _serviceBrand: undefined;
 	public queryCallCount = 0;
 	public setModelCallCount = 0;
+	public setPermissionModeCallCount = 0;
 	public lastSetModel: string | undefined;
+	public lastSetPermissionMode: string | undefined;
 	public lastQueryOptions: Options | undefined;
 	public readonly receivedMessages: SDKUserMessage[] = [];
+
+	public shouldFailSetModel = false;
+	public shouldFailSetPermissionMode = false;
 
 	public async query(options: {
 		prompt: AsyncIterable<SDKUserMessage>;
@@ -33,8 +38,17 @@ export class MockClaudeCodeSdkService implements IClaudeCodeSdkService {
 			setModel: async (modelId: string) => {
 				this.setModelCallCount++;
 				this.lastSetModel = modelId;
+				if (this.shouldFailSetModel) {
+					throw new Error('Mock setModel error');
+				}
 			},
-			setPermissionMode: async (_mode: string) => { /* no-op for mock */ },
+			setPermissionMode: async (mode: string) => {
+				this.setPermissionModeCallCount++;
+				this.lastSetPermissionMode = mode;
+				if (this.shouldFailSetPermissionMode) {
+					throw new Error('Mock setPermissionMode error');
+				}
+			},
 			abort: () => { /* no-op for mock */ },
 		} as unknown as Query;
 	}
