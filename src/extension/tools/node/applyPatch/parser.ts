@@ -893,14 +893,19 @@ export async function load_files(
 	openFn: (p: string) => Promise<AbstractDocumentWithLanguageId | TextDocument>,
 ): Promise<Record<string, AbstractDocumentWithLanguageId | TextDocument>> {
 	const orig: Record<string, AbstractDocumentWithLanguageId | TextDocument> = {};
-	for (const p of paths) {
-		try {
-			orig[p] = await openFn(p);
-		} catch {
-			// Convert any file read error into a DiffError so that callers
-			// consistently receive DiffError for patch-related failures.
-			throw new DiffError(`File not found: ${p}`);
-		}
+	const results = await Promise.all(
+		paths.map(async (p) => {
+			try {
+				return { p, doc: await openFn(p) };
+			} catch {
+				// Convert any file read error into a DiffError so that callers
+				// consistently receive DiffError for patch-related failures.
+				throw new DiffError(`File not found: ${p}`);
+			}
+		}),
+	);
+	for (const { p, doc } of results) {
+		orig[p] = doc;
 	}
 	return orig;
 }
