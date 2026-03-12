@@ -1,0 +1,12 @@
+--- src/extension/chatSessions/vscode-node/chatHistoryBuilder.ts
++++ src/extension/chatSessions/vscode-node/chatHistoryBuilder.ts
+@@ -128,8 +128,7 @@
+  */
+ function extractTextContent(content: string | ContentBlock[]): string {
+	if (typeof content === 'string') {
+-		// TODO: Remove this branch when stripSystemReminders is removed (legacy compat)
+-		return stripSystemReminders(content);
++		return content;
+	}
+
+	// For array content (new format), filter out entire blocks that are system-reminders
