@@ -208,6 +208,21 @@ describe('ClaudeSessionStateService', () => {
 		});
 	});
 
+	describe("LRU eviction", () => {
+		it("should evict oldest session when exceeding capacity (100)", () => {
+			// Insert 101 sessions
+			for (let i = 0; i < 101; i++) {
+				service.setModelIdForSession(`session-${i}`, "claude-opus-4-20250514");
+			}
+
+			// The first session should have been evicted
+			assert.strictEqual(service.getModelIdForSession("session-0"), undefined);
+			// The most recent 100 sessions should remain
+			assert.strictEqual(service.getModelIdForSession("session-100"), "claude-opus-4-20250514");
+			assert.strictEqual(service.getModelIdForSession("session-1"), "claude-opus-4-20250514");
+		});
+	});
+
 	describe('getUsageHandlerForSession', () => {
 		it('should return undefined when no usage handler is set', () => {
 			const handler = service.getUsageHandlerForSession('session-1');
