@@ -91,12 +91,14 @@ export class TrajectoryExportCommands extends Disposable implements IExtensionCo
 		saveDir: vscode.Uri,
 		pathMapping: Map<string, string>
 	): Promise<void> {
-		for (const [sessionId, trajectory] of trajectories) {
-			const filename = this.getTrajectoryFilename(sessionId, pathMapping);
-			const fileUri = vscode.Uri.joinPath(saveDir, filename);
-			const content = JSON.stringify(trajectory, null, 2);
-			await this.fileSystemService.writeFile(fileUri, Buffer.from(content, 'utf8'));
-		}
+		await Promise.all(
+			Array.from(trajectories.entries()).map(async ([sessionId, trajectory]) => {
+				const filename = this.getTrajectoryFilename(sessionId, pathMapping);
+				const fileUri = vscode.Uri.joinPath(saveDir, filename);
+				const content = JSON.stringify(trajectory, null, 2);
+				await this.fileSystemService.writeFile(fileUri, Buffer.from(content, 'utf8'));
+			})
+		);
 	}
 
 	/**
