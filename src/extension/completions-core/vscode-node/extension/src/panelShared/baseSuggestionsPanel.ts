@@ -199,7 +199,7 @@ export abstract class BaseSuggestionsPanel<TPanelCompletion extends BasePanelCom
 				<body>
 					<h2>${this.config.panelTitle}</h2>
 					<div id="loadingContainer" aria-live="assertive" aria-atomic="true">
-						<label for="progress-bar">Loading suggestions:</label>
+						<label for="progress-bar"><span id="loading-text">Loading suggestions:</span></label>
 						<progress id="progress-bar" max="100" value="0"></progress>
 					</div>
 					<div id="solutionsContainer" aria-busy="true" aria-describedby="progress-bar"></div>

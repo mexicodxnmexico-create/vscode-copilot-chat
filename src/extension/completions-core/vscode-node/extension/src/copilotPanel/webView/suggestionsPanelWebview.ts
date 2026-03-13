@@ -112,18 +112,20 @@ function navigateNextSolution() {
 
 function updateLoadingContainer(message: Message) {
 	const progressBar = document.getElementById('progress-bar') as HTMLProgressElement;
-	const loadingContainer = document.getElementById('loadingContainer') as HTMLDivElement;
-	if (!progressBar || !loadingContainer) {
+	const loadingText = document.getElementById('loading-text') as HTMLSpanElement;
+	if (!progressBar || !loadingText) {
 		return;
 	}
 	if (message.percentage >= 100) {
-		loadingContainer.textContent = `${message.solutions.length} Suggestions`;
+		loadingText.textContent = `${message.solutions.length} Suggestions`;
+		progressBar.style.display = 'none';
 		solutionsContainer?.setAttribute('aria-busy', 'false');
 	} else {
-		const loadingLabelElement = loadingContainer.querySelector('label') as HTMLLabelElement;
-		if (loadingLabelElement.textContent !== 'Loading suggestions:\u00A0') {
-			loadingLabelElement.textContent = 'Loading suggestions:\u00A0';
+		if (loadingText.textContent !== 'Loading suggestions:\u00A0') {
+			loadingText.textContent = 'Loading suggestions:\u00A0';
 		}
+		progressBar.style.display = '';
+		progressBar.setAttribute('value', String(message.percentage));
 		progressBar.value = message.percentage;
 		solutionsContainer?.setAttribute('aria-busy', 'true');
 	}

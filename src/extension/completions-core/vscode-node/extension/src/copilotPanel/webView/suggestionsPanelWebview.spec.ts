@@ -30,7 +30,7 @@ describe('suggestionsPanelWebview', () => {
         // Setup DOM
         document.body.innerHTML = `
             <div id="loadingContainer">
-                <label>Loading suggestions:</label>
+                <label for="progress-bar"><span id="loading-text">Loading suggestions:</span></label>
                 <progress id="progress-bar"></progress>
             </div>
             <div id="solutionsContainer"></div>
@@ -177,5 +177,57 @@ describe('suggestionsPanelWebview', () => {
         // DOMPurify might further encode it.
         // We verify that the 'href' attribute starts correctly and doesn't close prematurely.
         expect(solutions).toMatch(/href="http:\/\/example\.com\/%22%20onclick=%22alert\(1\)"/);
+    });
+
+    it('updates loading text and hides progress bar when loaded', async () => {
+        const message = {
+		command: 'solutionsUpdated',
+		solutions: [
+			{
+				htmlSnippet: '<pre>code</pre>',
+				percentage: 100,
+			},
+		],
+		percentage: 100,
+        };
+
+        window.postMessage(message, '*');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const loadingText = document.getElementById('loading-text');
+        const progressBar = document.getElementById('progress-bar');
+
+        expect(loadingText?.textContent).toBe('1 Suggestions');
+        expect(progressBar?.style.display).toBe('none');
+        expect(container.getAttribute('aria-busy')).toBe('false');
+    });
+
+    it('shows progress bar and sets loading text while loading', async () => {
+        const message = {
+		command: 'solutionsUpdated',
+		solutions: [],
+		percentage: 50,
+        };
+
+        // First complete it
+        const completeMessage = {
+		command: 'solutionsUpdated',
+		solutions: [],
+		percentage: 100,
+        };
+        window.postMessage(completeMessage, '*');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        // Then load again
+        window.postMessage(message, '*');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const loadingText = document.getElementById('loading-text');
+        const progressBar = document.getElementById('progress-bar') as HTMLProgressElement;
+
+        expect(loadingText?.textContent).toBe('Loading suggestions:\u00A0');
+        expect(progressBar?.style.display).toBe('');
+        expect(progressBar?.getAttribute('value')).toBe('50');
+        expect(container.getAttribute('aria-busy')).toBe('true');
     });
 });
