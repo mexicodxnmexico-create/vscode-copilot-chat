@@ -578,7 +578,13 @@ export class PersistentTfIdf {
 
 	private reviveDocumentChunkEntry(row: any): DocumentChunkEntry {
 		return {
-			tf: JSON.parse(row.termFrequencies as string),
+			// Lazily parse term frequencies to save CPU cycles if they aren't accessed
+			get tf() {
+				if (!(this as any)._tf) {
+					Object.defineProperty(this, '_tf', { enumerable: false, value: JSON.parse(row.termFrequencies as string) });
+				}
+				return (this as any)._tf;
+			},
 			get chunk() {
 				return {
 					file: URI.isUri(row.uri) ? row.uri : URI.parse(row.uri as string),
