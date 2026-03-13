@@ -403,12 +403,20 @@ export class ClaudeChatSessionContentProvider extends Disposable implements vsco
 	private async _buildModelIdMap(session: IClaudeCodeSession): Promise<ReadonlyMap<string, string>> {
 		const sdkModelIds = collectSdkModelIds(session);
 		const map = new Map<string, string>();
-		for (const sdkModelId of sdkModelIds) {
+
+		const promises = Array.from(sdkModelIds).map(async (sdkModelId) => {
 			const endpointModelId = await this.claudeCodeModels.mapSdkModelToEndpointModel(sdkModelId);
+			return { sdkModelId, endpointModelId };
+		});
+
+		const results = await Promise.all(promises);
+
+		for (const { sdkModelId, endpointModelId } of results) {
 			if (endpointModelId) {
 				map.set(sdkModelId, endpointModelId);
 			}
 		}
+
 		return map;
 	}
 
