@@ -127,24 +127,30 @@ export class MemoryCleanupService extends Disposable implements IMemoryCleanupSe
 			const entries = await this.fileSystem.readDirectory(this.baseStorageUri);
 			const sessionDirs = entries.filter(([name, type]) => type === FileType.Directory && name !== 'repo');
 
-			for (const [sessionName] of sessionDirs) {
-				const sessionUri = URI.joinPath(this.baseStorageUri, sessionName);
-				await this.cleanupSessionDirectory(sessionUri, cutoffTime);
-			}
+			await Promise.all(
+				sessionDirs.map(([sessionName]) => {
+
+					const sessionUri = URI.joinPath(this.baseStorageUri!, sessionName);
+					return this.cleanupSessionDirectory(sessionUri, cutoffTime);
+				})
+			);
 
 			// Clean up empty session directories
-			for (const [sessionName] of sessionDirs) {
-				const sessionUri = URI.joinPath(this.baseStorageUri, sessionName);
-				try {
-					const sessionEntries = await this.fileSystem.readDirectory(sessionUri);
-					if (sessionEntries.length === 0) {
-						await this.fileSystem.delete(sessionUri, { recursive: true });
-						this.logService.debug(`[MemoryCleanupService] Deleted empty session directory: ${sessionUri.fsPath}`);
+			await Promise.all(
+				sessionDirs.map(async ([sessionName]) => {
+
+					const sessionUri = URI.joinPath(this.baseStorageUri!, sessionName);
+					try {
+						const sessionEntries = await this.fileSystem.readDirectory(sessionUri);
+						if (sessionEntries.length === 0) {
+							await this.fileSystem.delete(sessionUri, { recursive: true });
+							this.logService.debug(`[MemoryCleanupService] Deleted empty session directory: ${sessionUri.fsPath}`);
+						}
+					} catch {
+						// Ignore errors when checking/deleting empty directories
 					}
-				} catch {
-					// Ignore errors when checking/deleting empty directories
-				}
-			}
+				})
+			);
 		} catch (error) {
 			this.logService.warn(`[MemoryCleanupService] Error during cleanup: ${error}`);
 		}
@@ -154,35 +160,37 @@ export class MemoryCleanupService extends Disposable implements IMemoryCleanupSe
 		try {
 			const entries = await this.fileSystem.readDirectory(sessionUri);
 
-			for (const [name, type] of entries) {
-				const entryUri = URI.joinPath(sessionUri, name);
+			await Promise.all(
+				entries.map(async ([name, type]) => {
+					const entryUri = URI.joinPath(sessionUri, name);
 
-				// Check in-memory timestamp first
-				const accessTime = this.accessTimestamps.get(entryUri);
-				if (accessTime && accessTime >= cutoffTime) {
-					continue; // Still fresh
-				}
-
-				// Fall back to file system mtime
-				try {
-					const stat = await this.fileSystem.stat(entryUri);
-					if (stat.mtime >= cutoffTime) {
-						this.accessTimestamps.set(entryUri, stat.mtime);
-						continue; // Still fresh
+					// Check in-memory timestamp first
+					const accessTime = this.accessTimestamps.get(entryUri);
+					if (accessTime && accessTime >= cutoffTime) {
+						return; // Still fresh
 					}
-				} catch {
-					// If we can't stat, assume it's stale
-				}
 
-				// Delete stale entry
-				try {
-					await this.fileSystem.delete(entryUri, { recursive: type === FileType.Directory });
-					this.accessTimestamps.delete(entryUri);
-					this.logService.debug(`[MemoryCleanupService] Deleted stale memory file: ${entryUri.fsPath}`);
-				} catch (error) {
-					this.logService.warn(`[MemoryCleanupService] Failed to delete ${entryUri.fsPath}: ${error}`);
-				}
-			}
+					// Fall back to file system mtime
+					try {
+						const stat = await this.fileSystem.stat(entryUri);
+						if (stat.mtime >= cutoffTime) {
+							this.accessTimestamps.set(entryUri, stat.mtime);
+							return; // Still fresh
+						}
+					} catch {
+						// If we can't stat, assume it's stale
+					}
+
+					// Delete stale entry
+					try {
+						await this.fileSystem.delete(entryUri, { recursive: type === FileType.Directory });
+						this.accessTimestamps.delete(entryUri);
+						this.logService.debug(`[MemoryCleanupService] Deleted stale memory file: ${entryUri.fsPath}`);
+					} catch (error) {
+						this.logService.warn(`[MemoryCleanupService] Failed to delete ${entryUri.fsPath}: ${error}`);
+					}
+				})
+			);
 		} catch (error) {
 			this.logService.debug(`[MemoryCleanupService] Error cleaning session directory ${sessionUri.fsPath}: ${error}`);
 		}
