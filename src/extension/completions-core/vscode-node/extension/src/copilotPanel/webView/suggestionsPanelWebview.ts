@@ -13,6 +13,13 @@ let solutionEventHandlersInitialized = false;
 
 provideVSCodeDesignSystem().register(vsCodeButton());
 
+// Prevent reverse tabnabbing vulnerability when sanitizing target="_blank" links
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+	if ('tagName' in node && node.tagName === 'A' && node.getAttribute('target') === '_blank') {
+		node.setAttribute('rel', 'noopener noreferrer');
+	}
+});
+
 type Message = {
 	command: string;
 	solutions: {

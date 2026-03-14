@@ -18,6 +18,7 @@ vi.mock('dompurify', () => {
     return {
 	default: {
 		sanitize: (str: string) => str, // Simple pass-through for testing structure
+		addHook: vi.fn(),
 	},
     };
 });
