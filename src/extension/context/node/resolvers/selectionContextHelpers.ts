@@ -63,15 +63,30 @@ export async function findAllReferencedFunctionImplementationsInSelection(
 
 	// since language service gives us only links to identifiers, expand to whole implementation/definition using tree-sitter
 	const functionImplementations = [];
+	const documentASTPromises = new Map<string, Promise<{ textDocument: TextDocumentSnapshot; functionDefinitions: TreeSitterExpressionInfo[] } | undefined>>();
+
 	for (let i = 0; i < implementations.length; i++) {
 		const callExpr = callExprs[i];
 		const impl = implementations[i];
 		for (const link of impl) {
 			const { uri, range } = isLocationLink(link) ? { uri: link.targetUri, range: link.targetRange } : link;
-			const textDocument = await workspaceService.openTextDocumentAndSnapshot(uri);
-			const treeSitterAST = parserService.getTreeSitterAST(textDocument);
-			if (treeSitterAST) {
-				const functionDefinitions = await treeSitterAST.getFunctionDefinitions(); // TODO: we should do this once per document, not once per call expression
+			const uriString = uri.toString();
+
+			if (!documentASTPromises.has(uriString)) {
+				documentASTPromises.set(uriString, (async () => {
+					const textDocument = await workspaceService.openTextDocumentAndSnapshot(uri);
+					const treeSitterAST = parserService.getTreeSitterAST(textDocument);
+					if (treeSitterAST) {
+						const functionDefinitions = await treeSitterAST.getFunctionDefinitions();
+						return { textDocument, functionDefinitions };
+					}
+					return undefined;
+				})());
+			}
+
+			const docResult = await documentASTPromises.get(uriString);
+			if (docResult) {
+				const { textDocument, functionDefinitions } = docResult;
 				const functionDefinition = functionDefinitions.find((fn) => fn.identifier === callExpr.identifier); // FIXME: this's incorrect because it doesn't count for import aliases (e.g., `import { foo as bar } from 'baz'`)
 				if (functionDefinition) {
 					const treeSitterRange = vscodeToTreeSitterOffsetRange(range, textDocument);
@@ -148,15 +163,31 @@ export async function findAllReferencedClassDeclarationsInSelection(
 		[]
 	);
 	const classDeclarations = [];
+	const documentASTPromises = new Map<string, Promise<{ textDocument: TextDocumentSnapshot; classDeclarationsAst: TreeSitterExpressionInfo[] } | undefined>>();
+
 	for (let i = 0; i < implementations.length; i++) {
 		const match = matches[i];
 		const impl = implementations[i];
 		for (const link of impl) {
 			const { uri, range } = isLocationLink(link) ? { uri: link.targetUri, range: link.targetRange } : link;
-			const textDocument = await workspaceService.openTextDocumentAndSnapshot(uri);
-			const treeSitterAST = parserService.getTreeSitterAST(textDocument);
-			if (treeSitterAST) {
-				const classDeclaration = (await treeSitterAST.getClassDeclarations()).find((fn) => fn.identifier === match.identifier);
+			const uriString = uri.toString();
+
+			if (!documentASTPromises.has(uriString)) {
+				documentASTPromises.set(uriString, (async () => {
+					const textDocument = await workspaceService.openTextDocumentAndSnapshot(uri);
+					const treeSitterAST = parserService.getTreeSitterAST(textDocument);
+					if (treeSitterAST) {
+						const classDeclarationsAst = await treeSitterAST.getClassDeclarations();
+						return { textDocument, classDeclarationsAst };
+					}
+					return undefined;
+				})());
+			}
+
+			const docResult = await documentASTPromises.get(uriString);
+			if (docResult) {
+				const { textDocument, classDeclarationsAst } = docResult;
+				const classDeclaration = classDeclarationsAst.find((fn) => fn.identifier === match.identifier);
 				if (classDeclaration) {
 					const treeSitterRange = vscodeToTreeSitterOffsetRange(range, textDocument);
 					classDeclarations.push({
