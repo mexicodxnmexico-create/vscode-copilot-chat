@@ -38,7 +38,7 @@ export namespace LineCheck {
 		const result: IToken[] = [];
 		const line = document.lineAt(position);
 
-		let column = line.firstNonWhitespaceCharacterIndex;
+		let column = line.leadingWhitespaceLength;
 		let lastEnd = column;
 
 		while (column < line.range.end.character) {
