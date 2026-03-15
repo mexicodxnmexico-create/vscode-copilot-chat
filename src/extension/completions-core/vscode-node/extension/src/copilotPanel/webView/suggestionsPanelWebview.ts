@@ -8,7 +8,7 @@ import DOMPurify from 'dompurify';
 
 const solutionsContainer = document.getElementById('solutionsContainer');
 const vscode = acquireVsCodeApi();
-let currentFocusIndex: number = 0;
+let currentFocusIndex: number = -1;
 let solutionEventHandlersInitialized = false;
 
 provideVSCodeDesignSystem().register(vsCodeButton());
@@ -51,10 +51,16 @@ function handleSolutionUpdate(message: Message) {
 	updateLoadingContainer(message);
 
 	if (solutionsContainer) {
-		solutionsContainer.innerHTML = message.solutions
-			.map((solution, index) => {
-				const citationUrl = solution.citation?.url ?? '';
-				const safeUrl = getSafeUrl(citationUrl) ?? '#';
+		if (message.percentage >= 100 && message.solutions.length === 0) {
+			solutionsContainer.innerHTML = `<div class="emptyStateContainer" role="status" style="margin-top: 2rem; opacity: 0.8;">
+				<p>No suggestions found.</p>
+				<p>Try modifying your code or providing more context.</p>
+			</div>`;
+		} else {
+			solutionsContainer.innerHTML = message.solutions
+				.map((solution, index) => {
+					const citationUrl = solution.citation?.url ?? '';
+					const safeUrl = getSafeUrl(citationUrl) ?? '#';
 				const renderedCitation = solution.citation
 					? `<p>
 						<span style="vertical-align: text-bottom"><strong><span aria-hidden="true">&#9888;</span> Warning:</strong></span>
@@ -64,14 +70,15 @@ function handleSolutionUpdate(message: Message) {
 					: '';
 				const sanitizedSnippet = DOMPurify.sanitize(solution.htmlSnippet);
 
-				return `<h3 class='solutionHeading' id="solution-${index + 1}-heading">Suggestion ${index + 1}</h3>
+					return `<h3 class='solutionHeading' id="solution-${index + 1}-heading">Suggestion ${index + 1}</h3>
 				<div class='snippetContainer' aria-labelledby="solution-${index + 1}-heading" role="group" data-solution-index="${index}">${sanitizedSnippet
-					}</div>
+						}</div>
 				${DOMPurify.sanitize(renderedCitation, { ADD_ATTR: ['target', 'aria-label'] })}
 				<vscode-button role="button" class="acceptButton" id="acceptButton${index}" appearance="secondary" data-solution-index="${index}" aria-label="Accept suggestion ${index + 1}. Click to insert this suggestion into your code" title="Click to insert this suggestion into your code">Accept suggestion ${index + 1
-					}</vscode-button>`;
-			})
-			.join('');
+						}</vscode-button>`;
+				})
+				.join('');
+		}
 
 		solutionsContainer.querySelectorAll('pre').forEach((pre) => {
 			pre.tabIndex = 0;
@@ -84,7 +91,11 @@ function navigatePreviousSolution() {
 	const snippets = document.querySelectorAll<HTMLElement>('.snippetContainer pre');
 	const prevIndex = currentFocusIndex - 1;
 
-	snippets[prevIndex]?.focus();
+	if (snippets[prevIndex]) {
+		snippets[prevIndex].focus();
+	} else if (snippets.length > 0) {
+		snippets[snippets.length - 1].focus();
+	}
 }
 
 function getSafeUrl(url: string): string | undefined {
