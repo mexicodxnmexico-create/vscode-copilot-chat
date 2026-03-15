@@ -99,7 +99,7 @@ export async function fetchWithFallbacks(availableFetchers: readonly IFetcher[],
 		// Demote the crashed fetcher so all future requests use a healthy one.
 		// We do NOT retry the current request — the caller decides whether it's safe to retry.
 		const enableCrashFallback = experimentationService
-			? configurationService.getExperimentBasedConfig(ConfigKey.TeamInternal.FallbackNodeFetchOnNetworkProcessCrash, experimentationService)
+			? configurationService.getExperimentBasedConfig(ConfigKey.Advanced.FallbackNodeFetchOnNetworkProcessCrash, experimentationService)
 			: false;
 		if (enableCrashFallback && fetcher.isNetworkProcessCrashedError(err)) {
 			const fetcherId = fetcher.getUserAgentLibrary();

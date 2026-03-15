@@ -83,7 +83,7 @@ describe('FetcherService network process crash handling', () => {
 
 	describe('when FallbackNodeFetchOnNetworkProcessCrash is enabled', () => {
 		beforeEach(() => {
-			configurationService.setConfig(ConfigKey.TeamInternal.FallbackNodeFetchOnNetworkProcessCrash, true);
+			configurationService.setConfig(ConfigKey.Advanced.FallbackNodeFetchOnNetworkProcessCrash, true);
 		});
 
 		it('demotes the crashed fetcher and promotes the next one', async () => {
@@ -152,7 +152,7 @@ describe('FetcherService network process crash handling', () => {
 
 	describe('when FallbackNodeFetchOnNetworkProcessCrash is disabled', () => {
 		beforeEach(() => {
-			configurationService.setConfig(ConfigKey.TeamInternal.FallbackNodeFetchOnNetworkProcessCrash, false);
+			configurationService.setConfig(ConfigKey.Advanced.FallbackNodeFetchOnNetworkProcessCrash, false);
 		});
 
 		it('does NOT demote the crashed fetcher', async () => {
