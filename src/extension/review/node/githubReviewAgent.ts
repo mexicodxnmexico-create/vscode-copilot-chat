@@ -290,7 +290,7 @@ export async function githubReview(
 export function createReviewComment(ghComment: ResponseComment | ExcludedComment, request: ReviewRequest, document: TextDocument, index: number) {
 	const fromLine = document.lineAt(ghComment.data.line - 1);
 	const lastNonWhitespaceCharacterIndex = fromLine.text.trimEnd().length;
-	const range = new Range(fromLine.lineNumber, fromLine.firstNonWhitespaceCharacterIndex, fromLine.lineNumber, lastNonWhitespaceCharacterIndex);
+	const range = new Range(fromLine.lineNumber, fromLine.leadingWhitespaceLength, fromLine.lineNumber, lastNonWhitespaceCharacterIndex);
 	const raw = ghComment.data.body;
 	// Remove suggestion because that interfers with our own suggestion rendering later.
 	const { content, suggestions } = removeSuggestion(raw);

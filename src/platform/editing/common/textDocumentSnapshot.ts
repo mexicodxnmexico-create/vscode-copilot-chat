@@ -263,12 +263,11 @@ export class SnapshotDocumentLine implements TextLine {
 		return new Range(this._line, 0, this._line + 1, 0);
 	}
 
-	public get firstNonWhitespaceCharacterIndex(): number {
-		//TODO@api, rename to 'leadingWhitespaceLength'
+	public get leadingWhitespaceLength(): number {
 		return /^(\s*)/.exec(this._text)![1].length;
 	}
 
 	public get isEmptyOrWhitespace(): boolean {
-		return this.firstNonWhitespaceCharacterIndex === this._text.length;
+		return this.leadingWhitespaceLength === this._text.length;
 	}
 }

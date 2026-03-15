@@ -463,7 +463,7 @@ multiple lines.
 			assert.strictEqual(comments.length, 1);
 			// Range should start at line 0
 			assert.strictEqual(comments[0].range.start.line, 0);
-			// firstNonWhitespaceCharacterIndex for "  indented line" is 2
+			// leadingWhitespaceLength for "  indented line" is 2
 			assert.strictEqual(comments[0].range.start.character, 2);
 		});
 
@@ -634,7 +634,7 @@ multiple lines.
 			assert.strictEqual(comments.length, 0);
 		});
 
-		test('sets correct range with firstNonWhitespaceCharacterIndex', () => {
+		test('sets correct range with leadingWhitespaceLength', () => {
 			const uri = Uri.file('/test/file.ts');
 			const content = '    indented content here';
 			const snapshot = createTestSnapshot(uri, content);
@@ -653,7 +653,7 @@ multiple lines.
 			const comments = parseReviewComments(request, input, message);
 
 			assert.strictEqual(comments.length, 1);
-			// Start character should be firstNonWhitespaceCharacterIndex (4 spaces)
+			// Start character should be leadingWhitespaceLength (4 spaces)
 			assert.strictEqual(comments[0].range.start.character, 4);
 			// End character should be lastNonWhitespaceCharacterIndex (25 - no trailing whitespace)
 			assert.strictEqual(comments[0].range.end.character, 25);
@@ -678,7 +678,7 @@ multiple lines.
 			const comments = parseReviewComments(request, input, message);
 
 			assert.strictEqual(comments.length, 1);
-			// Start: line 0, firstNonWhitespaceCharacterIndex = 2
+			// Start: line 0, leadingWhitespaceLength = 2
 			assert.strictEqual(comments[0].range.start.line, 0);
 			assert.strictEqual(comments[0].range.start.character, 2);
 			// End: line 2, lastNonWhitespaceCharacterIndex for "  line 2 with trailing  " is 22 (trimEnd removes trailing spaces)
