@@ -260,7 +260,8 @@ export class ChatSessionMetadataStore extends Disposable implements IChatSession
 			await this.fileSystemService.createDirectory(dirUri);
 		}
 
-		const content = new TextEncoder().encode(JSON.stringify(metadata, null, 2));
+		// ⚡ Bolt: Fast string to byte buffer conversion
+		const content = Buffer.from(JSON.stringify(metadata, null, 2));
 		await this.fileSystemService.writeFile(fileUri, content);
 		this._cache[sessionId] = { ...metadata, writtenToDisc: true };
 		this.updateGlobalStorage();
@@ -304,7 +305,8 @@ export class ChatSessionMetadataStore extends Disposable implements IChatSession
 			await this.fileSystemService.createDirectory(this._cacheDirectory);
 		}
 
-		const content = new TextEncoder().encode(JSON.stringify(allMetadata, null, 2));
+		// ⚡ Bolt: Fast string to byte buffer conversion
+		const content = Buffer.from(JSON.stringify(allMetadata, null, 2));
 		await this.fileSystemService.writeFile(this._cacheFile, content);
 		this.logService.trace(`[ChatSessionMetadataStore] Wrote bulk metadata file with ${Object.keys(allMetadata).length} session(s)`);
 	}
