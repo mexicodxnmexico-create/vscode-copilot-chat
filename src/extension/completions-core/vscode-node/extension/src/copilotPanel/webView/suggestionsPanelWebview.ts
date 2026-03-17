@@ -8,7 +8,7 @@ import DOMPurify from 'dompurify';
 
 const solutionsContainer = document.getElementById('solutionsContainer');
 const vscode = acquireVsCodeApi();
-let currentFocusIndex: number = 0;
+let currentFocusIndex: number = -1;
 let solutionEventHandlersInitialized = false;
 
 provideVSCodeDesignSystem().register(vsCodeButton());
@@ -76,14 +76,17 @@ function handleSolutionUpdate(message: Message) {
 		solutionsContainer.querySelectorAll('pre').forEach((pre) => {
 			pre.tabIndex = 0;
 			pre.title = 'Use arrow keys to scroll';
+			pre.setAttribute('role', 'region');
+			pre.setAttribute('aria-label', 'Code snippet');
 		});
 	}
 }
 
 function navigatePreviousSolution() {
 	const snippets = document.querySelectorAll<HTMLElement>('.snippetContainer pre');
-	const prevIndex = currentFocusIndex - 1;
+	if (snippets.length === 0) {return;}
 
+	const prevIndex = currentFocusIndex <= 0 ? snippets.length - 1 : currentFocusIndex - 1;
 	snippets[prevIndex]?.focus();
 }
 
@@ -101,13 +104,10 @@ function getSafeUrl(url: string): string | undefined {
 
 function navigateNextSolution() {
 	const snippets = document.querySelectorAll<HTMLElement>('.snippetContainer pre');
-	const nextIndex = (currentFocusIndex ?? -1) + 1;
+	if (snippets.length === 0) {return;}
 
-	if (snippets[nextIndex]) {
-		snippets[nextIndex].focus();
-	} else if (snippets[0]) {
-		snippets[0].focus();
-	}
+	const nextIndex = (currentFocusIndex === -1 || currentFocusIndex >= snippets.length - 1) ? 0 : currentFocusIndex + 1;
+	snippets[nextIndex]?.focus();
 }
 
 function updateLoadingContainer(message: Message) {
