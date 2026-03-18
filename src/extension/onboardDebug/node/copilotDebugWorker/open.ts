@@ -6,8 +6,12 @@
 import { spawn } from 'child_process';
 
 export const openVscodeUri = (remoteCommand: string | undefined, uri: string): Promise<void> => {
+	if (!uri.startsWith('vscode://') && !uri.startsWith('vscode-insiders://')) {
+		return Promise.reject(new Error('Invalid URI scheme. Only vscode:// and vscode-insiders:// are allowed.'));
+	}
+
 	let command: string;
-	let shell = false;
+	const shell = false;
 	let args = [uri];
 	if (remoteCommand) {
 		const [cmd, ...cmdArgs] = remoteCommand.split(' ');

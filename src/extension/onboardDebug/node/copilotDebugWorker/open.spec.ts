@@ -16,6 +16,24 @@ vi.mock('child_process', () => ({
 }));
 
 describe('openVscodeUri', () => {
+
+    it('should reject URI that does not start with vscode:// or vscode-insiders://', async () => {
+        const uri = 'http://example.com';
+        await expect(openVscodeUri(undefined, uri)).rejects.toThrow('Invalid URI scheme');
+    });
+
+    it('should allow URI that starts with vscode://', async () => {
+        const uri = 'vscode://example.com';
+        await openVscodeUri(undefined, uri);
+        expect(child_process.spawn).toHaveBeenCalled();
+    });
+
+    it('should allow URI that starts with vscode-insiders://', async () => {
+        const uri = 'vscode-insiders://example.com';
+        await openVscodeUri(undefined, uri);
+        expect(child_process.spawn).toHaveBeenCalled();
+    });
+
     const originalPlatform = process.platform;
 
     afterEach(() => {
