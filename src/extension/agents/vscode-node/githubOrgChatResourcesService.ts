@@ -89,7 +89,7 @@ function isValidFile(type: PromptsType, fileName: string): boolean {
 export class GitHubOrgChatResourcesService extends Disposable implements IGitHubOrgChatResourcesService {
 	private static readonly CACHE_ROOT = 'github';
 
-	// private readonly _pollingSubscriptions = this._register(new DisposableStore());
+	private readonly _pollingSubscriptions = this._register(new DisposableStore());
 	private _cachedPreferredOrgName: Promise<string | undefined> | undefined;
 
 	constructor(
@@ -228,12 +228,12 @@ export class GitHubOrgChatResourcesService extends Disposable implements IGitHub
 		// Initial poll
 		void poll();
 
-		// TODO: re-enable polling
-		// Set up interval polling
-		// const intervalId = setInterval(() => poll(), intervalMs);
-		// disposables.add(toDisposable(() => clearInterval(intervalId)));
 
-		// this._pollingSubscriptions.add(disposables);
+		// Set up interval polling
+		const intervalId = setInterval(() => poll(), intervalMs);
+		disposables.add(toDisposable(() => clearInterval(intervalId)));
+
+		this._pollingSubscriptions.add(disposables);
 
 		return disposables;
 	}
