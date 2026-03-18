@@ -82,7 +82,9 @@ export class InlineCodeSymbolLinkifier implements IContributedLinkifier {
 						const selectionRange = dest.loc.targetSelectionRange ?? dest.loc.targetRange;
 						info.location = new vscode.Location(dest.loc.targetUri, collapseRangeToStart(selectionRange));
 
-						// TODO: Figure out how to get the actual symbol kind here and update it
+						if (dest.kind !== undefined) {
+							info.kind = dest.kind;
+						}
 					}
 
 					return info;
