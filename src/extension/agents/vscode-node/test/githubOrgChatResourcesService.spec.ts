@@ -125,6 +125,30 @@ suite('GitHubOrgChatResourcesService', () => {
 			assert.equal(orgName, 'fallbackorg');
 		});
 
+		test('checks multiple workspace folders and returns organization from the first valid repo', async () => {
+			mockWorkspaceService.setWorkspaceFolders([URI.file('/workspace1'), URI.file('/workspace2')]);
+
+			// Set getRepositoryFetchUrls to return undefined for workspace1, and a valid URL for workspace2
+			mockGitService.getRepositoryFetchUrls = async (uri) => {
+				if (uri.path === '/workspace1') {
+					return undefined;
+				}
+				if (uri.path === '/workspace2') {
+					return {
+						rootUri: uri,
+						remoteFetchUrls: ['https://github.com/myorg2/myrepo2.git']
+					};
+				}
+				return undefined;
+			};
+			mockOctoKitService.setUserOrganizations(['myorg2']);
+
+			const service = createService();
+			const orgName = await service.getPreferredOrganizationName();
+
+			assert.equal(orgName, 'myorg2');
+		});
+
 		test('returns undefined when user has no organizations', async () => {
 			mockWorkspaceService.setWorkspaceFolders([]);
 			mockOctoKitService.setUserOrganizations([]);

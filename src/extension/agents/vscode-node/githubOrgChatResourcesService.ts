@@ -176,27 +176,27 @@ export class GitHubOrgChatResourcesService extends Disposable implements IGitHub
 			return undefined;
 		}
 
-		try {
-			// TODO: Support multi-root workspaces by checking all folders.
-			// This would need workspace-aware context for deciding when to use which org, which is currently not in scope.
-			const repoInfo = await this.gitService.getRepositoryFetchUrls(workspaceFolders[0]);
-			if (!repoInfo?.remoteFetchUrls?.length) {
-				return undefined;
-			}
-
-			// Try each remote URL to find a GitHub repo
-			for (const fetchUrl of repoInfo.remoteFetchUrls) {
-				if (!fetchUrl) {
+		for (const folder of workspaceFolders) {
+			try {
+				const repoInfo = await this.gitService.getRepositoryFetchUrls(folder);
+				if (!repoInfo?.remoteFetchUrls?.length) {
 					continue;
 				}
-				const repoId = getGithubRepoIdFromFetchUrl(fetchUrl);
-				if (repoId) {
-					this.logService.trace(`[GitHubOrgChatResourcesService] Found GitHub repo: ${repoId.org}/${repoId.repo}`);
-					return repoId.org;
+
+				// Try each remote URL to find a GitHub repo
+				for (const fetchUrl of repoInfo.remoteFetchUrls) {
+					if (!fetchUrl) {
+						continue;
+					}
+					const repoId = getGithubRepoIdFromFetchUrl(fetchUrl);
+					if (repoId) {
+						this.logService.trace(`[GitHubOrgChatResourcesService] Found GitHub repo: ${repoId.org}/${repoId.repo} in folder: ${folder.toString()}`);
+						return repoId.org;
+					}
 				}
+			} catch (error) {
+				this.logService.trace(`[GitHubOrgChatResourcesService] Error getting workspace repository for folder ${folder.toString()}: ${error}`);
 			}
-		} catch (error) {
-			this.logService.trace(`[GitHubOrgChatResourcesService] Error getting workspace repository: ${error}`);
 		}
 
 		return undefined;
