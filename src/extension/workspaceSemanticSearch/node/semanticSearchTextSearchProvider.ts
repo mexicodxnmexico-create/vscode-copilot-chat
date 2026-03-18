@@ -19,7 +19,7 @@ import { IRerankerService } from '../../../platform/workspaceChunkSearch/common/
 import { KeywordItem, ResolvedWorkspaceChunkQuery } from '../../../platform/workspaceChunkSearch/common/workspaceChunkSearch';
 import { IWorkspaceChunkSearchService } from '../../../platform/workspaceChunkSearch/node/workspaceChunkSearchService';
 import { TelemetryCorrelationId } from '../../../util/common/telemetryCorrelationId';
-import { raceCancellation } from '../../../util/vs/base/common/async';
+import { Limiter, raceCancellation } from '../../../util/vs/base/common/async';
 import { CancellationToken } from '../../../util/vs/base/common/cancellation';
 import { StopWatch } from '../../../util/vs/base/common/stopwatch';
 import * as strings from '../../../util/vs/base/common/strings';
@@ -473,7 +473,8 @@ export class SemanticSearchTextSearchProvider implements vscode.AITextSearchProv
 				progress.report(match);
 			}
 		};
-		await Promise.all(rankingResults.map(result => {
+		const limiter = new Limiter<vscode.TextSearchComplete>(10);
+		await Promise.all(rankingResults.map(result => limiter.queue(() => {
 			return this.searchService.findTextInFiles(
 				{
 					pattern: result.query,
@@ -487,7 +488,7 @@ export class SemanticSearchTextSearchProvider implements vscode.AITextSearchProv
 				onResult,
 				token,
 			);
-		}));
+		})));
 		//report the rest of the combined results without the LLM ranked ones
 		for (const chunk of combinedChunks.slice(rankingResults.length)) {
 			const docContainingRef = await this.workspaceService.openTextDocumentAndSnapshot(chunk.file);
@@ -660,7 +661,8 @@ export async function getSearchResults(
 			}
 			fileChunks[filePath].push(fileResult);
 		});
-		await Promise.all(Object.keys(fileChunks).map(async filePath => {
+		const fileLimiter = new Limiter<void>(10);
+		await Promise.all(Object.keys(fileChunks).map(filePath => fileLimiter.queue(async () => {
 			const file = fileChunks[filePath][0].file;
 			const fileContent = await fileReader(file);
 			const ranges = getMatchRanges(fileChunks[filePath]);
@@ -673,8 +675,7 @@ export async function getSearchResults(
 					)
 				);
 			}
-		}
-		));
+		})));
 
 		return results;
 	};
