@@ -487,7 +487,8 @@ export class OpenAIResponsesProcessor {
 				return onProgress({ text: '', copilotErrors: [{ agent: 'openai', code: chunk.code || 'unknown', message: chunk.message, type: 'error', identifier: chunk.param || undefined }] });
 			case 'response.output_text.delta': {
 				const capiChunk: CapiResponsesTextDeltaEvent = chunk;
-				const haystack = new Lazy(() => new TextEncoder().encode(capiChunk.delta));
+				// ⚡ Bolt: Use Buffer.from over new TextEncoder().encode for significant memory/CPU savings in streaming hot path
+				const haystack = new Lazy(() => Buffer.from(capiChunk.delta));
 				return onProgress({
 					text: capiChunk.delta,
 					logprobs: capiChunk.logprobs && {
@@ -622,7 +623,8 @@ export class OpenAIResponsesProcessor {
 function mapLogProp(text: Lazy<Uint8Array>, lp: OpenAI.Responses.ResponseTextDeltaEvent.Logprob.TopLogprob): TokenLogProb {
 	let bytes: number[] = [];
 	if (lp.token) {
-		const needle = new TextEncoder().encode(lp.token);
+		// ⚡ Bolt: Use Buffer.from over new TextEncoder().encode for significant memory/CPU savings in streaming hot path
+		const needle = Buffer.from(lp.token);
 		const haystack = text.value;
 		const idx = binaryIndexOf(haystack, needle);
 		if (idx !== -1) {
