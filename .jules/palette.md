@@ -1,3 +1,6 @@
 ## 2024-03-09 - Accessibility of focusable dynamic pre elements
 **Learning:** Dynamically generated `<pre>` elements with `tabindex="0"` in webviews should provide context for screen readers to explain why they are focusable (e.g., that they are scrollable text regions), instead of relying solely on implicit focus behavior. `aria-label` shouldn't be used as it replaces content. `title="Use arrow keys to scroll"` provides keyboard interaction context.
 **Action:** Always add `title="Use arrow keys to scroll"` to dynamic focusable `<pre>` elements in HTML strings to ensure keyboard interaction context.
+## 2024-03-20 - Ensure scrollable `<pre>` tags have `role="region"`
+**Learning:** When dynamically generated code block `<pre>` elements are given `tabIndex="0"` to make them keyboard accessible for scrolling, they require a semantic role so screen readers can properly announce them. Using `role="region"` effectively informs screen reader users they are entering a distinct, scrollable area without misrepresenting the content (like an `aria-label` might).
+**Action:** Always assign `role="region"` alongside `title` to scrollable `<pre>` or similar container elements made keyboard focusable via `tabIndex="0"`.
