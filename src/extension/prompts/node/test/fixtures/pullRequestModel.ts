@@ -853,7 +853,8 @@ export class PullRequestModel extends IssueModel<PullRequest> implements IPullRe
 
 			const comments = data.repository.pullRequest.reviewThreads.nodes
 				.map(node => node.comments.nodes.map(comment => parseGraphQLComment(comment, node.isResolved, this.githubRepository), remote))
-				.reduce((prev, curr) => prev.concat(curr), [])
+				// Optimization: Use Array.flat() instead of reduce/concat for O(n) performance
+				.flat()
 				.sort((a: IComment, b: IComment) => {
 					return a.createdAt > b.createdAt ? 1 : -1;
 				});
@@ -979,7 +980,8 @@ export class PullRequestModel extends IssueModel<PullRequest> implements IPullRe
 		}
 
 		const reviewEvents = events.filter((e): e is CommonReviewEvent => e.event === EventType.Reviewed);
-		const reviewComments = reviewThreads.reduce((previous, current) => (previous as IComment[]).concat(current.comments), []);
+		// Optimization: Use Array.flat() instead of reduce/concat for O(n) performance
+		const reviewComments = reviewThreads.map(thread => thread.comments).flat();
 
 		const reviewEventsById = reviewEvents.reduce((index, evt) => {
 			index[evt.id] = evt;

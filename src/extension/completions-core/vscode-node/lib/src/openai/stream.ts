@@ -655,10 +655,11 @@ function convertToAPIJsonData(streamingData: APIJsonDataStreaming): APIJsonData 
 	if (streamingData.logprobs.length === 0) {
 		return out;
 	}
-	const flattenedLogprobs = streamingData.logprobs.reduce((acc, cur) => acc.concat(cur), []);
-	const flattenedTopLogprobs = streamingData.top_logprobs.reduce((acc, cur) => acc.concat(cur), []);
-	const flattenedOffsets = streamingData.text_offset.reduce((acc, cur) => acc.concat(cur), []);
-	const flattenedTokens = streamingData.tokens.reduce((acc, cur) => acc.concat(cur), []);
+	// Optimization: Use Array.flat() instead of reduce/concat for O(n) performance
+	const flattenedLogprobs = streamingData.logprobs.flat();
+	const flattenedTopLogprobs = streamingData.top_logprobs.flat();
+	const flattenedOffsets = streamingData.text_offset.flat();
+	const flattenedTokens = streamingData.tokens.flat();
 
 	return {
 		...out,
