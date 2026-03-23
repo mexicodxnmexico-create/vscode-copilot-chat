@@ -111,6 +111,8 @@ describe('suggestionsPanelWebview', () => {
         const pre = container.querySelector('pre');
         expect(pre).not.toBeNull();
         expect(pre?.tabIndex).toBe(0);
+        expect(pre?.getAttribute('role')).toBe('region');
+        expect(pre?.title).toBe('Use arrow keys to scroll');
     });
 
     it('does not render malicious citation URL', async () => {
