@@ -138,7 +138,8 @@ export class PullRequestModel extends IssueModel<PullRequest> implements IPullRe
 		}
 
 		const reviewEvents = events.filter((e): e is CommonReviewEvent => e.event === EventType.Reviewed);
-		const reviewComments = reviewThreads.reduce((previous, current) => (previous as IComment[]).concat(current.comments), []);
+		// ⚡ Bolt: Replaced O(n²) array flattening with native flatMap() for better performance
+		const reviewComments = reviewThreads.flatMap(current => current.comments);
 
 		const reviewEventsById = reviewEvents.reduce((index, evt) => {
 			index[evt.id] = evt;
