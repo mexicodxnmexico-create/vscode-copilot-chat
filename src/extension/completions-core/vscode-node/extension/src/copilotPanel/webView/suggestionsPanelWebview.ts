@@ -76,6 +76,7 @@ function handleSolutionUpdate(message: Message) {
 		solutionsContainer.querySelectorAll('pre').forEach((pre) => {
 			pre.tabIndex = 0;
 			pre.title = 'Use arrow keys to scroll';
+			pre.setAttribute('role', 'region');
 		});
 	}
 }
