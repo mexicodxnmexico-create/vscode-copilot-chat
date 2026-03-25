@@ -56,6 +56,8 @@ export class NodeHookExecutor implements IHookExecutor {
 			}
 		}
 
+		// SECURITY: We use shell: true because the 'command' might be a complex command string (e.g. "python hook.py arg").
+		// However, 'hook.command' is provided by the extension's code (ChatHookCommand), not user input.
 		const child = spawn(hook.command, [], {
 			stdio: 'pipe',
 			cwd,
