@@ -230,9 +230,7 @@ class DocumentState {
 
 			const potentialNewTextLengthEdit = e.textLengthEdit.compose(recentTextLengthEdit);
 			const potentialNewRange = potentialNewTextLengthEdit.getRange();
-			// FIXME@ulugbekna: the code below can actually throw if one edit cancels another one out
-			assertType(potentialNewRange, 'we only compose non-empty Edits');
-			if (potentialNewRange.endLineNumber - potentialNewRange.startLineNumber > 100) {
+			if (potentialNewRange && potentialNewRange.endLineNumber - potentialNewRange.startLineNumber > 100) {
 				break;
 			}
 
