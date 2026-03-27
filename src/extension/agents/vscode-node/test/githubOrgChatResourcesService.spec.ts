@@ -262,7 +262,7 @@ suite('GitHubOrgChatResourcesService', () => {
 		});
 	});
 
-	suite.skip('startPolling', () => {
+	suite.skip('initialize', () => {
 
 		test('invokes callback immediately with org name', async () => {
 			mockWorkspaceService.setWorkspaceFolders([URI.file('/workspace')]);
@@ -275,7 +275,7 @@ suite('GitHubOrgChatResourcesService', () => {
 			const service = createService();
 
 			let capturedOrg: string | undefined;
-			const subscription = service.startPolling(10000, async (orgName) => {
+			const subscription = service.initialize(async (orgName) => {
 				capturedOrg = orgName;
 			});
 			disposables.add(subscription);
@@ -293,7 +293,7 @@ suite('GitHubOrgChatResourcesService', () => {
 			const service = createService();
 
 			let callbackInvoked = false;
-			const subscription = service.startPolling(10000, async () => {
+			const subscription = service.initialize(async () => {
 				callbackInvoked = true;
 			});
 			disposables.add(subscription);
@@ -313,7 +313,7 @@ suite('GitHubOrgChatResourcesService', () => {
 			const service = createService();
 
 			let callCount = 0;
-			const subscription = service.startPolling(50, async () => {
+			const subscription = service.initialize(async () => {
 				callCount++;
 			});
 
@@ -344,7 +344,7 @@ suite('GitHubOrgChatResourcesService', () => {
 			let concurrentCalls = 0;
 			let maxConcurrentCalls = 0;
 
-			const subscription = service.startPolling(10, async () => {
+			const subscription = service.initialize(async () => {
 				concurrentCalls++;
 				maxConcurrentCalls = Math.max(maxConcurrentCalls, concurrentCalls);
 				await new Promise(resolve => setTimeout(resolve, 50));
@@ -370,7 +370,7 @@ suite('GitHubOrgChatResourcesService', () => {
 			const service = createService();
 
 			let callCount = 0;
-			const subscription = service.startPolling(30, async () => {
+			const subscription = service.initialize(async () => {
 				callCount++;
 				if (callCount === 1) {
 					throw new Error('Callback error');

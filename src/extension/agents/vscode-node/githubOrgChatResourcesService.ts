@@ -29,7 +29,7 @@ export interface IGitHubOrgChatResourcesService extends IDisposable {
 	 * @param callback The callback to invoke on each poll cycle
 	 * @returns A disposable that stops the polling when disposed
 	 */
-	startPolling(intervalMs: number, callback: (orgName: string) => Promise<void>): IDisposable;
+	initialize(callback: (orgName: string) => Promise<void>): IDisposable;
 
 	/**
 	 * Reads a specific cached resource.
@@ -202,7 +202,7 @@ export class GitHubOrgChatResourcesService extends Disposable implements IGitHub
 		return undefined;
 	}
 
-	startPolling(intervalMs: number, callback: (orgName: string) => Promise<void>): IDisposable {
+	initialize(callback: (orgName: string) => Promise<void>): IDisposable {
 		const disposables = new DisposableStore();
 
 		let isPolling = false;
@@ -227,13 +227,6 @@ export class GitHubOrgChatResourcesService extends Disposable implements IGitHub
 
 		// Initial poll
 		void poll();
-
-		// TODO: re-enable polling
-		// Set up interval polling
-		// const intervalId = setInterval(() => poll(), intervalMs);
-		// disposables.add(toDisposable(() => clearInterval(intervalId)));
-
-		// this._pollingSubscriptions.add(disposables);
 
 		return disposables;
 	}
