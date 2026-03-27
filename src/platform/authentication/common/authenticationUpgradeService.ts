@@ -117,8 +117,7 @@ export class AuthenticationChatUpgradeService extends Disposable implements IAut
 		stream.confirmation(
 			this._permissionRequest,
 			detail || l10n.t('To get more relevant Chat results, we need permission to read the contents of your repository on GitHub.'),
-			// TODO: Change this shape to include request via a dedicated field
-			{ authPermissionPrompted: true, ...data, context },
+			{ authPermissionPrompted: true, request: data, context },
 			[
 				this._permissionRequestGrant,
 				this._permissionRequestNotNow,
@@ -128,10 +127,11 @@ export class AuthenticationChatUpgradeService extends Disposable implements IAut
 	}
 
 	async handleConfirmationRequest(stream: ChatResponseStream, request: ChatRequest, history: ChatContext['history']): Promise<ChatRequest> {
-		const findConfirmationRequested: ChatRequest | undefined = request.acceptedConfirmationData?.find(ref => ref?.authPermissionPrompted);
-		if (!findConfirmationRequested) {
+		const confirmationData = request.acceptedConfirmationData?.find(ref => ref?.authPermissionPrompted);
+		if (!confirmationData) {
 			return request;
 		}
+		const findConfirmationRequested: ChatRequest = confirmationData.request;
 		this.logService.trace('Handling confirmation request');
 		switch (request.prompt) {
 			case `${this._permissionRequestGrant}: "${this._permissionRequest}"`:
