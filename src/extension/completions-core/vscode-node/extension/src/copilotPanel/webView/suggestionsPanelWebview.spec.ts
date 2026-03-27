@@ -93,7 +93,7 @@ describe('suggestionsPanelWebview', () => {
         expect(solutions).toContain('<span style="vertical-align: text-bottom"><strong><span aria-hidden="true">⚠</span> Warning:</strong></span>');
     });
 
-    it('adds tabindex to pre elements', async () => {
+    it('adds tabindex and accessibility attributes to pre elements', async () => {
         const message = {
 		command: 'solutionsUpdated',
 		solutions: [
@@ -111,6 +111,9 @@ describe('suggestionsPanelWebview', () => {
         const pre = container.querySelector('pre');
         expect(pre).not.toBeNull();
         expect(pre?.tabIndex).toBe(0);
+        expect(pre?.getAttribute('role')).toBe('region');
+        expect(pre?.getAttribute('aria-label')).toBe('Code snippet');
+        expect(pre?.getAttribute('title')).toBe('Use arrow keys to scroll');
     });
 
     it('does not render malicious citation URL', async () => {
