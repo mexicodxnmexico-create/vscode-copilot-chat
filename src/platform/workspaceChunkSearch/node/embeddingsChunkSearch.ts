@@ -109,10 +109,15 @@ export class EmbeddingsChunkSearch extends Disposable implements IWorkspaceChunk
 		await this.initialize();
 
 		if (trigger === 'manual') {
-			this._extensionContext.workspaceState.update(this._hasRequestedManualIndexingKey, true);
+			await this._extensionContext.workspaceState.update(this._hasRequestedManualIndexingKey, true);
+			const limitStatus = await this.checkIndexSizeLimits();
+			if (limitStatus) {
+				this.setState(limitStatus);
+			} else {
+				this.setState(LocalEmbeddingsIndexStatus.Ready);
+			}
 		}
 
-		// TODO: we need to re-check the workspace state here since it may have changed
 		if (this._state === LocalEmbeddingsIndexStatus.TooManyFilesForAnyIndexing) {
 			const fileCap = await this.getManualIndexFileCap();
 			return Result.error({
