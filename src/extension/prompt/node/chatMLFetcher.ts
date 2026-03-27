@@ -423,7 +423,7 @@ export class ChatMLFetcherImpl extends AbstractChatMLFetcher {
 				case FetchResponseKind.Failed: {
 					const processed = this.processFailedResponse(response, ourRequestId);
 					// Retry on server errors based on configured status codes
-					const retryServerErrorStatusCodes = this._configurationService.getExperimentBasedConfig(ConfigKey.TeamInternal.RetryServerErrorStatusCodes, this._experimentationService);
+					const retryServerErrorStatusCodes = this._configurationService.getExperimentBasedConfig(ConfigKey.Advanced.RetryServerErrorStatusCodes, this._experimentationService);
 					const statusCodesToRetry = retryServerErrorStatusCodes
 						.split(',')
 						.map(s => parseInt(s.trim(), 10));
@@ -489,7 +489,7 @@ export class ChatMLFetcherImpl extends AbstractChatMLFetcher {
 			}
 			const processed = this.processError(err, ourRequestId, err.gitHubRequestId, usernameToScrub);
 			if (processed.type === ChatFetchResponseType.NetworkError && enableRetryOnError) {
-				const isRetryNetworkErrorEnabled = this._configurationService.getExperimentBasedConfig(ConfigKey.TeamInternal.RetryNetworkErrors, this._experimentationService);
+				const isRetryNetworkErrorEnabled = this._configurationService.getExperimentBasedConfig(ConfigKey.Advanced.RetryNetworkErrors, this._experimentationService);
 				if (isRetryNetworkErrorEnabled) {
 					const { retryResult, connectivityTestError, connectivityTestErrorGitHubRequestId } = await this._retryAfterError({
 						opts,
@@ -674,7 +674,7 @@ export class ChatMLFetcherImpl extends AbstractChatMLFetcher {
 		// When Electron's network process crashes, all requests through it fail permanently.
 		// Fall back to node-fetch which bypasses Electron's network stack entirely.
 		const fallbackEnabled = this._configurationService.getExperimentBasedConfig(
-			ConfigKey.TeamInternal.FallbackNodeFetchOnNetworkProcessCrash, this._experimentationService);
+			ConfigKey.Advanced.FallbackNodeFetchOnNetworkProcessCrash, this._experimentationService);
 		const isNetworkProcessCrash = processed.type === ChatFetchResponseType.NetworkError
 			&& processed.isNetworkProcessCrash === true
 			&& fallbackEnabled;

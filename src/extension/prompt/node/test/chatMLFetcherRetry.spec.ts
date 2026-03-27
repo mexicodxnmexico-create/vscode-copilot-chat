@@ -52,8 +52,8 @@ describe('ChatMLFetcherImpl retry logic', () => {
 
 		mockFetcherService = new MockFetcherService();
 		configurationService = new InMemoryConfigurationService(new DefaultsOnlyConfigurationService());
-		configurationService.setConfig(ConfigKey.TeamInternal.RetryServerErrorStatusCodes, '500,502');
-		configurationService.setConfig(ConfigKey.TeamInternal.RetryNetworkErrors, true);
+		configurationService.setConfig(ConfigKey.Advanced.RetryServerErrorStatusCodes, '500,502');
+		configurationService.setConfig(ConfigKey.Advanced.RetryNetworkErrors, true);
 
 		const logService = new TestLogService();
 		const telemetryService = new NullTelemetryService();
@@ -149,7 +149,7 @@ describe('ChatMLFetcherImpl retry logic', () => {
 
 		it('respects custom status codes from configuration', async () => {
 			// Configure to only retry on 503
-			configurationService.setConfig(ConfigKey.TeamInternal.RetryServerErrorStatusCodes, '503');
+			configurationService.setConfig(ConfigKey.Advanced.RetryServerErrorStatusCodes, '503');
 
 			mockFetcherService.queueResponse(createErrorResponse(500, 'Internal Server Error'));
 
@@ -163,7 +163,7 @@ describe('ChatMLFetcherImpl retry logic', () => {
 
 	describe('network error retry', () => {
 		it('retries after connectivity check succeeds', async () => {
-			configurationService.setConfig(ConfigKey.TeamInternal.RetryNetworkErrors, true);
+			configurationService.setConfig(ConfigKey.Advanced.RetryNetworkErrors, true);
 
 			// Use ENOTFOUND instead of ECONNRESET - ECONNRESET triggers auto-retry in networking.ts
 			// Order: 1) initial fetch → error, 2) connectivity check → 200, 3) retry → success
@@ -177,7 +177,7 @@ describe('ChatMLFetcherImpl retry logic', () => {
 		});
 
 		it('does not retry when RetryNetworkErrors is disabled', async () => {
-			configurationService.setConfig(ConfigKey.TeamInternal.RetryNetworkErrors, false);
+			configurationService.setConfig(ConfigKey.Advanced.RetryNetworkErrors, false);
 
 			// Use ENOTFOUND instead of ECONNRESET - ECONNRESET triggers auto-retry in networking.ts
 			mockFetcherService.queueError(createNetworkError('ENOTFOUND'));
@@ -191,7 +191,7 @@ describe('ChatMLFetcherImpl retry logic', () => {
 
 	describe('status code parsing', () => {
 		it('handles comma-separated status codes with spaces', async () => {
-			configurationService.setConfig(ConfigKey.TeamInternal.RetryServerErrorStatusCodes, '500, 502 , 503');
+			configurationService.setConfig(ConfigKey.Advanced.RetryServerErrorStatusCodes, '500, 502 , 503');
 
 			mockFetcherService.queueResponse(createErrorResponse(502, 'Bad Gateway'));
 			mockFetcherService.queueResponse(createSuccessResponse('{}')); // connectivity check
@@ -203,7 +203,7 @@ describe('ChatMLFetcherImpl retry logic', () => {
 		});
 
 		it('handles invalid status codes gracefully', async () => {
-			configurationService.setConfig(ConfigKey.TeamInternal.RetryServerErrorStatusCodes, '500,invalid,502');
+			configurationService.setConfig(ConfigKey.Advanced.RetryServerErrorStatusCodes, '500,invalid,502');
 
 			mockFetcherService.queueResponse(createErrorResponse(500, 'Internal Server Error'));
 			mockFetcherService.queueResponse(createSuccessResponse('{}')); // connectivity check
@@ -216,7 +216,7 @@ describe('ChatMLFetcherImpl retry logic', () => {
 		});
 
 		it('does not retry when configuration is empty string', async () => {
-			configurationService.setConfig(ConfigKey.TeamInternal.RetryServerErrorStatusCodes, '');
+			configurationService.setConfig(ConfigKey.Advanced.RetryServerErrorStatusCodes, '');
 
 			mockFetcherService.queueResponse(createErrorResponse(500, 'Internal Server Error'));
 
@@ -228,7 +228,7 @@ describe('ChatMLFetcherImpl retry logic', () => {
 		});
 
 		it('does not retry when configuration contains only invalid values', async () => {
-			configurationService.setConfig(ConfigKey.TeamInternal.RetryServerErrorStatusCodes, 'invalid,abc,xyz');
+			configurationService.setConfig(ConfigKey.Advanced.RetryServerErrorStatusCodes, 'invalid,abc,xyz');
 
 			mockFetcherService.queueResponse(createErrorResponse(500, 'Internal Server Error'));
 
@@ -242,7 +242,7 @@ describe('ChatMLFetcherImpl retry logic', () => {
 
 	describe('connectivity check failure', () => {
 		it('does not retry server error when connectivity check fails', async () => {
-			configurationService.setConfig(ConfigKey.TeamInternal.RetryServerErrorStatusCodes, '500,502');
+			configurationService.setConfig(ConfigKey.Advanced.RetryServerErrorStatusCodes, '500,502');
 
 			// Order: 1) initial fetch → 500, 2) connectivity checks fail (3 attempts)
 			mockFetcherService.queueResponse(createErrorResponse(500, 'Internal Server Error'));
@@ -260,8 +260,8 @@ describe('ChatMLFetcherImpl retry logic', () => {
 
 	describe('network process crash fallback to node-fetch', () => {
 		it('falls back to node-fetch and retries when network process crashed and flag is enabled', async () => {
-			configurationService.setConfig(ConfigKey.TeamInternal.RetryNetworkErrors, true);
-			configurationService.setConfig(ConfigKey.TeamInternal.FallbackNodeFetchOnNetworkProcessCrash, true);
+			configurationService.setConfig(ConfigKey.Advanced.RetryNetworkErrors, true);
+			configurationService.setConfig(ConfigKey.Advanced.FallbackNodeFetchOnNetworkProcessCrash, true);
 
 			// 1) initial fetch → network process crash error
 			// 2) connectivity check via node-fetch → success
@@ -283,8 +283,8 @@ describe('ChatMLFetcherImpl retry logic', () => {
 		});
 
 		it('does NOT fall back to node-fetch when flag is disabled', async () => {
-			configurationService.setConfig(ConfigKey.TeamInternal.RetryNetworkErrors, true);
-			configurationService.setConfig(ConfigKey.TeamInternal.FallbackNodeFetchOnNetworkProcessCrash, false);
+			configurationService.setConfig(ConfigKey.Advanced.RetryNetworkErrors, true);
+			configurationService.setConfig(ConfigKey.Advanced.FallbackNodeFetchOnNetworkProcessCrash, false);
 
 			// 1) initial fetch → network process crash error
 			// 2-4) connectivity checks via default fetcher → all fail (dead network process)
@@ -303,8 +303,8 @@ describe('ChatMLFetcherImpl retry logic', () => {
 		});
 
 		it('does NOT fall back to node-fetch for non-crash network errors', async () => {
-			configurationService.setConfig(ConfigKey.TeamInternal.RetryNetworkErrors, true);
-			configurationService.setConfig(ConfigKey.TeamInternal.FallbackNodeFetchOnNetworkProcessCrash, true);
+			configurationService.setConfig(ConfigKey.Advanced.RetryNetworkErrors, true);
+			configurationService.setConfig(ConfigKey.Advanced.FallbackNodeFetchOnNetworkProcessCrash, true);
 
 			// Regular network error (not a crash) — should NOT trigger node-fetch fallback
 			mockFetcherService.queueError(createNetworkError('ENOTFOUND'));
@@ -320,8 +320,8 @@ describe('ChatMLFetcherImpl retry logic', () => {
 		});
 
 		it('does NOT fall back when RetryNetworkErrors is disabled even if crash flag is enabled', async () => {
-			configurationService.setConfig(ConfigKey.TeamInternal.RetryNetworkErrors, false);
-			configurationService.setConfig(ConfigKey.TeamInternal.FallbackNodeFetchOnNetworkProcessCrash, true);
+			configurationService.setConfig(ConfigKey.Advanced.RetryNetworkErrors, false);
+			configurationService.setConfig(ConfigKey.Advanced.FallbackNodeFetchOnNetworkProcessCrash, true);
 
 			mockFetcherService.queueError(createNetworkProcessCrashedError());
 
@@ -333,8 +333,8 @@ describe('ChatMLFetcherImpl retry logic', () => {
 		});
 
 		it('sets isNetworkProcessCrash flag on the error result', async () => {
-			configurationService.setConfig(ConfigKey.TeamInternal.RetryNetworkErrors, false);
-			configurationService.setConfig(ConfigKey.TeamInternal.FallbackNodeFetchOnNetworkProcessCrash, false);
+			configurationService.setConfig(ConfigKey.Advanced.RetryNetworkErrors, false);
+			configurationService.setConfig(ConfigKey.Advanced.FallbackNodeFetchOnNetworkProcessCrash, false);
 
 			mockFetcherService.queueError(createNetworkProcessCrashedError());
 
@@ -347,7 +347,7 @@ describe('ChatMLFetcherImpl retry logic', () => {
 		});
 
 		it('does not set isNetworkProcessCrash flag for regular network errors', async () => {
-			configurationService.setConfig(ConfigKey.TeamInternal.RetryNetworkErrors, false);
+			configurationService.setConfig(ConfigKey.Advanced.RetryNetworkErrors, false);
 
 			mockFetcherService.queueError(createNetworkError('ENOTFOUND'));
 
