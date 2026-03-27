@@ -9,7 +9,7 @@ import { TextDocumentSnapshot } from '../../../../platform/editing/common/textDo
 import { ILanguageFeaturesService, isLocationLink } from '../../../../platform/languages/common/languageFeaturesService';
 import { ILogService } from '../../../../platform/log/common/logService';
 import { getStructureUsingIndentation } from '../../../../platform/parser/node/indentationStructure';
-import { TreeSitterExpressionInfo } from '../../../../platform/parser/node/nodes';
+import { TreeSitterExpressionInfo, TreeSitterOffsetRange } from '../../../../platform/parser/node/nodes';
 import { IParserService, vscodeToTreeSitterOffsetRange } from '../../../../platform/parser/node/parserService';
 import { TreeSitterUnknownLanguageError } from '../../../../platform/parser/node/treeSitterLanguages';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry';
@@ -72,9 +72,9 @@ export async function findAllReferencedFunctionImplementationsInSelection(
 			const treeSitterAST = parserService.getTreeSitterAST(textDocument);
 			if (treeSitterAST) {
 				const functionDefinitions = await treeSitterAST.getFunctionDefinitions(); // TODO: we should do this once per document, not once per call expression
-				const functionDefinition = functionDefinitions.find((fn) => fn.identifier === callExpr.identifier); // FIXME: this's incorrect because it doesn't count for import aliases (e.g., `import { foo as bar } from 'baz'`)
+				const treeSitterRange = vscodeToTreeSitterOffsetRange(range, textDocument);
+				const functionDefinition = findBestMatchingNode(functionDefinitions, treeSitterRange, callExpr.identifier);
 				if (functionDefinition) {
-					const treeSitterRange = vscodeToTreeSitterOffsetRange(range, textDocument);
 					functionImplementations.push({
 						uri,
 						range,
@@ -156,9 +156,10 @@ export async function findAllReferencedClassDeclarationsInSelection(
 			const textDocument = await workspaceService.openTextDocumentAndSnapshot(uri);
 			const treeSitterAST = parserService.getTreeSitterAST(textDocument);
 			if (treeSitterAST) {
-				const classDeclaration = (await treeSitterAST.getClassDeclarations()).find((fn) => fn.identifier === match.identifier);
+				const classDeclarations = await treeSitterAST.getClassDeclarations();
+				const treeSitterRange = vscodeToTreeSitterOffsetRange(range, textDocument);
+				const classDeclaration = findBestMatchingNode(classDeclarations, treeSitterRange, match.identifier);
 				if (classDeclaration) {
-					const treeSitterRange = vscodeToTreeSitterOffsetRange(range, textDocument);
 					classDeclarations.push({
 						uri,
 						range,
@@ -345,4 +346,50 @@ export async function getStructure(parserService: IParserService, document: Text
 		return structure;
 	}
 	return getStructureUsingIndentation(new VsCodeTextDocument(document), document.languageId, formattingOptions);
+}
+
+/**
+ * Finds the best matching tree-sitter expression from a list based on overlap with a target range.
+ * This handles cases where identifiers are aliased in imports (e.g. `import { foo as bar } from 'baz'`),
+ * which means the string identifier matched might not equal `fallbackIdentifier`.
+ *
+ * It prefers exact or containing matches that are as tightly scoped as possible,
+ * falling back to the highest intersection ratio, and finally falling back to a raw identifier match.
+ */
+export function findBestMatchingNode(
+	nodes: TreeSitterExpressionInfo[],
+	targetRange: TreeSitterOffsetRange,
+	fallbackIdentifier: string
+): TreeSitterExpressionInfo | undefined {
+	let bestMatch: TreeSitterExpressionInfo | undefined;
+	let maxScore = -1;
+
+	for (const node of nodes) {
+		const start = Math.max(node.startIndex, targetRange.startIndex);
+		const end = Math.min(node.endIndex, targetRange.endIndex);
+		const overlap = Math.max(end - start, 0);
+
+		if (overlap === 0) continue;
+
+		const nodeLen = node.endIndex - node.startIndex;
+
+		let score = 0;
+		const doesContain = node.startIndex <= targetRange.startIndex && targetRange.endIndex <= node.endIndex;
+
+		if (doesContain) {
+			// If it fully contains the target range, we prefer tighter fitting nodes (smaller len -> higher score)
+			// + 10 ensures it's always chosen over partial overlaps
+			score = 10.0 + (1.0 / nodeLen);
+		} else {
+			// Partial overlap: intersection / size of the node
+			score = overlap / nodeLen;
+		}
+
+		if (score > maxScore) {
+			maxScore = score;
+			bestMatch = node;
+		}
+	}
+
+	return bestMatch ?? nodes.find((n) => n.identifier === fallbackIdentifier);
 }
