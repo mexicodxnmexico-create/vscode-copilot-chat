@@ -835,7 +835,7 @@ export function makeUriConfirmationChecker(configuration: IConfigurationService,
 		for (const obj of [patterns, ALWAYS_CHECKED_EDIT_PATTERNS, hookFilesPatterns]) {
 			if (obj) {
 				for (const [pattern, isApproved] of Object.entries(obj)) {
-					arr.patterns.push({ pattern: glob.parse({ base: wf.fsPath, pattern: ignoreCasing ? pattern.toLowerCase() : pattern }), isApproved });
+					arr.patterns.push({ pattern: glob.parse({ base: wf.fsPath, pattern: ignoreCasing ? pattern.toLowerCase() : pattern }, { ignoreCase: ignoreCasing }), isApproved });
 				}
 			}
 		}
