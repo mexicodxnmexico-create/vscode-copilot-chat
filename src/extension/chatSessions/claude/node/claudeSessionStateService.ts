@@ -10,6 +10,7 @@ import { createServiceIdentifier } from '../../../../util/common/services';
 import { arrayEquals } from '../../../../util/vs/base/common/equals';
 import { Emitter, Event } from '../../../../util/vs/base/common/event';
 import { Disposable } from '../../../../util/vs/base/common/lifecycle';
+import { LRUCache } from '../../../../util/common/cache';
 import type { ClaudeFolderInfo } from '../common/claudeFolderInfo';
 
 /**
@@ -103,8 +104,7 @@ export class ClaudeSessionStateService extends Disposable implements IClaudeSess
 	readonly onDidChangeSessionState = this._onDidChangeSessionState.event;
 
 	// State for sessions (model and permission mode selections)
-	// TODO: What about expiration of state for old sessions?
-	private readonly _sessionState = new Map<string, SessionState>();
+	private readonly _sessionState = new LRUCache<SessionState>(100);
 
 	constructor() {
 		super();
@@ -120,7 +120,7 @@ export class ClaudeSessionStateService extends Disposable implements IClaudeSess
 		if (existing?.modelId === modelId) {
 			return;
 		}
-		this._sessionState.set(sessionId, {
+		this._sessionState.put(sessionId, {
 			modelId,
 			permissionMode: existing?.permissionMode ?? 'acceptEdits',
 			capturingToken: existing?.capturingToken,
@@ -139,7 +139,7 @@ export class ClaudeSessionStateService extends Disposable implements IClaudeSess
 		if (existing?.permissionMode === mode) {
 			return;
 		}
-		this._sessionState.set(sessionId, {
+		this._sessionState.put(sessionId, {
 			modelId: existing?.modelId,
 			permissionMode: mode,
 			capturingToken: existing?.capturingToken,
@@ -155,7 +155,7 @@ export class ClaudeSessionStateService extends Disposable implements IClaudeSess
 
 	setCapturingTokenForSession(sessionId: string, token: CapturingToken | undefined): void {
 		const existing = this._sessionState.get(sessionId);
-		this._sessionState.set(sessionId, {
+		this._sessionState.put(sessionId, {
 			modelId: existing?.modelId,
 			permissionMode: existing?.permissionMode ?? 'acceptEdits',
 			capturingToken: token,
@@ -173,7 +173,7 @@ export class ClaudeSessionStateService extends Disposable implements IClaudeSess
 		if (existing?.folderInfo?.cwd === folderInfo.cwd && arrayEquals(existing?.folderInfo?.additionalDirectories ?? [], folderInfo.additionalDirectories)) {
 			return;
 		}
-		this._sessionState.set(sessionId, {
+		this._sessionState.put(sessionId, {
 			modelId: existing?.modelId,
 			permissionMode: existing?.permissionMode ?? 'acceptEdits',
 			capturingToken: existing?.capturingToken,
@@ -189,7 +189,7 @@ export class ClaudeSessionStateService extends Disposable implements IClaudeSess
 
 	setUsageHandlerForSession(sessionId: string, handler: UsageHandler | undefined): void {
 		const existing = this._sessionState.get(sessionId);
-		this._sessionState.set(sessionId, {
+		this._sessionState.put(sessionId, {
 			modelId: existing?.modelId,
 			permissionMode: existing?.permissionMode ?? 'acceptEdits',
 			capturingToken: existing?.capturingToken,
