@@ -6,6 +6,13 @@
 import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit';
 import DOMPurify from 'dompurify';
 
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+	if (node.tagName === 'A' && node.getAttribute('target') === '_blank') {
+		node.setAttribute('rel', 'noopener noreferrer');
+	}
+});
+
+
 const solutionsContainer = document.getElementById('solutionsContainer');
 const vscode = acquireVsCodeApi();
 let currentFocusIndex: number = 0;
@@ -51,27 +58,41 @@ function handleSolutionUpdate(message: Message) {
 	updateLoadingContainer(message);
 
 	if (solutionsContainer) {
-		solutionsContainer.innerHTML = message.solutions
+		const htmlString = message.solutions
 			.map((solution, index) => {
 				const citationUrl = solution.citation?.url ?? '';
 				const safeUrl = getSafeUrl(citationUrl) ?? '#';
 				const renderedCitation = solution.citation
 					? `<p>
 						<span style="vertical-align: text-bottom"><strong><span aria-hidden="true">&#9888;</span> Warning:</strong></span>
-						${DOMPurify.sanitize(solution.citation.message)}
+						${solution.citation.message}
 						<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" aria-label="Inspect source code for Suggestion ${index + 1} (opens in new tab)">Inspect source code</a>
 					  </p>`
 					: '';
-				const sanitizedSnippet = DOMPurify.sanitize(solution.htmlSnippet);
 
 				return `<h3 class='solutionHeading' id="solution-${index + 1}-heading">Suggestion ${index + 1}</h3>
-				<div class='snippetContainer' aria-labelledby="solution-${index + 1}-heading" role="group" data-solution-index="${index}">${sanitizedSnippet
-					}</div>
-				${DOMPurify.sanitize(renderedCitation, { ADD_ATTR: ['target', 'aria-label'] })}
-				<vscode-button role="button" class="acceptButton" id="acceptButton${index}" appearance="secondary" data-solution-index="${index}" aria-label="Accept suggestion ${index + 1}. Click to insert this suggestion into your code" title="Click to insert this suggestion into your code">Accept suggestion ${index + 1
-					}</vscode-button>`;
+				<div class='snippetContainer' aria-labelledby="solution-${index + 1}-heading" role="group" data-solution-index="${index}">${solution.htmlSnippet}</div>
+				${renderedCitation}
+				<vscode-button role="button" class="acceptButton" id="acceptButton${index}" appearance="secondary" data-solution-index="${index}" aria-label="Accept suggestion ${index + 1}. Click to insert this suggestion into your code" title="Click to insert this suggestion into your code">Accept suggestion ${index + 1}</vscode-button>`;
 			})
 			.join('');
+
+		solutionsContainer.innerHTML = DOMPurify.sanitize(htmlString, {
+			ADD_TAGS: ['vscode-button'],
+			ADD_ATTR: [
+				'appearance',
+				'data-solution-index',
+				'target',
+				'aria-label',
+				'aria-labelledby',
+				'role',
+				'title',
+				'class',
+				'id',
+				'aria-hidden',
+				'style'
+			]
+		});
 
 		solutionsContainer.querySelectorAll('pre').forEach((pre) => {
 			pre.tabIndex = 0;
