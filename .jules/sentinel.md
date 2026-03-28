@@ -11,3 +11,8 @@
 **Vulnerability:** Weak, non-cryptographic nonce generation using Math.random() in a Webview CSP.
 **Learning:** Math.random() shouldn't be used to secure applications as it is predictable. Webviews CSP must be robust to mitigate XSS correctly.
 **Prevention:** Use cryptographically secure methods like crypto.randomUUID() or crypto.getRandomValues() (provided globally in VS Code via base utils) when generating nonces or random security identifiers.
+
+## 2025-02-13 - [CRITICAL] Fix arbitrary command execution in URI handler
+**Vulnerability:** The `openVscodeUri` function in `src/extension/onboardDebug/node/copilotDebugWorker/open.ts` directly executed `cmd /c start "" uri` on Windows using `child_process.spawn`. Because `cmd /c` parses shell metacharacters, a maliciously crafted `uri` (e.g., `vscode://test" & calc.exe & "`) could execute arbitrary system commands.
+**Learning:** Even when `shell: false` is explicitly set in `spawn`, passing a payload to a command interpreter like `cmd.exe` or `sh -c` inherently subjects that payload to shell parsing.
+**Prevention:** Strictly validate expected URI protocols (e.g., `uri.startsWith('vscode://') || uri.startsWith('vscode-insiders://')`) *before* passing them to OS-level handlers or command interpreters. Do not rely on `shell: false` to sanitize arguments when the target executable is itself a shell.
