@@ -317,10 +317,6 @@ class JSStatementTree extends StatementTree {
 	}
 
 	protected getStatementQueryText(): string {
-		// From https://github.com/tree-sitter/tree-sitter-javascript/blob/fdeb68ac8d2bd5a78b943528bb68ceda3aade2eb/grammar.js#L199-L226
-		// Because `statement` is declared `inline` in this version of the
-		// grammar, we search for each choice from its definition plus two
-		// class constructs we want to consider for trimming.
 		return `[
 			(export_statement)
 			(import_statement)
@@ -356,10 +352,6 @@ class TSStatementTree extends StatementTree {
 	}
 
 	protected getStatementQueryText(): string {
-		// From https://github.com/tree-sitter/tree-sitter-javascript/blob/fdeb68ac8d2bd5a78b943528bb68ceda3aade2eb/grammar.js#L199-L226
-		// Because `statement` is declared `inline` in this version of the
-		// grammar, we search for each choice from its definition plus two
-		// class constructs we want to consider for trimming.
 		return `[
 			(export_statement)
 			(import_statement)
@@ -428,13 +420,6 @@ class PyStatementTree extends StatementTree {
 	}
 
 	protected getStatementQueryText(): string {
-		// Search for nodes of type `_simple_statement` and `_compound_statement`.
-		// Because these are both inlined, we search for each choice in the two
-		// definitions. It also adds `block` to more closely match the tree
-		// shape of JS/TS.
-		//
-		// For the _simple_statement definition see: https://github.com/tree-sitter/tree-sitter-python/blob/7473026494597de8bc403735b1bfec7ca846c0d6/grammar.js#L90-L106
-		// For the _compound_statement definition see: https://github.com/tree-sitter/tree-sitter-python/blob/7473026494597de8bc403735b1bfec7ca846c0d6/grammar.js#L230-L240
 		return `[
 			(future_import_statement)
 			(import_statement)
@@ -493,12 +478,6 @@ class GoStatementTree extends StatementTree {
 	}
 
 	protected getStatementQueryText(): string {
-		// Search for nodes of type `_top_level_declaration` and `_statement`.
-		// Because `_top_level_declaration` is inlined, we search for each
-		// choice in its definition. It also adds `block` to match the tree
-		// shape of JS/TS.
-		//
-		// For the _top_level_declaration definition see: https://github.com/tree-sitter/tree-sitter-go/blob/3c3775faa968158a8b4ac190a7fda867fd5fb748/grammar.js#L117-L122
 		return `[
 			(package_clause)
 			(function_declaration)
@@ -542,10 +521,6 @@ class PhpStatementTree extends StatementTree {
 		return new PhpStatementNode(node);
 	}
 	protected override getStatementQueryText(): string {
-		// Search for nodes of type `_statement` and a few other picked types.
-		// `compound_statement`, `method_declaration`, `property_declaration`, `const_declaration`, and `use_declaration` are
-		// not encompassed by `_statement` so we add them to the query to make multi-line reveal more useful.
-		// For the _statement definition see: https://github.com/tree-sitter/tree-sitter-php/blob/eb289f127fc341ae7129902a2dd1c6c197a4c1e7/common/define-grammar.js#L141
 		return `[
 			(statement)
 			(compound_statement)
@@ -641,7 +616,6 @@ class JavaStatementTree extends StatementTree {
 		return new JavaStatementNode(node);
 	}
 
-	// _class_body_declaration is inlined, so add those subtypes to the query
 	protected getStatementQueryText(): string {
 		return `[
 			(statement)
