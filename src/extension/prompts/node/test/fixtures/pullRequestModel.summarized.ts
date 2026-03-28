@@ -138,7 +138,7 @@ export class PullRequestModel extends IssueModel<PullRequest> implements IPullRe
 		}
 
 		const reviewEvents = events.filter((e): e is CommonReviewEvent => e.event === EventType.Reviewed);
-		const reviewComments = reviewThreads.reduce((previous, current) => (previous as IComment[]).concat(current.comments), []);
+		const reviewComments = reviewThreads.flatMap(current => current.comments);
 
 		const reviewEventsById = reviewEvents.reduce((index, evt) => {
 			index[evt.id] = evt;
