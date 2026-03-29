@@ -192,6 +192,22 @@ describe('ClaudeSessionStateService', () => {
 		});
 	});
 
+
+	describe('LRU Expiration', () => {
+		it('should remove the oldest session when exceeding the limit of 100', () => {
+			for (let i = 1; i <= 101; i++) {
+				service.setModelIdForSession(`session-${i}`, 'claude-opus-4-20250514');
+			}
+
+			// Session 1 should have been evicted
+			assert.strictEqual(service.getModelIdForSession('session-1'), undefined);
+
+			// Session 2 to 101 should still be there
+			assert.strictEqual(service.getModelIdForSession('session-2'), 'claude-opus-4-20250514');
+			assert.strictEqual(service.getModelIdForSession('session-101'), 'claude-opus-4-20250514');
+		});
+	});
+
 	describe('dispose', () => {
 		it('should clear session state on dispose', () => {
 			service.setModelIdForSession('session-1', 'claude-opus-4-20250514');
