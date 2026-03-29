@@ -33,17 +33,6 @@ export abstract class AbstractLanguageModelChatProvider<C extends LanguageModelC
 		protected readonly _byokStorageService: IBYOKStorageService,
 		@ILogService protected readonly _logService: ILogService,
 	) {
-		this.configureDefaultGroupWithApiKeyOnly();
-	}
-
-	// TODO: Remove this after 6 months
-	protected async configureDefaultGroupWithApiKeyOnly(): Promise<string | undefined> {
-		const apiKey = await this._byokStorageService.getAPIKey(this._name);
-		if (apiKey) {
-			this.configureDefaultGroupIfExists(this._name, { apiKey } as C);
-			await this._byokStorageService.deleteAPIKey(this._name, BYOKAuthType.GlobalApiKey);
-		}
-		return apiKey;
 	}
 
 	protected async configureDefaultGroupIfExists(name: string, configuration: C): Promise<void> {
@@ -51,10 +40,7 @@ export abstract class AbstractLanguageModelChatProvider<C extends LanguageModelC
 	}
 
 	async provideLanguageModelChatInformation({ silent, configuration }: PrepareLanguageModelChatModelOptions, token: CancellationToken): Promise<T[]> {
-		let apiKey: string | undefined = (configuration as C)?.apiKey;
-		if (!apiKey) {
-			apiKey = await this.configureDefaultGroupWithApiKeyOnly();
-		}
+		const apiKey: string | undefined = (configuration as C)?.apiKey;
 
 		const models = await this.getAllModels(silent, apiKey, configuration as C);
 		return models.map(model => ({
