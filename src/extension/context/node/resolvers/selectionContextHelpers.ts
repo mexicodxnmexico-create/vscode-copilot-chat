@@ -148,15 +148,33 @@ export async function findAllReferencedClassDeclarationsInSelection(
 		[]
 	);
 	const classDeclarations = [];
+	const classDeclarationCache = new Map<string, Promise<{ declarations: TreeSitterExpressionInfo[]; textDocument: TextDocumentSnapshot } | undefined>>();
+
 	for (let i = 0; i < implementations.length; i++) {
 		const match = matches[i];
 		const impl = implementations[i];
 		for (const link of impl) {
 			const { uri, range } = isLocationLink(link) ? { uri: link.targetUri, range: link.targetRange } : link;
-			const textDocument = await workspaceService.openTextDocumentAndSnapshot(uri);
-			const treeSitterAST = parserService.getTreeSitterAST(textDocument);
-			if (treeSitterAST) {
-				const classDeclaration = (await treeSitterAST.getClassDeclarations()).find((fn) => fn.identifier === match.identifier);
+			const uriString = uri.toString();
+
+			let classDeclarationPromise = classDeclarationCache.get(uriString);
+			if (!classDeclarationPromise) {
+				classDeclarationPromise = (async () => {
+					const textDocument = await workspaceService.openTextDocumentAndSnapshot(uri);
+					const treeSitterAST = parserService.getTreeSitterAST(textDocument);
+					if (!treeSitterAST) {
+						return undefined;
+					}
+					const declarations = await treeSitterAST.getClassDeclarations();
+					return { declarations, textDocument };
+				})();
+				classDeclarationCache.set(uriString, classDeclarationPromise);
+			}
+
+			const result = await classDeclarationPromise;
+			if (result) {
+				const { declarations, textDocument } = result;
+				const classDeclaration = declarations.find((fn) => fn.identifier === match.identifier);
 				if (classDeclaration) {
 					const treeSitterRange = vscodeToTreeSitterOffsetRange(range, textDocument);
 					classDeclarations.push({
