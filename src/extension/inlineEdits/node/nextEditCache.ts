@@ -53,7 +53,7 @@ export interface CachedEdit {
 	cacheTime: number;
 }
 
-export type CachedOrRebasedEdit = CachedEdit & { rebasedEdit?: StringReplacement; rebasedEditIndex?: number; isFromSpeculativeRequest?: boolean };
+export type CachedOrRebasedEdit = CachedEdit & { rebasedEdit?: StringReplacement; rebasedEdits?: StringReplacement[]; rebasedEditIndex?: number; isFromSpeculativeRequest?: boolean };
 
 export class NextEditCache extends Disposable {
 	private readonly _documentCaches = new Map<DocumentId, DocumentEditCache>();
@@ -254,7 +254,7 @@ class DocumentEditCache {
 		return undefined;
 	}
 
-	public tryRebaseCacheEntry(cachedEdit: CachedEdit, currentDocumentContents: StringText, currentSelection: readonly OffsetRange[]): CachedEdit | undefined {
+	public tryRebaseCacheEntry(cachedEdit: CachedEdit, currentDocumentContents: StringText, currentSelection: readonly OffsetRange[]): CachedOrRebasedEdit | undefined {
 		const logger = this._logger.createSubLogger('tryRebaseCacheEntry');
 		if (cachedEdit.userEditSince && !cachedEdit.rebaseFailed) {
 			const originalEdits = cachedEdit.edits || (cachedEdit.edit ? [cachedEdit.edit] : []);
@@ -281,7 +281,7 @@ class DocumentEditCache {
 					if (!cachedEdit.rejected && this.isRejectedNextEdit(currentDocumentContents, res[0].rebasedEdit)) {
 						cachedEdit.rejected = true;
 					}
-					return { ...cachedEdit, ...res[0] };
+					return { ...cachedEdit, ...res[0], rebasedEdits: res.map(r => r.rebasedEdit) };
 				} else if (!originalEdits.length) {
 					return cachedEdit; // cached 'no edits'
 				}

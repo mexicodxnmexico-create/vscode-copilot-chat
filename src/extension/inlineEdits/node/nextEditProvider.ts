@@ -342,7 +342,8 @@ export class NextEditProvider extends Disposable implements INextEditProvider<Ne
 						telemetryBuilder.setStatus('emptyEdits');
 					} else {
 						logger.trace('fetch succeeded');
-						logContext.setResponseResults([suggestedNextEdit]); // TODO: other streamed edits?
+						const streamedEdits = result.val.rebasedEdits || result.val.edits || [suggestedNextEdit];
+						logContext.setResponseResults(streamedEdits);
 						edit = { actualEdit: suggestedNextEdit, isFromCursorJump: result.val.isFromCursorJump };
 						isFromSpeculativeRequest = result.val.isFromSpeculativeRequest ?? false;
 					}
