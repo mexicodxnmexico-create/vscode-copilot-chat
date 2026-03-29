@@ -1,0 +1,64 @@
+import { useRouter } from 'next/router';
+
+export default function CompartirExperiencia() {
+  const router = useRouter();
+  const { token } = router.query;
+
+  return (
+    <div style={{
+      backgroundColor: "#0a0a0a",
+      color: "#00f2ff",
+      minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: "sans-serif",
+      textAlign: "center",
+      padding: "20px"
+    }}>
+      {/* Círculo de Energía Cuántica */}
+      <div style={{
+        width: "200px",
+        height: "200px",
+        borderRadius: "50%",
+        border: "2px solid #00f2ff",
+        boxShadow: "0 0 50px #00f2ff, inset 0 0 30px #7000ff",
+        marginBottom: "30px",
+        animation: "pulse 2s infinite"
+      }}></div>
+
+      <h1 style={{ fontSize: "2rem", textTransform: "uppercase", letterSpacing: "5px" }}>
+        Sintonizando Frecuencia
+      </h1>
+
+      <p style={{ color: "#fff", fontSize: "1.1rem", maxWidth: "400px" }}>
+        Estás accediendo a la sesión cuántica identificada como:
+        <br />
+        <strong style={{ color: "#7000ff" }}>{token || 'Cargando frecuencia...'}</strong>
+      </p>
+
+      <button style={{
+        marginTop: "40px",
+        padding: "15px 30px",
+        backgroundColor: "transparent",
+        border: "1px solid #00f2ff",
+        color: "#00f2ff",
+        cursor: "pointer",
+        borderRadius: "5px",
+        fontSize: "1rem",
+        transition: "0.3s"
+      }} onClick={() => alert("Iniciando Meditación Cuántica...")}>
+        ENTRAR AL ESPEJO
+      </button>
+
+      <style jsx>{`
+        @keyframes pulse {
+          0% { transform: scale(0.95); opacity: 0.7; }
+          50% { transform: scale(1.05); opacity: 1; }
+          100% { transform: scale(0.95); opacity: 0.7; }
+        }
+      `}</style>
+    </div>
+  );
+}
