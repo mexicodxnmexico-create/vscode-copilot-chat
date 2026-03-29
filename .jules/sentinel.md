@@ -11,3 +11,10 @@
 **Vulnerability:** Weak, non-cryptographic nonce generation using Math.random() in a Webview CSP.
 **Learning:** Math.random() shouldn't be used to secure applications as it is predictable. Webviews CSP must be robust to mitigate XSS correctly.
 **Prevention:** Use cryptographically secure methods like crypto.randomUUID() or crypto.getRandomValues() (provided globally in VS Code via base utils) when generating nonces or random security identifiers.
+## 2024-05-24 - Command Injection via shell: true in copilotCLIShim
+
+**Vulnerability:** The `spawnSync` call in `src/extension/chatSessions/vscode-node/copilotCLIShim.ts` used `{ shell: true }` when executing `copilot --version`. This could potentially allow command injection if any part of the command string were user-controlled, or it could simply be flagged by static analysis tools.
+
+**Learning:** Using `shell: true` with `child_process.spawn` or `child_process.spawnSync` is a common source of command injection vulnerabilities because it passes the command to the system shell for evaluation, which interprets shell metacharacters.
+
+**Prevention:** Always avoid `shell: true` unless absolutely necessary. Instead, pass the executable and its arguments as a separate array to `spawnSync` (e.g., `spawnSync('copilot', ['--version'], ...)`). This ensures the arguments are passed directly to the executable without shell interpretation.

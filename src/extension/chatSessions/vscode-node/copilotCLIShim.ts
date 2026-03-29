@@ -70,7 +70,7 @@ function versionGte(versionA: string, versionB: string) {
  * Version can be undefined if it cannot be determined.
  */
 function getCopilotInfo(): { installed: true; version?: string } | undefined {
-	const result = spawnSync('copilot --version', { env, shell: true, encoding: 'utf8' });
+	const result = spawnSync('copilot', ['--version'], { env, encoding: 'utf8' });
 	if (result.error || result.status !== 0) {
 		return undefined;
 	}
