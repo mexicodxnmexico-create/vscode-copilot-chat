@@ -105,6 +105,9 @@ export class TestRun {
 		const result = JSON.parse(contents) as IWorkspaceState[];
 		return result.map((el) => {
 			if (el.kind === 'initial') {
+				if (!(el as any).additionalFiles) {
+					(el as any).additionalFiles = [];
+				}
 				return new InitialWorkspaceState(el, this.writtenFilesBaseDir);
 			}
 			return new InteractionWorkspaceState(el, this.writtenFilesBaseDir);

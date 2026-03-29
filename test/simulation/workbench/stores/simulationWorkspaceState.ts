@@ -78,7 +78,7 @@ export class InitialWorkspaceState {
 
 	private async getOtherFiles(): Promise<IResolvedFile[]> {
 		return Promise.all(
-			(this._source.additionalFiles ?? []).map(async (file) => {
+			this._source.additionalFiles.map(async (file) => {
 				const contents = await fs.promises.readFile(path.join(this.writtenFilesBaseDir, file.relativeDiskPath), 'utf8');
 				return {
 					workspacePath: file.workspacePath,

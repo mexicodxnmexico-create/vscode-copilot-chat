@@ -319,7 +319,7 @@ export type OutputAnnotation = { severity: string; label: string; message: strin
 export interface IInitialWorkspaceState {
 	kind: 'initial';
 	file?: IWorkspaceStateFile;
-	additionalFiles: IWorkspaceStateFile[] | undefined; // TODO: remove | undefined after a while (allow viewing old runs for now)
+	additionalFiles: IWorkspaceStateFile[];
 	languageId?: string;
 	selection?: IRange;
 	diagnostics: IDiagnostic[];

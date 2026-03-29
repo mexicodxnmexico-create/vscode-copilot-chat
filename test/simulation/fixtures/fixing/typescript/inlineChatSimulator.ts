@@ -194,6 +194,7 @@ export async function simulateInlineChat(
 						workspacePath,
 						relativeDiskPath
 					},
+					additionalFiles: [],
 					languageId: language.languageId,
 					selection: toIRange(editor.selection),
 					range: toIRange(range),
