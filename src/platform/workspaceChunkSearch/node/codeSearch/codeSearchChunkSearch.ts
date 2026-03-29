@@ -35,7 +35,6 @@ import { ILogService } from '../../../log/common/logService';
 import { IAdoCodeSearchService } from '../../../remoteCodeSearch/common/adoCodeSearchService';
 import { CodeSearchResult } from '../../../remoteCodeSearch/common/remoteCodeSearch';
 import { ICodeSearchAuthenticationService } from '../../../remoteCodeSearch/node/codeSearchRepoAuth';
-import { isGitHubRemoteRepository } from '../../../remoteRepositories/common/utils';
 import { IExperimentationService } from '../../../telemetry/common/nullExperimentationService';
 import { ITelemetryService } from '../../../telemetry/common/telemetry';
 import { IWorkspaceService } from '../../../workspace/common/workspaceService';
@@ -954,11 +953,6 @@ export class CodeSearchChunkSearch extends Disposable implements IWorkspaceChunk
 	}
 
 	private async diffWithIndexedCommit(repo: CodeSearchRepo): Promise<CodeSearchDiff | undefined> {
-		if (isGitHubRemoteRepository(repo.repoInfo.rootUri)) {
-			// TODO: always assumes no diff. Can we get a real diff somehow?
-			return { changes: [] };
-		}
-
 		const doDiffWith = async (ref: string): Promise<Change[] | undefined> => {
 			try {
 				return await this._gitService.diffWith(repo.repoInfo.rootUri, ref);
