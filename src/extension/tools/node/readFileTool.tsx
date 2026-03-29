@@ -255,7 +255,7 @@ export class ReadFileTool implements ICopilotTool<ReadFileParams> {
 	}
 
 	public alternativeDefinition(originTool: vscode.LanguageModelToolInformation): vscode.LanguageModelToolInformation {
-		if (this.configurationService.getExperimentBasedConfig<boolean>(ConfigKey.TeamInternal.EnableReadFileV2, this.experimentationService)) {
+		if (this.configurationService.getExperimentBasedConfig<boolean>(ConfigKey.Advanced.EnableReadFileV2, this.experimentationService)) {
 			return readFileV2Description;
 		}
 
