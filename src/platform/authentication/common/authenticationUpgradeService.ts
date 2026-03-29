@@ -117,8 +117,8 @@ export class AuthenticationChatUpgradeService extends Disposable implements IAut
 		stream.confirmation(
 			this._permissionRequest,
 			detail || l10n.t('To get more relevant Chat results, we need permission to read the contents of your repository on GitHub.'),
-			// TODO: Change this shape to include request via a dedicated field
-			{ authPermissionPrompted: true, ...data, context },
+
+			{ authPermissionPrompted: true, request: data, context },
 			[
 				this._permissionRequestGrant,
 				this._permissionRequestNotNow,
@@ -128,7 +128,7 @@ export class AuthenticationChatUpgradeService extends Disposable implements IAut
 	}
 
 	async handleConfirmationRequest(stream: ChatResponseStream, request: ChatRequest, history: ChatContext['history']): Promise<ChatRequest> {
-		const findConfirmationRequested: ChatRequest | undefined = request.acceptedConfirmationData?.find(ref => ref?.authPermissionPrompted);
+		const findConfirmationRequested: { request: ChatRequest } | undefined = request.acceptedConfirmationData?.find(ref => ref?.authPermissionPrompted);
 		if (!findConfirmationRequested) {
 			return request;
 		}
@@ -171,7 +171,7 @@ export class AuthenticationChatUpgradeService extends Disposable implements IAut
 				toolInvocationToken: request.toolInvocationToken,
 				attempt: request.attempt,
 				enableCommandDetection: request.enableCommandDetection,
-				isParticipantDetected: findConfirmationRequested.isParticipantDetected,
+				isParticipantDetected: findConfirmationRequested.request.isParticipantDetected,
 				location: request.location,
 				location2: request.location2,
 				model: request.model,
@@ -184,15 +184,15 @@ export class AuthenticationChatUpgradeService extends Disposable implements IAut
 		} else {
 			// Something went wrong, history item was deleted or lost?
 			return {
-				prompt: findConfirmationRequested.prompt,
-				command: findConfirmationRequested.command,
+				prompt: findConfirmationRequested.request.prompt,
+				command: findConfirmationRequested.request.command,
 				references: [],
 				toolReferences: [],
 
 				toolInvocationToken: request.toolInvocationToken,
 				attempt: request.attempt,
 				enableCommandDetection: request.enableCommandDetection,
-				isParticipantDetected: findConfirmationRequested.isParticipantDetected,
+				isParticipantDetected: findConfirmationRequested.request.isParticipantDetected,
 				location: request.location,
 				location2: request.location2,
 				model: request.model,
