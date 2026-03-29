@@ -135,18 +135,37 @@ export class ClaudeAgentManager extends Disposable {
 		const extraRefsTexts: string[] = [];
 		const uriToString = (uri: URI) => uri.scheme === 'file' ? uri.fsPath : uri.toString();
 		let prompt = request.prompt;
-		for (const ref of request.references) {
+
+		// Pre-fetch all image data concurrently
+		const imagePromises = request.references.map(async (ref) => {
 			let refValue = ref.value;
 			if (refValue instanceof ChatReferenceBinaryData) {
 				const mediaType = toAnthropicImageMediaType(refValue.mimeType);
 				if (mediaType) {
-					const data = await refValue.data();
+					return {
+						mediaType,
+						data: await refValue.data()
+					};
+				}
+			}
+			return undefined;
+		});
+
+		const resolvedImages = await Promise.all(imagePromises);
+
+		for (let i = 0; i < request.references.length; i++) {
+			const ref = request.references[i];
+			let refValue = ref.value;
+			const resolvedImage = resolvedImages[i];
+
+			if (refValue instanceof ChatReferenceBinaryData) {
+				if (resolvedImage) {
 					contentBlocks.push({
 						type: 'image',
 						source: {
 							type: 'base64',
-							data: Buffer.from(data).toString('base64'),
-							media_type: mediaType
+							data: Buffer.from(resolvedImage.data).toString('base64'),
+							media_type: resolvedImage.mediaType
 						}
 					});
 					continue;
