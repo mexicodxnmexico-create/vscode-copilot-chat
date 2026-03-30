@@ -370,9 +370,15 @@ export class AutomodeService extends Disposable implements IAutomodeService {
 		if (!hasImage(chatRequest) || selectedModel.supportsVision) {
 			return selectedModel;
 		}
-		const visionModel = availableModels
-			.map(model => knownEndpoints.find(e => e.model === model))
-			.find(endpoint => endpoint?.supportsVision);
+		// Optimization: eagerly return the first vision model instead of mapping the entire array
+		let visionModel: IChatEndpoint | undefined;
+		for (const model of availableModels) {
+			const endpoint = knownEndpoints.find(e => e.model === model);
+			if (endpoint?.supportsVision) {
+				visionModel = endpoint;
+				break;
+			}
+		}
 		if (visionModel) {
 			this._logService.trace(`Selected model '${selectedModel.model}' does not support vision, falling back to '${visionModel.model}'.`);
 			return visionModel;
