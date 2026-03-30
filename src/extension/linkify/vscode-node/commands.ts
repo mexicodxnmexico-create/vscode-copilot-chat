@@ -152,15 +152,33 @@ function findSymbolByName(symbols: Array<vscode.SymbolInformation | vscode.Docum
 	return undefined;
 }
 
+function findSymbolByPosition(symbols: Array<vscode.SymbolInformation | vscode.DocumentSymbol>, position: vscode.Position, maxDepth: number = 5): vscode.SymbolInformation | vscode.DocumentSymbol | undefined {
+	let bestMatch: vscode.SymbolInformation | vscode.DocumentSymbol | undefined;
+	for (const symbol of symbols) {
+		const range = 'selectionRange' in symbol ? symbol.range : symbol.location.range;
+		if (range.contains(position)) {
+			bestMatch = symbol;
+			if (maxDepth > 0 && 'children' in symbol && symbol.children) {
+				const found = findSymbolByPosition(symbol.children, position, maxDepth - 1);
+				if (found) {
+					return found;
+				}
+			}
+		}
+	}
+	return bestMatch;
+}
+
 export async function resolveSymbolFromReferences(locations: ReadonlyArray<{ uri: UriComponents; pos: vscode.Position }>, symbolText: string | undefined, token: CancellationToken) {
 	let dest: {
 		type: 'definition' | 'firstOccurrence' | 'unresolved';
 		loc: vscode.LocationLink;
+		kind?: vscode.SymbolKind;
 	} | undefined;
 
 	// Extract the rightmost part from qualified symbol like "TextModel.undo()"
 	const symbolParts = symbolText ? Array.from(symbolText.matchAll(/[#\w$][\w\d$]*/g), x => x[0]) : [];
-	const targetSymbolName = symbolParts.length >= 2 ? symbolParts[symbolParts.length - 1] : undefined;
+	const targetSymbolName = symbolParts.length > 0 ? symbolParts[symbolParts.length - 1] : undefined;
 
 	// TODO: These locations may no longer be valid if the user has edited the file since the references were found.
 	for (const loc of locations) {
@@ -172,15 +190,30 @@ export async function resolveSymbolFromReferences(locations: ReadonlyArray<{ uri
 
 			if (def) {
 				const defLoc = toLocationLink(def);
+				let kind: vscode.SymbolKind | undefined;
 
-				// If we have a qualified name like "TextModel.undo()", try to find the specific symbol in the file
-				if (targetSymbolName && symbolParts.length >= 2) {
-					try {
-						const symbols = await vscode.commands.executeCommand<Array<vscode.SymbolInformation | vscode.DocumentSymbol> | undefined>('vscode.executeDocumentSymbolProvider', defLoc.targetUri);
-						if (symbols) {
-							// Search for the target symbol in the document symbols
-							const targetSymbol = findSymbolByName(symbols, targetSymbolName);
-							if (targetSymbol) {
+				// Try to find the specific symbol in the file to get its kind
+				try {
+					const symbols = await vscode.commands.executeCommand<Array<vscode.SymbolInformation | vscode.DocumentSymbol> | undefined>('vscode.executeDocumentSymbolProvider', defLoc.targetUri);
+					if (symbols) {
+						let targetSymbol: vscode.SymbolInformation | vscode.DocumentSymbol | undefined;
+
+						// If we have a target symbol name, try to find it
+						if (targetSymbolName) {
+							targetSymbol = findSymbolByName(symbols, targetSymbolName);
+						}
+
+						// Fallback to positional search if name search failed
+						if (!targetSymbol) {
+							const pos = defLoc.targetSelectionRange?.start ?? defLoc.targetRange.start;
+							targetSymbol = findSymbolByPosition(symbols, pos);
+						}
+
+						if (targetSymbol) {
+							kind = targetSymbol.kind;
+
+							// Only override the location if we have a qualified name like "TextModel.undo()" and found it by name
+							if (targetSymbolName && symbolParts.length >= 2 && targetSymbol.name === targetSymbolName) {
 								let targetRange: vscode.Range;
 								if ('selectionRange' in targetSymbol) {
 									targetRange = targetSymbol.selectionRange;
@@ -190,18 +223,20 @@ export async function resolveSymbolFromReferences(locations: ReadonlyArray<{ uri
 								dest = {
 									type: 'definition',
 									loc: { targetUri: defLoc.targetUri, targetRange: targetRange, targetSelectionRange: targetRange },
+									kind
 								};
 								break;
 							}
 						}
-					} catch {
-						// Failed to find symbol, fall through to use the first definition
 					}
+				} catch {
+					// Failed to find symbol, fall through to use the definition as is
 				}
 
 				dest = {
 					type: 'definition',
 					loc: defLoc,
+					kind
 				};
 				break;
 			}
