@@ -51,27 +51,34 @@ function handleSolutionUpdate(message: Message) {
 	updateLoadingContainer(message);
 
 	if (solutionsContainer) {
-		solutionsContainer.innerHTML = message.solutions
+		const rawHtml = message.solutions
 			.map((solution, index) => {
 				const citationUrl = solution.citation?.url ?? '';
 				const safeUrl = getSafeUrl(citationUrl) ?? '#';
 				const renderedCitation = solution.citation
 					? `<p>
 						<span style="vertical-align: text-bottom"><strong><span aria-hidden="true">&#9888;</span> Warning:</strong></span>
-						${DOMPurify.sanitize(solution.citation.message)}
+						${solution.citation.message}
 						<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" aria-label="Inspect source code for Suggestion ${index + 1} (opens in new tab)">Inspect source code</a>
 					  </p>`
 					: '';
-				const sanitizedSnippet = DOMPurify.sanitize(solution.htmlSnippet);
 
 				return `<h3 class='solutionHeading' id="solution-${index + 1}-heading">Suggestion ${index + 1}</h3>
-				<div class='snippetContainer' aria-labelledby="solution-${index + 1}-heading" role="group" data-solution-index="${index}">${sanitizedSnippet
+				<div class='snippetContainer' aria-labelledby="solution-${index + 1}-heading" role="group" data-solution-index="${index}">${solution.htmlSnippet
 					}</div>
-				${DOMPurify.sanitize(renderedCitation, { ADD_ATTR: ['target', 'aria-label'] })}
+				${renderedCitation}
 				<vscode-button role="button" class="acceptButton" id="acceptButton${index}" appearance="secondary" data-solution-index="${index}" aria-label="Accept suggestion ${index + 1}. Click to insert this suggestion into your code" title="Click to insert this suggestion into your code">Accept suggestion ${index + 1
 					}</vscode-button>`;
 			})
 			.join('');
+
+		// Security fix: Prevent mutation XSS (mXSS) by assembling the complete raw HTML string first
+		// before applying DOMPurify.sanitize, instead of sanitizing piecemeal. Preserving required custom UI
+		// tags and attributes (like rel to prevent reverse tabnabbing on target="_blank").
+		solutionsContainer.innerHTML = DOMPurify.sanitize(rawHtml, {
+			ADD_TAGS: ['vscode-button'],
+			ADD_ATTR: ['target', 'aria-label', 'rel', 'appearance', 'data-solution-index']
+		});
 
 		solutionsContainer.querySelectorAll('pre').forEach((pre) => {
 			pre.tabIndex = 0;
