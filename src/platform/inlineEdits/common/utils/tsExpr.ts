@@ -18,7 +18,7 @@ export class TsExpr {
 				}
 			}
 
-			// TODO remove indentation
+			removeIndentation(parts);
 
 			return new TsExpr(parts);
 		}
@@ -96,4 +96,77 @@ function serializeObjectKey(key: string): string {
 		return key;
 	}
 	return JSON.stringify(key);
+}
+
+
+function removeIndentation(parts: (string | { value: unknown })[]): void {
+	let minIndentLength = Infinity;
+
+	let fullStr = '';
+	for (const p of parts) {
+		if (typeof p === 'string') {
+			fullStr += p;
+		} else {
+			fullStr += '__X__';
+		}
+	}
+
+	const lines = fullStr.split('\n');
+	for (let i = 1; i < lines.length; i++) {
+		const line = lines[i];
+		const isOnlyWhitespace = line.trim().length === 0;
+		const isLastLine = i === lines.length - 1;
+
+		if (!isOnlyWhitespace || (isLastLine && line.length > 0)) {
+			const match = line.match(/^[ \t]*/);
+			const len = match ? match[0].length : 0;
+			if (len < minIndentLength) {
+				minIndentLength = len;
+			}
+		}
+	}
+
+	if (minIndentLength === Infinity) {
+		minIndentLength = 0;
+	}
+
+	if (minIndentLength > 0) {
+		for (let i = 0; i < parts.length; i++) {
+			const part = parts[i];
+			if (typeof part === 'string') {
+				const partLines = part.split('\n');
+				for (let j = 0; j < partLines.length; j++) {
+					// Only remove indentation if this is actually the start of a line
+					// The first element of split('\n') is NOT following a newline unless it's the very first part
+					// Wait, if it's the first element of split('\n') on part > 0, it means it's on the SAME line as the previous variable.
+					// So it's never the start of a new line. We should skip j === 0.
+					if (j === 0) { continue; }
+
+					const line = partLines[j];
+					const indentMatch = line.match(/^[ \t]*/);
+					const indentLength = indentMatch ? indentMatch[0].length : 0;
+
+					const sliceLen = Math.min(minIndentLength, indentLength);
+					partLines[j] = line.substring(sliceLen);
+				}
+				parts[i] = partLines.join('\n');
+			}
+		}
+	}
+
+	if (parts.length > 0 && typeof parts[0] === 'string') {
+		const firstPart = parts[0] as string;
+		const match = firstPart.match(/^\n/);
+		if (match) {
+			parts[0] = firstPart.substring(match[0].length);
+		}
+	}
+
+	if (parts.length > 0 && typeof parts[parts.length - 1] === 'string') {
+		const lastPart = parts[parts.length - 1] as string;
+		const match = lastPart.match(/\n[ \t]*$/);
+		if (match) {
+			parts[parts.length - 1] = lastPart.substring(0, lastPart.length - match[0].length);
+		}
+	}
 }
