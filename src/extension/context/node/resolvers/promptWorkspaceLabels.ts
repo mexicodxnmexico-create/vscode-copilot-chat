@@ -117,9 +117,10 @@ class BasicPromptWorkspaceLabels implements IPromptWorkspaceLabelsStrategy {
 	}
 
 	private async addContextForFolders(f: Uri) {
-		for (const [filename, labels] of this.indicators.entries()) {
-			await this.addLabelIfApplicable(f, filename, labels);
-		}
+		const promises = Array.from(this.indicators.entries()).map(([filename, labels]) => {
+			return this.addLabelIfApplicable(f, filename, labels);
+		});
+		await Promise.all(promises);
 	}
 
 	private async addLabelIfApplicable(rootFolder: Uri, filename: string, labels: string[]) {
