@@ -166,11 +166,57 @@ interface IKnownCommandsState {
 
 const DEBUGGABLE_COMMAND_STORAGE_KEY = 'chat.debuggableCommands';
 
-function extractCommandNameFromCLI(command: string) {
-	// todo: support less common cases of quoting and environment variables
-	const re = /\s*([^\s]+)/;
-	const match = re.exec(command);
-	return match ? match[1] : command;
+export function extractCommandNameFromCLI(command: string) {
+	let inSingleQuote = false;
+	let inDoubleQuote = false;
+	let currentToken = '';
+
+	for (let i = 0; i < command.length; i++) {
+		const char = command[i];
+
+		if (char === '\\' && !inSingleQuote) {
+			currentToken += char;
+			if (i + 1 < command.length) {
+				currentToken += command[i + 1];
+				i++;
+			}
+			continue;
+		}
+
+		if (char === "'" && !inDoubleQuote) {
+			inSingleQuote = !inSingleQuote;
+			currentToken += char;
+		} else if (char === '"' && !inSingleQuote) {
+			inDoubleQuote = !inDoubleQuote;
+			currentToken += char;
+		} else if ((char === ' ' || char === '\t') && !inSingleQuote && !inDoubleQuote) {
+			if (currentToken.length > 0) {
+				if (!/^[a-zA-Z_][a-zA-Z0-9_]*=/.test(currentToken)) {
+					break;
+				}
+				currentToken = '';
+			}
+		} else {
+			currentToken += char;
+		}
+	}
+
+	if (currentToken.length === 0) {
+		const re = /\s*([^\s]+)/;
+		const match = re.exec(command);
+		return match ? match[1] : command;
+	}
+
+	if (currentToken.length >= 2) {
+		if (currentToken.startsWith('"') && currentToken.endsWith('"')) {
+			return currentToken.slice(1, -1);
+		}
+		if (currentToken.startsWith("'") && currentToken.endsWith("'")) {
+			return currentToken.slice(1, -1);
+		}
+	}
+
+	return currentToken;
 }
 
 /**
