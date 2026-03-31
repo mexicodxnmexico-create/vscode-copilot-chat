@@ -10,6 +10,7 @@ import { createServiceIdentifier } from '../../../../util/common/services';
 import { arrayEquals } from '../../../../util/vs/base/common/equals';
 import { Emitter, Event } from '../../../../util/vs/base/common/event';
 import { Disposable } from '../../../../util/vs/base/common/lifecycle';
+import { LRUCache } from '../../../../util/vs/base/common/map';
 import type { ClaudeFolderInfo } from '../common/claudeFolderInfo';
 
 /**
@@ -103,8 +104,7 @@ export class ClaudeSessionStateService extends Disposable implements IClaudeSess
 	readonly onDidChangeSessionState = this._onDidChangeSessionState.event;
 
 	// State for sessions (model and permission mode selections)
-	// TODO: What about expiration of state for old sessions?
-	private readonly _sessionState = new Map<string, SessionState>();
+	private readonly _sessionState = new LRUCache<string, SessionState>(20);
 
 	constructor() {
 		super();
