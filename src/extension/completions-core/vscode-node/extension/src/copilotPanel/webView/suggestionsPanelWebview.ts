@@ -67,7 +67,7 @@ function handleSolutionUpdate(message: Message) {
 				return `<h3 class='solutionHeading' id="solution-${index + 1}-heading">Suggestion ${index + 1}</h3>
 				<div class='snippetContainer' aria-labelledby="solution-${index + 1}-heading" role="group" data-solution-index="${index}">${sanitizedSnippet
 					}</div>
-				${DOMPurify.sanitize(renderedCitation, { ADD_ATTR: ['target', 'aria-label'] })}
+				${DOMPurify.sanitize(renderedCitation, { ADD_ATTR: ['target', 'aria-label'] }).replace(/target="_blank"/g, 'target="_blank" rel="noopener noreferrer"')}
 				<vscode-button role="button" class="acceptButton" id="acceptButton${index}" appearance="secondary" data-solution-index="${index}" aria-label="Accept suggestion ${index + 1}. Click to insert this suggestion into your code" title="Click to insert this suggestion into your code">Accept suggestion ${index + 1
 					}</vscode-button>`;
 			})
