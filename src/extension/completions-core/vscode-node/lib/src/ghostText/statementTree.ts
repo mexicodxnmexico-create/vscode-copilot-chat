@@ -356,10 +356,6 @@ class TSStatementTree extends StatementTree {
 	}
 
 	protected getStatementQueryText(): string {
-		// From https://github.com/tree-sitter/tree-sitter-javascript/blob/fdeb68ac8d2bd5a78b943528bb68ceda3aade2eb/grammar.js#L199-L226
-		// Because `statement` is declared `inline` in this version of the
-		// grammar, we search for each choice from its definition plus two
-		// class constructs we want to consider for trimming.
 		return `[
 			(export_statement)
 			(import_statement)
