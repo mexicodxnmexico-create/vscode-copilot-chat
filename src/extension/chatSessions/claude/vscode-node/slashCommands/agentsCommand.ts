@@ -886,17 +886,25 @@ Respond ONLY with the JSON object, no markdown code blocks or other text.`;
 		try {
 			const entries = await this.fileSystemService.readDirectory(dir);
 
-			for (const [name, type] of entries) {
+			const parsePromises = entries.map(async ([name, type]) => {
 				if (type === vscode.FileType.File && name.endsWith('.md')) {
 					const filePath = URI.joinPath(dir, name);
 					try {
 						const config = await this._parseAgentFile(filePath);
 						if (config) {
-							agents.push({ config, location, filePath });
+							return { config, location, filePath };
 						}
 					} catch (error) {
 						this.logService.warn(`[AgentsSlashCommand] Failed to parse agent file ${filePath.fsPath}: ${error}`);
 					}
+				}
+				return undefined;
+			});
+
+			const results = await Promise.all(parsePromises);
+			for (const result of results) {
+				if (result) {
+					agents.push(result);
 				}
 			}
 		} catch {
