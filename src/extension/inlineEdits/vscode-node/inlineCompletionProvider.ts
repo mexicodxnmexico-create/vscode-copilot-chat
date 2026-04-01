@@ -607,23 +607,32 @@ export class InlineCompletionProviderImpl extends Disposable implements InlineCo
 		const info = item.info;
 		if (isLlmCompletionInfo(info)) {
 			this.model.nextEditProvider.handleAcceptance(info.documentId, info.suggestion);
-			if (!item.isEditInAnotherDocument) {
-				this._trackSurvivalRate(info);
-			}
 		} else {
 			this.model.diagnosticsBasedProvider?.handleAcceptance(info.documentId, info.suggestion);
 		}
+
+		if (!item.isEditInAnotherDocument) {
+			this._trackSurvivalRate(info);
+		}
 	}
 
-	// TODO: Support tracking Diagnostics NES
-	private async _trackSurvivalRate(item: LlmCompletionInfo) {
+
+	private async _trackSurvivalRate(item: LlmCompletionInfo | DiagnosticsCompletionInfo) {
 		const result = item.suggestion.result;
 		if (!result || !result.edit) {
 			return;
 		}
 
-		const docBeforeEdits = result.documentBeforeEdits.value;
-		const docAfterEdits = result.edit.toEdit().apply(docBeforeEdits);
+		let docBeforeEdits: string;
+		let docAfterEdits: string;
+
+		if (isLlmCompletionInfo(item)) {
+			docBeforeEdits = item.suggestion.result!.documentBeforeEdits.value;
+			docAfterEdits = item.suggestion.result!.edit!.toEdit().apply(docBeforeEdits);
+		} else {
+			docBeforeEdits = item.suggestion.result!.item.getRootedLineEdit().originalText.value;
+			docAfterEdits = item.suggestion.result!.edit!.toEdit().apply(docBeforeEdits);
+		}
 
 		const recorder = this._instantiationService.createInstance(DocumentEditRecorder, item.document);
 
@@ -639,7 +648,7 @@ export class InlineCompletionProviderImpl extends Disposable implements InlineCo
 		this._instantiationService.createInstance(
 			EditSurvivalReporter,
 			item.document,
-			result.documentBeforeEdits.value,
+			docBeforeEdits,
 			diffedNextEdit,
 			userEdits,
 			{ includeArc: true },
