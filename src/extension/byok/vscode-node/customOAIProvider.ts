@@ -176,12 +176,6 @@ export class CustomOAIBYOKModelProvider extends AbstractCustomOAIBYOKModelProvid
 		@IVSCodeExtensionContext extensionContext: IVSCodeExtensionContext
 	) {
 		super(CustomOAIBYOKModelProvider.providerName.toLowerCase(), CustomOAIBYOKModelProvider.providerName, _byokStorageService, logService, fetcherService, instantiationService, configurationService, expService, extensionContext);
-		this.migrateExistingConfigs();
-	}
-
-	// TODO: Remove this after 6 months
-	private async migrateExistingConfigs(): Promise<void> {
-		await this.migrateConfig(ConfigKey.Deprecated.CustomOAIModels, this.providerName, this.providerName);
 	}
 
 	protected resolveUrl(modelId: string, url: string): string {
