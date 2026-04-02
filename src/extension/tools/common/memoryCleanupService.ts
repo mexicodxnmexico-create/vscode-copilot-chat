@@ -133,18 +133,20 @@ export class MemoryCleanupService extends Disposable implements IMemoryCleanupSe
 			}
 
 			// Clean up empty session directories
-			for (const [sessionName] of sessionDirs) {
-				const sessionUri = URI.joinPath(this.baseStorageUri, sessionName);
-				try {
-					const sessionEntries = await this.fileSystem.readDirectory(sessionUri);
-					if (sessionEntries.length === 0) {
-						await this.fileSystem.delete(sessionUri, { recursive: true });
-						this.logService.debug(`[MemoryCleanupService] Deleted empty session directory: ${sessionUri.fsPath}`);
+			await Promise.all(
+				sessionDirs.map(async ([sessionName]) => {
+					const sessionUri = URI.joinPath(this.baseStorageUri!, sessionName);
+					try {
+						const sessionEntries = await this.fileSystem.readDirectory(sessionUri);
+						if (sessionEntries.length === 0) {
+							await this.fileSystem.delete(sessionUri, { recursive: true });
+							this.logService.debug(`[MemoryCleanupService] Deleted empty session directory: ${sessionUri.fsPath}`);
+						}
+					} catch {
+						// Ignore errors when checking/deleting empty directories
 					}
-				} catch {
-					// Ignore errors when checking/deleting empty directories
-				}
-			}
+				})
+			);
 		} catch (error) {
 			this.logService.warn(`[MemoryCleanupService] Error during cleanup: ${error}`);
 		}
