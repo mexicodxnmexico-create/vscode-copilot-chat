@@ -262,7 +262,7 @@ suite('GitHubOrgChatResourcesService', () => {
 		});
 	});
 
-	suite.skip('startPolling', () => {
+	suite('startPolling', () => {
 
 		test('invokes callback immediately with org name', async () => {
 			mockWorkspaceService.setWorkspaceFolders([URI.file('/workspace')]);
