@@ -72,11 +72,11 @@ declare module 'vscode' {
 		 * The offset of the first character which is not a whitespace character as defined
 		 * by `/\s/`. **Note** that if a line is all whitespace the length of the line is returned.
 		 */
-		readonly firstNonWhitespaceCharacterIndex: number;
+		readonly leadingWhitespaceLength: number;
 
 		/**
 		 * Whether this line is whitespace only, shorthand
-		 * for {@link TextLine.firstNonWhitespaceCharacterIndex} === {@link TextLine.text TextLine.text.length}.
+		 * for {@link TextLine.leadingWhitespaceLength} === {@link TextLine.text TextLine.text.length}.
 		 */
 		readonly isEmptyOrWhitespace: boolean;
 	}

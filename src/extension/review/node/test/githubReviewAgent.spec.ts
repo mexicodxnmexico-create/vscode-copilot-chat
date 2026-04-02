@@ -597,7 +597,7 @@ suite('githubReviewAgent', () => {
 			const comment = createReviewComment(ghComment, request, docData.document, 0);
 
 			assert.strictEqual(comment.range.start.line, 1); // 0-indexed
-			assert.strictEqual(comment.range.start.character, 4); // firstNonWhitespaceCharacterIndex
+			assert.strictEqual(comment.range.start.character, 4); // leadingWhitespaceLength
 			assert.strictEqual(comment.range.end.line, 1);
 			assert.strictEqual(comment.languageId, 'typescript');
 			assert.strictEqual(comment.originalIndex, 0);

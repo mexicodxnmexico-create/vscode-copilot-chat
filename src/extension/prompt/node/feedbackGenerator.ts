@@ -223,7 +223,7 @@ export function parseReviewComments(request: ReviewRequest, input: CurrentChange
 		const lastNonWhitespaceCharacterIndex = toLine.text.trimEnd().length;
 
 		// Create a Diagnostic object for each message
-		const range = new Range(fromLine.lineNumber, fromLine.firstNonWhitespaceCharacterIndex, toLine.lineNumber, lastNonWhitespaceCharacterIndex);
+		const range = new Range(fromLine.lineNumber, fromLine.leadingWhitespaceLength, toLine.lineNumber, lastNonWhitespaceCharacterIndex);
 		if (filterRanges && !filterRanges.some(r => r.intersection(range))) {
 			continue;
 		}
