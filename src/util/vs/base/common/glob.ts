@@ -492,7 +492,8 @@ function trivia3(pattern: string, options: IGlobOptionsInternal): ParsedStringPa
 		parsedPattern.allBasenames = withBasenames.allBasenames;
 	}
 
-	const allPaths = parsedPatterns.reduce((all, current) => current.allPaths ? all.concat(current.allPaths) : all, [] as string[]);
+	// Optimization: Use .flatMap() instead of .reduce/.concat for O(n) array flattening.
+	const allPaths = parsedPatterns.flatMap(current => current.allPaths || []);
 	if (allPaths.length) {
 		parsedPattern.allPaths = allPaths;
 	}
@@ -676,7 +677,8 @@ function parsedExpression(expression: IExpression, options: IGlobOptions): Parse
 			resultExpression.allBasenames = withBasenames.allBasenames;
 		}
 
-		const allPaths = parsedPatterns.reduce((all, current) => current.allPaths ? all.concat(current.allPaths) : all, [] as string[]);
+		// Optimization: Use .flatMap() instead of .reduce/.concat for O(n) array flattening.
+		const allPaths = parsedPatterns.flatMap(current => current.allPaths || []);
 		if (allPaths.length) {
 			resultExpression.allPaths = allPaths;
 		}
@@ -741,7 +743,8 @@ function parsedExpression(expression: IExpression, options: IGlobOptions): Parse
 		resultExpression.allBasenames = withBasenames.allBasenames;
 	}
 
-	const allPaths = parsedPatterns.reduce((all, current) => current.allPaths ? all.concat(current.allPaths) : all, [] as string[]);
+	// Optimization: Use .flatMap() instead of .reduce/.concat for O(n) array flattening.
+	const allPaths = parsedPatterns.flatMap(current => current.allPaths || []);
 	if (allPaths.length) {
 		resultExpression.allPaths = allPaths;
 	}
