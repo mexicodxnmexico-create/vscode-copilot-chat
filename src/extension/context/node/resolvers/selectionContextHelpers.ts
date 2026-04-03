@@ -16,6 +16,30 @@ import { ITelemetryService } from '../../../../platform/telemetry/common/telemet
 import { IWorkspaceService } from '../../../../platform/workspace/common/workspaceService';
 import { ILanguage } from '../../../../util/common/languages';
 
+export async function openUniqueDocumentsConcurrently(
+	workspaceService: IWorkspaceService,
+	uris: vscode.Uri[]
+): Promise<Map<string, TextDocumentSnapshot>> {
+	const uniqueUris = new Map<string, vscode.Uri>();
+	for (const uri of uris) {
+		uniqueUris.set(uri.toString(), uri);
+	}
+
+	const documentMap = new Map<string, TextDocumentSnapshot>();
+	await Promise.all(
+		Array.from(uniqueUris.values()).map(async (uri) => {
+			try {
+				const document = await workspaceService.openTextDocumentAndSnapshot(uri);
+				documentMap.set(uri.toString(), document);
+			} catch (err) {
+				// Ignore errors opening documents to maintain resilience
+			}
+		})
+	);
+
+	return documentMap;
+}
+
 /**
  * @param timeoutMs This function makes several async computations, and each gets up to `3 * timeoutMs`. No guarantee is made about the total time.
  */
@@ -63,16 +87,27 @@ export async function findAllReferencedFunctionImplementationsInSelection(
 
 	// since language service gives us only links to identifiers, expand to whole implementation/definition using tree-sitter
 	const functionImplementations = [];
+	const documentUris = implementations.flatMap(impl => impl.map(link => isLocationLink(link) ? link.targetUri : link.uri));
+	const documentMap = await openUniqueDocumentsConcurrently(workspaceService, documentUris);
+
+	const functionDefinitionsCache = new Map();
+
 	for (let i = 0; i < implementations.length; i++) {
 		const callExpr = callExprs[i];
 		const impl = implementations[i];
 		for (const link of impl) {
 			const { uri, range } = isLocationLink(link) ? { uri: link.targetUri, range: link.targetRange } : link;
-			const textDocument = await workspaceService.openTextDocumentAndSnapshot(uri);
+			const textDocument = documentMap.get(uri.toString());
+			if (!textDocument) { continue; }
+
 			const treeSitterAST = parserService.getTreeSitterAST(textDocument);
 			if (treeSitterAST) {
-				const functionDefinitions = await treeSitterAST.getFunctionDefinitions(); // TODO: we should do this once per document, not once per call expression
-				const functionDefinition = functionDefinitions.find((fn) => fn.identifier === callExpr.identifier); // FIXME: this's incorrect because it doesn't count for import aliases (e.g., `import { foo as bar } from 'baz'`)
+				let functionDefinitions = functionDefinitionsCache.get(uri.toString());
+				if (!functionDefinitions) {
+					functionDefinitions = await treeSitterAST.getFunctionDefinitions();
+					functionDefinitionsCache.set(uri.toString(), functionDefinitions);
+				}
+				const functionDefinition = functionDefinitions.find((fn: TreeSitterExpressionInfo) => fn.identifier === callExpr.identifier); // FIXME: this's incorrect because it doesn't count for import aliases (e.g., `import { foo as bar } from 'baz'`)
 				if (functionDefinition) {
 					const treeSitterRange = vscodeToTreeSitterOffsetRange(range, textDocument);
 					functionImplementations.push({
@@ -148,15 +183,27 @@ export async function findAllReferencedClassDeclarationsInSelection(
 		[]
 	);
 	const classDeclarations = [];
+	const documentUris = implementations.flatMap(impl => impl.map(link => isLocationLink(link) ? link.targetUri : link.uri));
+	const documentMap = await openUniqueDocumentsConcurrently(workspaceService, documentUris);
+
+	const classDeclarationsCache = new Map();
+
 	for (let i = 0; i < implementations.length; i++) {
 		const match = matches[i];
 		const impl = implementations[i];
 		for (const link of impl) {
 			const { uri, range } = isLocationLink(link) ? { uri: link.targetUri, range: link.targetRange } : link;
-			const textDocument = await workspaceService.openTextDocumentAndSnapshot(uri);
+			const textDocument = documentMap.get(uri.toString());
+			if (!textDocument) { continue; }
+
 			const treeSitterAST = parserService.getTreeSitterAST(textDocument);
 			if (treeSitterAST) {
-				const classDeclaration = (await treeSitterAST.getClassDeclarations()).find((fn) => fn.identifier === match.identifier);
+				let cachedDeclarations = classDeclarationsCache.get(uri.toString());
+				if (!cachedDeclarations) {
+					cachedDeclarations = await treeSitterAST.getClassDeclarations();
+					classDeclarationsCache.set(uri.toString(), cachedDeclarations);
+				}
+				const classDeclaration = cachedDeclarations.find((fn: TreeSitterExpressionInfo) => fn.identifier === match.identifier);
 				if (classDeclaration) {
 					const treeSitterRange = vscodeToTreeSitterOffsetRange(range, textDocument);
 					classDeclarations.push({
