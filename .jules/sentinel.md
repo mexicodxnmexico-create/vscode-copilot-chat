@@ -11,3 +11,8 @@
 **Vulnerability:** Weak, non-cryptographic nonce generation using Math.random() in a Webview CSP.
 **Learning:** Math.random() shouldn't be used to secure applications as it is predictable. Webviews CSP must be robust to mitigate XSS correctly.
 **Prevention:** Use cryptographically secure methods like crypto.randomUUID() or crypto.getRandomValues() (provided globally in VS Code via base utils) when generating nonces or random security identifiers.
+
+## 2025-02-27 - DOMPurify Nested Sanitization mXSS
+**Vulnerability:** Sanitizing small fragments of HTML piecemeal before concatenating them into a larger string, and then sanitizing the entire string again. This can lead to mutation XSS (mXSS).
+**Learning:** `DOMPurify` should be called once on the final, assembled HTML string whenever possible to ensure proper context and avoid mutation vulnerabilities.
+**Prevention:** Assemble raw HTML strings first, and apply `DOMPurify.sanitize` to the final, complete string before insertion into the DOM.
