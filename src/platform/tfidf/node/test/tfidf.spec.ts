@@ -211,6 +211,32 @@ suite('TF-IDF', () => {
 		assertPathsEqual(await tfidf.search('cat()'), ['/A', '/B']);
 		assertPathsEqual(await tfidf.search('cat'), ['/A', '/B']);
 	});
+
+	test('Search should handle large number of search terms without crashing', { timeout: 20000 }, async () => {
+		const tfidf = new PersistentTfIdf(':memory:');
+
+		// SQLite limit is often 32766.
+		// Let's try 35000 unique terms.
+		const count = 35000;
+		const uniqueWords = Array.from({ length: count }, (_, i) => `word${i}`);
+		// Join with spaces to create a long query string
+		const content = uniqueWords.join(' ');
+
+		// Index all of them so they exist in the DB
+		await tfidf.addOrUpdate([
+			testFile('/A', content),
+		]);
+
+		// Search for all those words.
+		// Now computeEmbeddings should return all of them because they are in the DB.
+
+		try {
+			await tfidf.search(content);
+		} catch (e: any) {
+			console.error(e);
+			throw e;
+		}
+	});
 });
 
 function testFile(path: string, content: string): TfIdfDoc {

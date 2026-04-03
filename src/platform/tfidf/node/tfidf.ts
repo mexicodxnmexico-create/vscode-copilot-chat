@@ -562,18 +562,31 @@ export class PersistentTfIdf {
 			return [];
 		}
 
-		const chunkResults = this.db.prepare(`
+		const BATCH_SIZE = 500;
+		const results = new Map<number, any>();
+
+		for (let i = 0; i < searchTerms.length; i += BATCH_SIZE) {
+			const batch = searchTerms.slice(i, i + BATCH_SIZE);
+			const chunkResults = this.db.prepare(`
 			SELECT c.id, c.documentId, c.text, c.startLineNumber, c.startColumn, c.endLineNumber, c.endColumn, c.isFullFile,
 				json(c.termFrequencies) as termFrequencies, d.uri
 			FROM Chunks c
 			JOIN Documents d ON c.documentId = d.id
 			WHERE EXISTS (
 				SELECT 1 FROM json_each(c.termFrequencies)
-				WHERE json_each.key IN (${searchTerms.map(_ => `?`).join(',')})
+				WHERE json_each.key IN (${batch.map(_ => `?`).join(',')})
 			)
-		`).all(...searchTerms);
+		`).all(...batch);
 
-		return Iterable.map(chunkResults, row => this.reviveDocumentChunkEntry(row));
+			for (const row of chunkResults) {
+				const chunkRow = row as { id: number };
+				if (!results.has(chunkRow.id)) {
+					results.set(chunkRow.id, row);
+				}
+			}
+		}
+
+		return Iterable.map(results.values(), row => this.reviveDocumentChunkEntry(row));
 	}
 
 	private reviveDocumentChunkEntry(row: any): DocumentChunkEntry {
