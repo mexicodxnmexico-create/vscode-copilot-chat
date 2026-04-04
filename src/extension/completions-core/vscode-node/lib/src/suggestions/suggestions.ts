@@ -10,7 +10,7 @@ import { getBlockCloseToken } from '../../../prompt/src/parse';
 import { APIChoice } from '../openai/openai';
 import { TelemetryData, TelemetryStore, telemetry } from '../telemetry';
 import { IPosition, TextDocumentContents } from '../textDocument';
-import { isRepetitive } from './anomalyDetection';
+import { isRepetitive, trimRepetitiveTokens } from './anomalyDetection';
 
 /**
  * To avoid double-closing blocks (#272), maybe snip a trailing block-close token
@@ -168,16 +168,30 @@ export function postProcessChoiceInContext(
 	isMoreMultiline: boolean,
 	logger: ILogger
 ): APIChoice | undefined {
-	if (isRepetitive(choice.tokens)) {
+	let choiceToProcess = choice;
+	const trimmedTokens = trimRepetitiveTokens(choice.tokens);
+	if (trimmedTokens) {
+		const trimmedText = trimmedTokens.join('');
+		// Create a modified choice
+		choiceToProcess = {
+			...choice,
+			tokens: trimmedTokens,
+			completionText: trimmedText,
+			numTokens: trimmedTokens.length
+		};
+		logger.info('Trimmed repetitive solution');
+	}
+
+	if (isRepetitive(choiceToProcess.tokens)) {
 		const telemetryData = TelemetryData.createAndMarkAsIssued();
-		telemetryData.extendWithRequestId(choice.requestId);
+		telemetryData.extendWithRequestId(choiceToProcess.requestId);
 		telemetry(accessor, 'repetition.detected', telemetryData, TelemetryStore.Enhanced);
 		// FIXME: trim request at start of repetitive block? for now we just skip
 		logger.info('Filtered out repetitive solution');
 		return undefined;
 	}
 
-	const postProcessedChoice = { ...choice };
+	const postProcessedChoice = { ...choiceToProcess };
 
 	// Avoid single-line completions that duplicate the next line (#993)
 	if (matchesNextLine(document, position, postProcessedChoice.completionText, !isMoreMultiline)) {
