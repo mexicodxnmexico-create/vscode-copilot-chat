@@ -40,9 +40,9 @@ export class ConfigurationMigrationContribution implements IExtensionContributio
 
 	constructor() {
 		this._register(workspace.onDidChangeWorkspaceFolders(async (e) => {
-			for (const folder of e.added) {
-				await this.migrateConfigurationForFolder(folder, ConfigurationMigrationRegistry.migrations);
-			}
+			await Promise.all(e.added.map(folder =>
+				this.migrateConfigurationForFolder(folder, ConfigurationMigrationRegistry.migrations)
+			));
 		}));
 		this.migrateConfigurations(ConfigurationMigrationRegistry.migrations);
 		this._register(ConfigurationMigrationRegistry.onDidRegisterConfigurationMigration(migration => this.migrateConfigurations(migration)));
@@ -51,14 +51,14 @@ export class ConfigurationMigrationContribution implements IExtensionContributio
 	private async migrateConfigurations(migrations: ConfigurationMigration[]): Promise<void> {
 		if (window.state.focused) {
 			await this.migrateConfigurationForFolder(undefined, migrations);
-			for (const folder of workspace.workspaceFolders ?? []) {
-				await this.migrateConfigurationForFolder(folder, migrations);
-			}
+			await Promise.all((workspace.workspaceFolders ?? []).map(folder =>
+				this.migrateConfigurationForFolder(folder, migrations)
+			));
 		}
 	}
 
 	private async migrateConfigurationForFolder(folder: WorkspaceFolder | undefined, migrations: ConfigurationMigration[]): Promise<void> {
-		await Promise.all([migrations.map(migration => this.migrateConfigurationsForFolder(migration, folder?.uri))]);
+		await Promise.all(migrations.map(migration => this.migrateConfigurationsForFolder(migration, folder?.uri)));
 	}
 
 	private async migrateConfigurationsForFolder(migration: ConfigurationMigration, resource?: Uri): Promise<void> {
@@ -92,7 +92,7 @@ export class ConfigurationMigrationContribution implements IExtensionContributio
 			if (migrationValues.length) {
 				// apply migrations
 				await Promise.allSettled(migrationValues.map(async ([key, value]) => {
-					configuration.update(key, value.value, target);
+					await configuration.update(key, value.value, target);
 				}));
 			}
 		}
