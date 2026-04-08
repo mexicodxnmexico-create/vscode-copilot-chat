@@ -29,7 +29,7 @@ export interface IAgentToolCallBlock {
 	readonly type: 'tool_call';
 	readonly callId: string;
 	readonly name: string;
-	readonly input: object;
+	readonly input: object | string;
 }
 
 export type IAgentStreamBlock = IAgentTextBlock | IAgentToolCallBlock;

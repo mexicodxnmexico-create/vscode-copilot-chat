@@ -220,8 +220,8 @@ export class LanguageModelServer implements ILanguageModelServer {
 						// Emit tool calls if present
 						if (delta.copilotToolCalls && delta.copilotToolCalls.length > 0) {
 							for (const call of delta.copilotToolCalls) {
-								let input: object = {};
-								try { input = call.arguments ? JSON.parse(call.arguments) : {}; } catch { input = {}; }
+								// ⚡ Bolt: Pass raw JSON string directly to avoid expensive JSON.parse + JSON.stringify loops on large tool arguments
+								const input = call.arguments || {};
 								const toolData: IAgentStreamBlock = {
 									type: 'tool_call',
 									callId: call.id,

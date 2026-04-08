@@ -170,7 +170,7 @@ class OpenAIAdapterForSTests implements IProtocolAdapter {
 			this.hadToolCalls = true;
 
 			// Arguments can contain file paths.
-			const toolArguments = this.responseHooks.reduce((b, hook) => hook(b), JSON.stringify(streamData.input || {}));
+			const toolArguments = this.responseHooks.reduce((b, hook) => hook(b), typeof streamData.input === 'string' ? streamData.input : JSON.stringify(streamData.input || {}));
 
 			// Send tool call events
 			const toolCallDelta: ChatCompletionChunk = {
