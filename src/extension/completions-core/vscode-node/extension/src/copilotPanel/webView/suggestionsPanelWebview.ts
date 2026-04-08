@@ -68,7 +68,7 @@ function handleSolutionUpdate(message: Message) {
 				<div class='snippetContainer' aria-labelledby="solution-${index + 1}-heading" role="group" data-solution-index="${index}">${sanitizedSnippet
 					}</div>
 				${DOMPurify.sanitize(renderedCitation, { ADD_ATTR: ['target', 'aria-label'] })}
-				<vscode-button role="button" class="acceptButton" id="acceptButton${index}" appearance="secondary" data-solution-index="${index}" aria-label="Accept suggestion ${index + 1}. Click to insert this suggestion into your code" title="Click to insert this suggestion into your code">Accept suggestion ${index + 1
+				<vscode-button role="button" class="acceptButton" id="acceptButton${index}" appearance="secondary" data-solution-index="${index}" aria-description="Click to insert this suggestion into your code" title="Click to insert this suggestion into your code">Accept suggestion ${index + 1
 					}</vscode-button>`;
 			})
 			.join('');
@@ -76,6 +76,8 @@ function handleSolutionUpdate(message: Message) {
 		solutionsContainer.querySelectorAll('pre').forEach((pre) => {
 			pre.tabIndex = 0;
 			pre.title = 'Use arrow keys to scroll';
+			pre.setAttribute('role', 'group');
+			pre.setAttribute('aria-label', 'Code suggestion');
 		});
 	}
 }
