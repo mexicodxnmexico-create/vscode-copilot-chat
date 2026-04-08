@@ -11,3 +11,11 @@
 **Vulnerability:** Weak, non-cryptographic nonce generation using Math.random() in a Webview CSP.
 **Learning:** Math.random() shouldn't be used to secure applications as it is predictable. Webviews CSP must be robust to mitigate XSS correctly.
 **Prevention:** Use cryptographically secure methods like crypto.randomUUID() or crypto.getRandomValues() (provided globally in VS Code via base utils) when generating nonces or random security identifiers.
+## 2024-05-18 - [Defense in Depth] Sanitize dynamically joined DOM components
+**Vulnerability:** Dynamically joined HTML strings (like custom vscode-buttons and headings) mapped from user input were injected into `innerHTML` unsanitized.
+**Learning:** Even if individual dynamic data pieces are sanitized (e.g. `sanitizedSnippet` and `renderedCitation`), if they are injected into static template strings that are eventually concatenated and set directly via `innerHTML`, an attacker finding a way to inject untrusted input via the static template structures could bypass partial sanitizations.
+**Prevention:** Wrap the entire constructed HTML string with `DOMPurify.sanitize` immediately prior to assigning it to `innerHTML`, taking care to explicitly allow custom web components (like `vscode-button`) and all their specific attributes in `DOMPurify`'s configuration so they are not stripped.
+## 2024-05-18 - [Defense in Depth] Whitelist 'rel' attribute when allowing 'target' in DOMPurify
+**Vulnerability:** Reverse Tabnabbing. A link was generated with `target="_blank"` and `rel="noopener noreferrer"`, but DOMPurify stripped the `rel` attribute because it wasn't explicitly included in `ADD_ATTR`.
+**Learning:** By default, if an attribute is not explicitly allowed in `ADD_ATTR` (for specific custom sanitizations overriding defaults), DOMPurify will remove it. When adding `target="_blank"` (or allowing the `target` attribute), it is critical to also allow `rel` so that `rel="noopener noreferrer"` is preserved in the DOM, preventing the newly opened window from hijacking the original window's `window.opener` object. Note: Newer DOMPurify auto-adds this, but if configuring manually, it must be whitelisted.
+**Prevention:** Always verify that `rel` is in `ADD_ATTR` when `target` is in `ADD_ATTR`.
