@@ -13,6 +13,7 @@ import { IWorkspaceService } from '../../../../platform/workspace/common/workspa
 import { createServiceIdentifier } from '../../../../util/common/services';
 import { IInstantiationService } from '../../../../util/vs/platform/instantiation/common/instantiation';
 import { Uri } from '../../../../vscodeTypes';
+import * as toml from '@iarna/toml';
 
 export const IPromptWorkspaceLabels = createServiceIdentifier<IPromptWorkspaceLabels>('IPromptWorkspaceLabels');
 export interface IPromptWorkspaceLabels {
@@ -256,7 +257,7 @@ class ExpandedPromptWorkspaceLabels extends BasicPromptWorkspaceLabels {
 		super(workspaceService, fileSystemService, ignoreService);
 		this.addContentIndicator('package.json', this.collectPackageJsonIndicatorsExpanded);
 		this.addContentIndicator('requirements.txt', this.collectPythonRequirementsIndicators);
-		this.addContentIndicator('pyproject.toml', this.collectPythonTomlIndicators);
+		this.addContentIndicator('pyproject.toml', this.collectPythonTomlIndicators.bind(this));
 	}
 
 	protected collectPackageJsonIndicatorsExpanded(contents: string): string[] {
@@ -490,23 +491,29 @@ class ExpandedPromptWorkspaceLabels extends BasicPromptWorkspaceLabels {
 	private collectPythonTomlIndicators(contents: string): string[] {
 		const tags: string[] = [];
 
-		const lines = contents.split('\n');
-		let inDependenciesSection = false;
+		try {
+			const parsed = toml.parse(contents) as any;
+			const dependencies = parsed?.tool?.poetry?.dependencies;
 
-		// TODO@digitarald: Should use npm `toml` package, but this is avoiding a dependency for now
-		lines.forEach(line => {
-			line = line.trim();
-			if (line === '[tool.poetry.dependencies]') {
-				inDependenciesSection = true;
-			} else if (line.startsWith('[') && line.endsWith(']')) {
-				inDependenciesSection = false;
-			} else if (inDependenciesSection && line) {
-				const [pkg, version] = line.split('=').map(s => s.trim().replace(/"|'/g, ''));
-				if (this.popularPackages.includes(pkg)) {
-					tags.push(`${pkg}-${version || 'latest'}`);
+			if (dependencies && typeof dependencies === 'object') {
+				for (const [pkg, version] of Object.entries(dependencies)) {
+					if (this.popularPackages.includes(pkg)) {
+						let verStr = 'latest';
+						if (typeof version === 'string') {
+							// For string version `^1.23.4`
+							verStr = version;
+						} else if (version && typeof version === 'object' && 'version' in version) {
+							// For inline table `{ version = "^1.23.4", ... }`
+							verStr = (version as any).version;
+						}
+						tags.push(`${pkg}-${verStr || 'latest'}`);
+					}
 				}
 			}
-		});
+		} catch (e) {
+
+			// Ignore parsing errors for malformed TOML
+		}
 
 		return tags;
 	}
