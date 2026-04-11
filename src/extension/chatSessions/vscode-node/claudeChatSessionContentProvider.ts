@@ -401,14 +401,19 @@ export class ClaudeChatSessionContentProvider extends Disposable implements vsco
 	 * to tag each request turn with the endpoint model ID that was used.
 	 */
 	private async _buildModelIdMap(session: IClaudeCodeSession): Promise<ReadonlyMap<string, string>> {
-		const sdkModelIds = collectSdkModelIds(session);
+		const sdkModelIds = Array.from(collectSdkModelIds(session));
 		const map = new Map<string, string>();
-		for (const sdkModelId of sdkModelIds) {
-			const endpointModelId = await this.claudeCodeModels.mapSdkModelToEndpointModel(sdkModelId);
-			if (endpointModelId) {
-				map.set(sdkModelId, endpointModelId);
-			}
-		}
+
+		// Optimize: Map all sdk model IDs concurrently
+		await Promise.all(
+			sdkModelIds.map(async (sdkModelId) => {
+				const endpointModelId = await this.claudeCodeModels.mapSdkModelToEndpointModel(sdkModelId);
+				if (endpointModelId) {
+					map.set(sdkModelId, endpointModelId);
+				}
+			})
+		);
+
 		return map;
 	}
 
