@@ -11,3 +11,7 @@
 **Vulnerability:** Weak, non-cryptographic nonce generation using Math.random() in a Webview CSP.
 **Learning:** Math.random() shouldn't be used to secure applications as it is predictable. Webviews CSP must be robust to mitigate XSS correctly.
 **Prevention:** Use cryptographically secure methods like crypto.randomUUID() or crypto.getRandomValues() (provided globally in VS Code via base utils) when generating nonces or random security identifiers.
+## 2024-05-20 - Missing rel attribute in DOMPurify configuration
+**Vulnerability:** Reverse tabnabbing vulnerability due to DOMPurify stripping the 'rel' attribute from links with target='_blank'.
+**Learning:** When configuring DOMPurify's ADD_ATTR to allow 'target' and other attributes, you must explicitly include 'rel' in the array, otherwise DOMPurify strips it, neutralizing rel='noopener noreferrer' safeguards.
+**Prevention:** Always explicitly whitelist 'rel' in DOMPurify's ADD_ATTR when 'target' is allowed.
