@@ -74,7 +74,7 @@ export class GitHubOrgCustomAgentProvider extends Disposable implements vscode.C
 
 			let hasChanges: boolean = existingAgents.length !== agents.length;
 			const newFiles = new Set<string>();
-			for (const agent of agents) {
+			await Promise.all(agents.map(async (agent) => {
 				// Fetch full agent details including prompt content
 				const agentDetails = await this.octoKitService.getCustomAgentDetails(
 					agent.repo_owner,
@@ -98,8 +98,7 @@ export class GitHubOrgCustomAgentProvider extends Disposable implements vscode.C
 					hasChanges ||= result;
 					newFiles.add(filename);
 				}
-			}
-
+			}));
 			if (!hasChanges) {
 				this.logService.trace('[GitHubOrgCustomAgentProvider] No changes detected in cache');
 				return;
