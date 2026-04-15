@@ -1,3 +1,3 @@
-## 2024-03-09 - Accessibility of focusable dynamic pre elements
-**Learning:** Dynamically generated `<pre>` elements with `tabindex="0"` in webviews should provide context for screen readers to explain why they are focusable (e.g., that they are scrollable text regions), instead of relying solely on implicit focus behavior. `aria-label` shouldn't be used as it replaces content. `title="Use arrow keys to scroll"` provides keyboard interaction context.
-**Action:** Always add `title="Use arrow keys to scroll"` to dynamic focusable `<pre>` elements in HTML strings to ensure keyboard interaction context.
+## 2024-04-15 - Concise Accessible Names & Grouped Focusables
+**Learning:** Adding instructional context to `aria-label` on an element that already has visible text makes the accessible name overly verbose and redundant. In VS Code Webviews, dynamically generated focusable items like `<pre>` elements need both `role="group"` and a descriptive `aria-label` to provide proper screen reader context without overriding their actual inner code snippet text.
+**Action:** Use `aria-description` for supplementary instructions instead of overloading `aria-label`. Always pair `aria-label` with `role="group"` on focusable container elements to ensure the label names the container correctly rather than replacing its inner content.
