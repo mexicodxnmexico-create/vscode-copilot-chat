@@ -513,15 +513,28 @@ export class PersistentTfIdf {
 
 		const batchSize = 200;
 		const batch: Array<{ uri: URI; doc: TfIdfDocData }> = [];
+		let currentBatchPromises: Promise<{ uri: URI; doc: TfIdfDocData }>[] = [];
+
 		for (const doc of docs) {
-			batch.push({ uri: doc.uri, doc: await doc.getDoc() });
-			if (batch.length >= batchSize) {
+			currentBatchPromises.push(doc.getDoc().then(docData => ({ uri: doc.uri, doc: docData })));
+
+			if (currentBatchPromises.length >= batchSize) {
+				// ⚡ Bolt: Resolve document chunks concurrently in safe batch sizes to prevent memory exhaustion
+				// while drastically speeding up the I/O-bound indexing time compared to sequential awaiting.
+				const resolvedDocs = await Promise.all(currentBatchPromises);
+				batch.push(...resolvedDocs);
+
 				processBatch(batch);
 				batch.length = 0;
+				currentBatchPromises = [];
 			}
 		}
 
 		// Process any remaining documents
+		if (currentBatchPromises.length > 0) {
+			const resolvedDocs = await Promise.all(currentBatchPromises);
+			batch.push(...resolvedDocs);
+		}
 		processBatch(batch);
 
 		// Update occurrences list
