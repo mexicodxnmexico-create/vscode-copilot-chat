@@ -11,3 +11,7 @@
 **Vulnerability:** Weak, non-cryptographic nonce generation using Math.random() in a Webview CSP.
 **Learning:** Math.random() shouldn't be used to secure applications as it is predictable. Webviews CSP must be robust to mitigate XSS correctly.
 **Prevention:** Use cryptographically secure methods like crypto.randomUUID() or crypto.getRandomValues() (provided globally in VS Code via base utils) when generating nonces or random security identifiers.
+## 2026-04-21 - Command Injection in SpawnSync
+**Vulnerability:** Shell command interpolation in spawnSync ('sh', ['-c', `command -v ${cmd}`]) allows command injection if cmd is untrusted.
+**Learning:** Shell-based command interpolation (command -v) should be avoided in favor of safe binary execution like 'which [cmd]' without shell=true or intermediate shells.
+**Prevention:** Always prefer 'which' or direct binary invocation with argument arrays over interpolating arguments into a shell command string.

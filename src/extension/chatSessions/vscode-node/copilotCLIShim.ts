@@ -132,7 +132,7 @@ function runWget(label: string) {
 }
 
 function hasCommand(cmd: string) {
-	const result = spawnSync('sh', ['-c', `command -v ${cmd}`], { env, encoding: 'utf8' });
+	const result = spawnSync('which', [cmd], { env, encoding: 'utf8' }); // 🛡️ Sentinel: Fixed potential command injection by using 'which' without shell interpolation
 	return !result.error && result.status === 0;
 }
 
