@@ -606,6 +606,7 @@ Agent 1 prompt`;
 		// Memory cache still returns both agents (no refetch)
 		const cachedAgents2 = await provider.provideCustomAgents({}, {} as any);
 		assert.equal(cachedAgents2.length, 2);
+		cachedAgents2.sort((a, b) => a.uri.path.localeCompare(b.uri.path));
 		const cachedAgent2Name1 = cachedAgents2[0].uri.path.split('/').pop()?.replace('.agent.md', '');
 		const cachedAgent2Name2 = cachedAgents2[1].uri.path.split('/').pop()?.replace('.agent.md', '');
 		assert.equal(cachedAgent2Name1, 'agent1');

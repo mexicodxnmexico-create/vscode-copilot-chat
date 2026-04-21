@@ -74,30 +74,36 @@ export class GitHubOrgCustomAgentProvider extends Disposable implements vscode.C
 
 			let hasChanges: boolean = existingAgents.length !== agents.length;
 			const newFiles = new Set<string>();
-			for (const agent of agents) {
-				// Fetch full agent details including prompt content
-				const agentDetails = await this.octoKitService.getCustomAgentDetails(
-					agent.repo_owner,
-					agent.repo_name,
-					agent.name,
-					agent.version,
-					{ createIfNone: false },
-				);
-
-				// Generate agent markdown file content
-				if (agentDetails) {
-					const filename = `${agent.name}${AGENT_FILE_EXTENSION}`;
-					const content = this.generateAgentMarkdown(agentDetails);
-					const result = await this.githubOrgChatResourcesService.writeCacheFile(
-						PromptsType.agent,
-						orgId,
-						filename,
-						content,
-						{ checkForChanges: !hasChanges }
+			const BATCH_SIZE = 5;
+			for (let i = 0; i < agents.length; i += BATCH_SIZE) {
+				const batch = agents.slice(i, i + BATCH_SIZE);
+				await Promise.all(batch.map(async agent => {
+					// Fetch full agent details including prompt content
+					const agentDetails = await this.octoKitService.getCustomAgentDetails(
+						agent.repo_owner,
+						agent.repo_name,
+						agent.name,
+						agent.version,
+						{ createIfNone: false },
 					);
-					hasChanges ||= result;
-					newFiles.add(filename);
-				}
+
+					// Generate agent markdown file content
+					if (agentDetails) {
+						const filename = `${agent.name}${AGENT_FILE_EXTENSION}`;
+						const content = this.generateAgentMarkdown(agentDetails);
+						const result = await this.githubOrgChatResourcesService.writeCacheFile(
+							PromptsType.agent,
+							orgId,
+							filename,
+							content,
+							{ checkForChanges: !hasChanges }
+						);
+						if (result) {
+							hasChanges = true;
+						}
+						newFiles.add(filename);
+					}
+				}));
 			}
 
 			if (!hasChanges) {
