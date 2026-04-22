@@ -63,9 +63,14 @@ export class NullIgnoreService implements IIgnoreService {
 
 export async function filterIngoredResources(ignoreService: IIgnoreService, resources: URI[]): Promise<URI[]> {
 	const result: URI[] = [];
-	for (const resource of resources) {
-		if (!await ignoreService.isCopilotIgnored(resource)) {
-			result.push(resource);
+	const batchSize = 10;
+	for (let i = 0; i < resources.length; i += batchSize) {
+		const batch = resources.slice(i, i + batchSize);
+		const flags = await Promise.all(batch.map(resource => ignoreService.isCopilotIgnored(resource)));
+		for (let j = 0; j < batch.length; j++) {
+			if (!flags[j]) {
+				result.push(batch[j]);
+			}
 		}
 	}
 	return result;
