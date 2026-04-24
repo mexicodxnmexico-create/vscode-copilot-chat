@@ -25,8 +25,7 @@ export async function createRequestHMAC(hmacSecret: string | undefined): Promise
 	const data = textEncoder.encode(current);
 
 	const signature = await crypto.subtle.sign('HMAC', key, data);
-	const signatureArray = Array.from(new Uint8Array(signature));
-	const signatureHex = signatureArray.map(b => b.toString(16).padStart(2, '0')).join('');
+	const signatureHex = encodeHex(VSBuffer.wrap(new Uint8Array(signature)));
 
 	return `${current}.${signatureHex}`;
 }
@@ -34,13 +33,7 @@ export async function createRequestHMAC(hmacSecret: string | undefined): Promise
 export async function createSha256Hash(data: string | Uint8Array): Promise<string> {
 	const dataUint8 = typeof data === 'string' ? new TextEncoder().encode(data) : data;
 	const hashBuffer = await crypto.subtle.digest('SHA-256', dataUint8);
-	const hashArray = new Uint8Array(hashBuffer);
-	let hashHex = '';
-	for (const byte of hashArray) {
-		hashHex += byte.toString(16).padStart(2, '0');
-	}
-
-	return hashHex;
+	return encodeHex(VSBuffer.wrap(new Uint8Array(hashBuffer)));
 }
 
 const _cachedSha256Hashes = new Map<string, string>();
