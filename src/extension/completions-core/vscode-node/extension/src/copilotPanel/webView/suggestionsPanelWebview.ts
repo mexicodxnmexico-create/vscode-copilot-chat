@@ -51,6 +51,16 @@ function handleSolutionUpdate(message: Message) {
 	updateLoadingContainer(message);
 
 	if (solutionsContainer) {
+		if (message.percentage >= 100 && message.solutions.length === 0) {
+			solutionsContainer.innerHTML = `
+				<div class="emptyState" style="text-align: center; margin-top: 2rem; color: var(--vscode-descriptionForeground);">
+					<p>No suggestions found for this context.</p>
+					<p style="font-size: 0.9em; opacity: 0.8;">Try modifying your prompt or selecting different code.</p>
+				</div>
+			`;
+			return;
+		}
+
 		solutionsContainer.innerHTML = message.solutions
 			.map((solution, index) => {
 				const citationUrl = solution.citation?.url ?? '';
@@ -119,7 +129,13 @@ function updateLoadingContainer(message: Message) {
 	const loadingLabelElement = loadingContainer.querySelector('label') as HTMLLabelElement;
 	if (message.percentage >= 100) {
 		if (loadingLabelElement) {
-			loadingLabelElement.textContent = `${message.solutions.length} Suggestions`;
+			if (message.solutions.length === 0) {
+				loadingLabelElement.textContent = 'No suggestions found';
+			} else if (message.solutions.length === 1) {
+				loadingLabelElement.textContent = '1 Suggestion';
+			} else {
+				loadingLabelElement.textContent = `${message.solutions.length} Suggestions`;
+			}
 		}
 		progressBar.style.display = 'none';
 		solutionsContainer?.setAttribute('aria-busy', 'false');
