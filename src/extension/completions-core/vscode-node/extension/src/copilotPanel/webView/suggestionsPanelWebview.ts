@@ -6,6 +6,12 @@
 import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit';
 import DOMPurify from 'dompurify';
 
+DOMPurify.addHook('afterSanitizeAttributes', function(node) {
+	if (node.tagName === 'A' && node.getAttribute('target') === '_blank') {
+		node.setAttribute('rel', 'noopener noreferrer');
+	}
+});
+
 const solutionsContainer = document.getElementById('solutionsContainer');
 const vscode = acquireVsCodeApi();
 let currentFocusIndex: number = 0;
