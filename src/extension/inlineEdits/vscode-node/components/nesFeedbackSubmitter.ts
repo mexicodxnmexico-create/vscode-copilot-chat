@@ -147,18 +147,30 @@ export class NesFeedbackSubmitter {
 	 */
 	private async _readFeedbackFiles(fileUris: Uri[], folderUri: Uri): Promise<FeedbackFile[]> {
 		const results: FeedbackFile[] = [];
+		const batchSize = 10;
 
-		for (const fileUri of fileUris) {
-			try {
-				const content = await workspace.fs.readFile(fileUri);
-				const textContent = new TextDecoder().decode(content);
-				const relativeName = fileUri.path.replace(folderUri.path + '/', '');
-				results.push({
-					name: relativeName,
-					content: textContent
-				});
-			} catch (e) {
-				this._logger.warn(`Failed to read file: ${fileUri.fsPath}: ${e}`);
+		for (let i = 0; i < fileUris.length; i += batchSize) {
+			const batch = fileUris.slice(i, i + batchSize);
+			const currentBatchPromises = batch.map(async (fileUri) => {
+				try {
+					const content = await workspace.fs.readFile(fileUri);
+					const textContent = new TextDecoder().decode(content);
+					const relativeName = fileUri.path.replace(folderUri.path + '/', '');
+					return {
+						name: relativeName,
+						content: textContent
+					};
+				} catch (e) {
+					this._logger.warn(`Failed to read file: ${fileUri.fsPath}: ${e}`);
+					return null;
+				}
+			});
+
+			const batchResults = await Promise.all(currentBatchPromises);
+			for (const result of batchResults) {
+				if (result !== null) {
+					results.push(result);
+				}
 			}
 		}
 
