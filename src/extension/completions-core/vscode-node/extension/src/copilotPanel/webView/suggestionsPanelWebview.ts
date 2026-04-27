@@ -6,6 +6,14 @@
 import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit';
 import DOMPurify from 'dompurify';
 
+// SECURITY: Enforce rel="noopener noreferrer" on target="_blank" links to proactively
+// mitigate reverse tabnabbing vulnerabilities when using DOMPurify.
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+	if ('target' in node && node.getAttribute('target') === '_blank') {
+		node.setAttribute('rel', 'noopener noreferrer');
+	}
+});
+
 const solutionsContainer = document.getElementById('solutionsContainer');
 const vscode = acquireVsCodeApi();
 let currentFocusIndex: number = 0;
