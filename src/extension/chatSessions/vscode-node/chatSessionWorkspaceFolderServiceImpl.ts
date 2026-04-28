@@ -107,23 +107,36 @@ export class ChatSessionWorkspaceFolderService extends Disposable implements ICh
 			this.logService.trace(`[ChatSessionWorkspaceFolderService ${sessionId}][getWorkspaceChanges] Repository found for ${workspaceFolderUri.toString()}: indexChanges=${repository.changes.indexChanges.length}, workingTree=${repository.changes.workingTree.length}`);
 
 			const changes: ChatSessionWorktreeFile[] = [];
-			for (const change of [...repository.changes.indexChanges, ...repository.changes.workingTree]) {
-				try {
-					const fileStats = await this.gitService.diffIndexWithHEADShortStats(change.uri);
-					changes.push({
-						filePath: change.uri.fsPath,
-						originalFilePath: change.status !== 1 /* INDEX_ADDED */
-							? change.originalUri?.fsPath
-							: undefined,
-						modifiedFilePath: change.status !== 2 /* INDEX_DELETED */
-							? change.uri.fsPath
-							: undefined,
-						statistics: {
-							additions: fileStats?.insertions ?? 0,
-							deletions: fileStats?.deletions ?? 0
-						}
-					} satisfies ChatSessionWorktreeFile);
-				} catch (error) { }
+			const allChanges = [...repository.changes.indexChanges, ...repository.changes.workingTree];
+			const batchSize = 10;
+			// Bolt: Concurrently fetch git stats in batches to improve performance on large worktrees without overwhelming processes
+			for (let i = 0; i < allChanges.length; i += batchSize) {
+				const batch = allChanges.slice(i, i + batchSize);
+				const batchResults = await Promise.all(batch.map(async (change) => {
+					try {
+						const fileStats = await this.gitService.diffIndexWithHEADShortStats(change.uri);
+						return {
+							filePath: change.uri.fsPath,
+							originalFilePath: change.status !== 1 /* INDEX_ADDED */
+								? change.originalUri?.fsPath
+								: undefined,
+							modifiedFilePath: change.status !== 2 /* INDEX_DELETED */
+								? change.uri.fsPath
+								: undefined,
+							statistics: {
+								additions: fileStats?.insertions ?? 0,
+								deletions: fileStats?.deletions ?? 0
+							}
+						} satisfies ChatSessionWorktreeFile;
+					} catch (error) {
+						return null;
+					}
+				}));
+				for (const result of batchResults) {
+					if (result !== null) {
+						changes.push(result);
+					}
+				}
 			}
 
 			this.logService.trace(`[ChatSessionWorkspaceFolderService ${sessionId}][getWorkspaceChanges] Computed ${changes.length} change(s) for ${workspaceFolderUri.toString()}`);
