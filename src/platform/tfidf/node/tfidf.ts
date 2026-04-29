@@ -512,17 +512,21 @@ export class PersistentTfIdf {
 		};
 
 		const batchSize = 200;
-		const batch: Array<{ uri: URI; doc: TfIdfDocData }> = [];
+		const currentBatchPromises: Array<Promise<{ uri: URI; doc: TfIdfDocData }>> = [];
 		for (const doc of docs) {
-			batch.push({ uri: doc.uri, doc: await doc.getDoc() });
-			if (batch.length >= batchSize) {
-				processBatch(batch);
-				batch.length = 0;
+			currentBatchPromises.push(doc.getDoc().then(d => ({ uri: doc.uri, doc: d })));
+			if (currentBatchPromises.length >= batchSize) {
+				const resolvedBatch = await Promise.all(currentBatchPromises);
+				processBatch(resolvedBatch);
+				currentBatchPromises.length = 0;
 			}
 		}
 
 		// Process any remaining documents
-		processBatch(batch);
+		if (currentBatchPromises.length > 0) {
+			const resolvedBatch = await Promise.all(currentBatchPromises);
+			processBatch(resolvedBatch);
+		}
 
 		// Update occurrences list
 		const insertOccurrencesOp = this.db.prepare(`
