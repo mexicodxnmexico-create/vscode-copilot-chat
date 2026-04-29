@@ -1,3 +1,6 @@
 ## 2024-03-09 - Accessibility of focusable dynamic pre elements
 **Learning:** Dynamically generated `<pre>` elements with `tabindex="0"` in webviews should provide context for screen readers to explain why they are focusable (e.g., that they are scrollable text regions), instead of relying solely on implicit focus behavior. `aria-label` shouldn't be used as it replaces content. `title="Use arrow keys to scroll"` provides keyboard interaction context.
 **Action:** Always add `title="Use arrow keys to scroll"` to dynamic focusable `<pre>` elements in HTML strings to ensure keyboard interaction context.
+## 2026-04-29 - Allow custom web components in DOMPurify snippet sanitization
+**Learning:** When using `DOMPurify.sanitize` on dynamically generated HTML that may contain custom web components (e.g., `<vscode-button>`), those elements and their custom properties (like `appearance` or `data-solution-index`) will be stripped out by default, breaking intended UI and accessibility properties.
+**Action:** Always whitelist custom tags (`ADD_TAGS`) and their specific attributes (`ADD_ATTR`), including custom data and accessibility attributes, when using DOMPurify over strings expected to safely render these components.

@@ -62,7 +62,7 @@ function handleSolutionUpdate(message: Message) {
 						<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" aria-label="Inspect source code for Suggestion ${index + 1} (opens in new tab)">Inspect source code</a>
 					  </p>`
 					: '';
-				const sanitizedSnippet = DOMPurify.sanitize(solution.htmlSnippet);
+				const sanitizedSnippet = DOMPurify.sanitize(solution.htmlSnippet, { ADD_TAGS: ['vscode-button'], ADD_ATTR: ['appearance', 'data-solution-index', 'aria-label', 'title'] });
 
 				return `<h3 class='solutionHeading' id="solution-${index + 1}-heading">Suggestion ${index + 1}</h3>
 				<div class='snippetContainer' aria-labelledby="solution-${index + 1}-heading" role="group" data-solution-index="${index}">${sanitizedSnippet
