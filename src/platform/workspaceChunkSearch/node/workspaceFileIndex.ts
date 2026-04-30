@@ -716,18 +716,29 @@ export class WorkspaceFileIndex extends Disposable implements IWorkspaceFileInde
 					this._searchService.findFilesWithDefaultExcludes(new RelativePattern(folder, `**/*`), maxResults - resourcesToIndex.size, cts.token),
 					cts.token);
 
-				const tasks = paths.map(async uri => {
-					if (await this.shouldIndexWorkspaceFile(uri, cts.token)) {
-						if (resourcesToIndex.size < maxResults) {
-							resourcesToIndex.set(uri);
-						}
+				// ⚡ Bolt: Batch concurrent tasks to avoid launching thousands of parallel I/O operations and excessive memory usage
+				const batchSize = 200;
+				let currentBatchPromises: Promise<void>[] = [];
+				for (const uri of paths) {
+					currentBatchPromises.push((async () => {
+						if (await this.shouldIndexWorkspaceFile(uri, cts.token)) {
+							if (resourcesToIndex.size < maxResults) {
+								resourcesToIndex.set(uri);
+							}
 
-						if (resourcesToIndex.size >= maxResults) {
-							cts.cancel();
+							if (resourcesToIndex.size >= maxResults) {
+								cts.cancel();
+							}
 						}
+					})());
+					if (currentBatchPromises.length >= batchSize) {
+						await raceCancellationError(Promise.all(currentBatchPromises), cts.token);
+						currentBatchPromises = [];
 					}
-				});
-				await raceCancellationError(Promise.all(tasks), cts.token);
+				}
+				if (currentBatchPromises.length > 0) {
+					await raceCancellationError(Promise.all(currentBatchPromises), cts.token);
+				}
 			}
 		} catch (e) {
 			if (isCancellationError(e)) {
