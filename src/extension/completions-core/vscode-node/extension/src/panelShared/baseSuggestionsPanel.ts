@@ -170,7 +170,8 @@ export abstract class BaseSuggestionsPanel<TPanelCompletion extends BasePanelCom
 						}
 						pre:focus-visible {
 							border: 1px solid var(--vscode-focusBorder);
-							outline: none;
+							outline: 1px solid var(--vscode-focusBorder);
+							outline-offset: -1px;
 						}
 						pre {
 							margin-bottom: 6px;
