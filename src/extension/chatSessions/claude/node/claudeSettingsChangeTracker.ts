@@ -111,16 +111,21 @@ export class ClaudeSettingsChangeTracker {
 
 		const allPaths = await this._getAllPaths();
 
-		for (const uri of allPaths) {
-			try {
-				const stat = await this.fileSystemService.stat(uri);
-				this._snapshot.set(uri.toString(), stat.mtime);
-				this.logService.trace(`[ClaudeSettingsChangeTracker] Snapshot: ${uri.fsPath} mtime=${stat.mtime}`);
-			} catch {
-				// File doesn't exist yet - record as 0 so we detect if it's created
-				this._snapshot.set(uri.toString(), 0);
-				this.logService.trace(`[ClaudeSettingsChangeTracker] Snapshot: ${uri.fsPath} (does not exist)`);
-			}
+		// Process stats in batches to improve concurrency and performance without overwhelming the file system
+		const batchSize = 20;
+		for (let i = 0; i < allPaths.length; i += batchSize) {
+			const batch = allPaths.slice(i, i + batchSize);
+			await Promise.all(batch.map(async (uri) => {
+				try {
+					const stat = await this.fileSystemService.stat(uri);
+					this._snapshot.set(uri.toString(), stat.mtime);
+					this.logService.trace(`[ClaudeSettingsChangeTracker] Snapshot: ${uri.fsPath} mtime=${stat.mtime}`);
+				} catch {
+					// File doesn't exist yet - record as 0 so we detect if it's created
+					this._snapshot.set(uri.toString(), 0);
+					this.logService.trace(`[ClaudeSettingsChangeTracker] Snapshot: ${uri.fsPath} (does not exist)`);
+				}
+			}));
 		}
 	}
 
