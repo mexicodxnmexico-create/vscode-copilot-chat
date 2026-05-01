@@ -6,6 +6,13 @@
 import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit';
 import DOMPurify from 'dompurify';
 
+// Security: Prevent reverse tabnabbing by ensuring all target="_blank" links have rel="noopener noreferrer"
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+	if ('target' in node && node.getAttribute('target') === '_blank') {
+		node.setAttribute('rel', 'noopener noreferrer');
+	}
+});
+
 const solutionsContainer = document.getElementById('solutionsContainer');
 const vscode = acquireVsCodeApi();
 let currentFocusIndex: number = 0;

@@ -11,3 +11,8 @@
 **Vulnerability:** Weak, non-cryptographic nonce generation using Math.random() in a Webview CSP.
 **Learning:** Math.random() shouldn't be used to secure applications as it is predictable. Webviews CSP must be robust to mitigate XSS correctly.
 **Prevention:** Use cryptographically secure methods like crypto.randomUUID() or crypto.getRandomValues() (provided globally in VS Code via base utils) when generating nonces or random security identifiers.
+
+## 2026-05-01 - DOMPurify Global Hook for Reverse Tabnabbing
+**Vulnerability:** Even if `DOMPurify` is configured to allow `target="_blank"`, it doesn't automatically enforce `rel="noopener noreferrer"` for dynamically sanitized links in `htmlSnippet`, leaving the webview open to reverse tabnabbing.
+**Learning:** Just explicitly adding `rel` to safe strings (like `renderedCitation`) isn't enough to protect against arbitrary user or AI-generated HTML snippets. A global `DOMPurify` hook must be registered to actively inject `rel="noopener noreferrer"` into any `target="_blank"` anchor.
+**Prevention:** Use `DOMPurify.addHook('afterSanitizeAttributes', ...)` to programmatically ensure safe attributes are applied to dynamically generated or potentially untrusted anchor tags whenever `DOMPurify` is initialized in webviews.
