@@ -11,3 +11,8 @@
 **Vulnerability:** Weak, non-cryptographic nonce generation using Math.random() in a Webview CSP.
 **Learning:** Math.random() shouldn't be used to secure applications as it is predictable. Webviews CSP must be robust to mitigate XSS correctly.
 **Prevention:** Use cryptographically secure methods like crypto.randomUUID() or crypto.getRandomValues() (provided globally in VS Code via base utils) when generating nonces or random security identifiers.
+
+## 2026-05-02 - Unvalidated PID Command Injection Risk
+**Vulnerability:** Command injection vulnerability in `getParentPid` where unvalidated process IDs (PIDs) were interpolated into PowerShell commands.
+**Learning:** Even variables typed as `number` in TypeScript can hold unsafe values (e.g., NaN, Infinity) or be circumvented at runtime. Interpolating them directly into system commands is unsafe.
+**Prevention:** Always validate numeric inputs that are interpolated into system commands using `Number.isSafeInteger(val) && val > 0`.
