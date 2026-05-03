@@ -1004,12 +1004,19 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 			}
 
 			// Fetch PRs for all unique resource_global_ids in parallel
-			const uniqueGlobalIds = new Set(Array.from(latestSessionsMap.values()).map(s => s.resource_global_id));
-			const prFetches = Array.from(uniqueGlobalIds).map(async globalId => {
-				const pr = await this._octoKitService.getPullRequestFromGlobalId(globalId, { createIfNone: false });
-				return { globalId, pr };
-			});
-			const prResults = await Promise.all(prFetches);
+			const uniqueGlobalIds = Array.from(new Set(Array.from(latestSessionsMap.values()).map(s => s.resource_global_id)));
+
+			// ⚡ Bolt: Batch Promise.all API calls to prevent thousands of concurrent I/O requests scalability regression
+			const prResults = [];
+			const PR_BATCH_SIZE = 5;
+			for (let i = 0; i < uniqueGlobalIds.length; i += PR_BATCH_SIZE) {
+				const batch = uniqueGlobalIds.slice(i, i + PR_BATCH_SIZE);
+				const batchResults = await Promise.all(batch.map(async globalId => {
+					const pr = await this._octoKitService.getPullRequestFromGlobalId(globalId, { createIfNone: false });
+					return { globalId, pr };
+				}));
+				prResults.push(...batchResults);
+			}
 			const prMap = new Map(prResults.filter(r => r.pr).map(r => [r.globalId, r.pr!]));
 
 			const validateISOTimestamp = (date: string | undefined): number | undefined => {
@@ -1027,7 +1034,14 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 			const createdAt = sessions.length > 0 ? validateISOTimestamp(sessions[0].created_at) : undefined;
 
 			// Create session items from latest sessions
-			const sessionItems = await Promise.all(Array.from(latestSessionsMap.values()).map(async sessionItem => {
+			const latestSessionsArray = Array.from(latestSessionsMap.values());
+			const sessionItems = [];
+			const SESSION_BATCH_SIZE = 5;
+
+			// ⚡ Bolt: Batch Promise.all API calls for file changes diff part to prevent concurrent connection limits
+			for (let i = 0; i < latestSessionsArray.length; i += SESSION_BATCH_SIZE) {
+				const batch = latestSessionsArray.slice(i, i + SESSION_BATCH_SIZE);
+				const batchResults = await Promise.all(batch.map(async sessionItem => {
 				const pr = prMap.get(sessionItem.resource_global_id);
 				if (!pr) {
 					return undefined;
@@ -1070,7 +1084,9 @@ export class CopilotCloudSessionsProvider extends Disposable implements vscode.C
 				};
 				this.chatSessions.set(pr.number, pr);
 				return session;
-			}));
+				}));
+				sessionItems.push(...batchResults);
+			}
 			const filteredSessions = sessionItems
 				// Remove any undefined sessions
 				.filter(item => item !== undefined)
