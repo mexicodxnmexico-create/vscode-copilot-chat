@@ -617,6 +617,16 @@ describe('getParentPid', () => {
 			const result = await getParentPid(5678);
 			expect(result).toBeUndefined();
 		});
+
+		it('should reject invalid PIDs to prevent command injection', async () => {
+			const result1 = await getParentPid(-1);
+			expect(result1).toBeUndefined();
+			const result2 = await getParentPid(NaN);
+			expect(result2).toBeUndefined();
+			const result3 = await getParentPid(1.5);
+			expect(result3).toBeUndefined();
+			expect(mockExecFile).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('on Windows', () => {
