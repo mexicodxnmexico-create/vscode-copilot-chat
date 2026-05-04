@@ -489,44 +489,55 @@ export class SemanticSearchTextSearchProvider implements vscode.AITextSearchProv
 			);
 		}));
 		//report the rest of the combined results without the LLM ranked ones
-		for (const chunk of combinedChunks.slice(rankingResults.length)) {
-			const docContainingRef = await this.workspaceService.openTextDocumentAndSnapshot(chunk.file);
-			const resultAST = this._parserService.getTreeSitterAST(
-				{ languageId: docContainingRef.languageId, getText: () => docContainingRef.getText() });
-			const symbolsToHighlight = await resultAST?.getSymbols({
-				startIndex: docContainingRef.offsetAt(new Position(chunk.range.startLineNumber, chunk.range.startColumn)),
-				endIndex: docContainingRef.offsetAt(new Position(chunk.range.endLineNumber, chunk.range.endColumn)),
-			});
-			const rangeText = docContainingRef.getText().split('\n').slice(chunk.range.startLineNumber, chunk.range.endLineNumber).join('\n');
-			const match: vscode.TextSearchMatch2 = new TextSearchMatch2(
-				chunk.file,
-				[{
-					sourceRange: new VSCodeRange(
-						chunk.range.startLineNumber,
-						chunk.range.startColumn,
-						chunk.range.endLineNumber,
-						chunk.range.endColumn
-					),
-					previewRange: this.getPreviewRange(rangeText, symbolsToHighlight),
-				}],
-				rangeText
-			);
-			progress.report(match);
+		// ⚡ Bolt: Batch concurrent processing to improve performance without overwhelming I/O
+		const restChunks = combinedChunks.slice(rankingResults.length);
+		const batchSize = 10;
+		for (let i = 0; i < restChunks.length; i += batchSize) {
+			const batch = restChunks.slice(i, i + batchSize);
+			await Promise.all(batch.map(async chunk => {
+					const docContainingRef = await this.workspaceService.openTextDocumentAndSnapshot(chunk.file);
+					const resultAST = this._parserService.getTreeSitterAST(
+						{ languageId: docContainingRef.languageId, getText: () => docContainingRef.getText() });
+					const symbolsToHighlight = await resultAST?.getSymbols({
+						startIndex: docContainingRef.offsetAt(new Position(chunk.range.startLineNumber, chunk.range.startColumn)),
+						endIndex: docContainingRef.offsetAt(new Position(chunk.range.endLineNumber, chunk.range.endColumn)),
+					});
+					const rangeText = docContainingRef.getText().split('\n').slice(chunk.range.startLineNumber, chunk.range.endLineNumber).join('\n');
+					const match: vscode.TextSearchMatch2 = new TextSearchMatch2(
+						chunk.file,
+						[{
+							sourceRange: new VSCodeRange(
+								chunk.range.startLineNumber,
+								chunk.range.startColumn,
+								chunk.range.endLineNumber,
+								chunk.range.endColumn
+							),
+							previewRange: this.getPreviewRange(rangeText, symbolsToHighlight),
+						}],
+						rangeText
+					);
+					progress.report(match);
+				}));
 		}
 	}
 
 	async treeSitterAIKeywords(query: string, progress: vscode.Progress<vscode.AISearchResult>, chunks: FileChunk[], token: vscode.CancellationToken): Promise<void> {
 		const keywordSearchDuration = Date.now();
 		const symbols = new Set<string>();
-		for (const chunk of chunks) {
-			const docContainingRef = await this.workspaceService.openTextDocumentAndSnapshot(chunk.file);
-			const resultAST = this._parserService.getTreeSitterAST(
-				{ languageId: docContainingRef.languageId, getText: () => docContainingRef.getText() });
-			const symbolsToHighlight = await resultAST?.getSymbols({
-				startIndex: docContainingRef.offsetAt(new Position(chunk.range.startLineNumber, chunk.range.startColumn)),
-				endIndex: docContainingRef.offsetAt(new Position(chunk.range.endLineNumber, chunk.range.endColumn)),
-			});
-			symbolsToHighlight?.forEach(symbol => symbols.add(symbol.text));
+		// ⚡ Bolt: Batch concurrent processing to improve performance without overwhelming I/O
+		const batchSize = 10;
+		for (let i = 0; i < chunks.length; i += batchSize) {
+			const batch = chunks.slice(i, i + batchSize);
+			await Promise.all(batch.map(async chunk => {
+					const docContainingRef = await this.workspaceService.openTextDocumentAndSnapshot(chunk.file);
+					const resultAST = this._parserService.getTreeSitterAST(
+						{ languageId: docContainingRef.languageId, getText: () => docContainingRef.getText() });
+					const symbolsToHighlight = await resultAST?.getSymbols({
+						startIndex: docContainingRef.offsetAt(new Position(chunk.range.startLineNumber, chunk.range.startColumn)),
+						endIndex: docContainingRef.offsetAt(new Position(chunk.range.endLineNumber, chunk.range.endColumn)),
+					});
+					symbolsToHighlight?.forEach(symbol => symbols.add(symbol.text));
+				}));
 		}
 		const searchKeywordsIntent = this._intentService.getIntent('searchKeywords', ChatLocation.Other);
 		if (searchKeywordsIntent) {
