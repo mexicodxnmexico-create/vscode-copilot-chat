@@ -143,6 +143,20 @@ describe('suggestionsPanelWebview', () => {
         expect(solutions).not.toContain('javascript:alert(1)');
     });
 
+    it('renders empty state when there are zero solutions and loading is complete', async () => {
+        const message = {
+		command: 'solutionsUpdated',
+		solutions: [],
+		percentage: 100,
+        };
+
+        window.postMessage(message, '*');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const solutions = container.innerHTML;
+        expect(solutions).toContain('<div role="status" class="emptyState">No suggestions found.</div>');
+    });
+
     it('sanitizes attribute injection attempts', async () => {
         const message = {
 		command: 'solutionsUpdated',
