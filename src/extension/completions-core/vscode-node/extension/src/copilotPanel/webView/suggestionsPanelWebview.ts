@@ -51,6 +51,14 @@ function handleSolutionUpdate(message: Message) {
 	updateLoadingContainer(message);
 
 	if (solutionsContainer) {
+		if (message.percentage >= 100 && message.solutions.length === 0) {
+			solutionsContainer.innerHTML = `
+				<div class="emptyState" role="status">
+					<p>No suggestions found. Try modifying your request.</p>
+				</div>`;
+			return;
+		}
+
 		solutionsContainer.innerHTML = message.solutions
 			.map((solution, index) => {
 				const citationUrl = solution.citation?.url ?? '';
