@@ -165,6 +165,13 @@ export class CopilotCLISessionTracker extends Disposable implements ICopilotCLIS
  * Returns `undefined` if the lookup fails for any reason.
  */
 export async function getParentPid(pid: number): Promise<number | undefined> {
+	// Security: Validate that the input is a valid positive integer
+	// to prevent potential command injection vulnerabilities when interpolated
+	// into the shell execution strings below.
+	if (!Number.isSafeInteger(pid) || pid <= 0) {
+		return undefined;
+	}
+
 	try {
 		const stdout = await new Promise<string>((resolve, reject) => {
 			const args = isWindows
