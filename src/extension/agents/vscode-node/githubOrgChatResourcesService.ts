@@ -321,11 +321,18 @@ export class GitHubOrgChatResourcesService extends Disposable implements IGitHub
 
 		try {
 			const files = await this.fileSystem.readDirectory(cacheDir);
-			for (const [filename, fileType] of files) {
-				if (fileType === FileType.File && isValidFile(type, filename) && !exclude?.has(filename)) {
+
+			// Concurrently delete all matched cache files with bounded batching
+			const batchSize = 10;
+			const filteredFiles = files.filter(([filename, fileType]) => fileType === FileType.File && isValidFile(type, filename) && !exclude?.has(filename));
+
+			for (let i = 0; i < filteredFiles.length; i += batchSize) {
+				const batch = filteredFiles.slice(i, i + batchSize);
+				const deletePromises = batch.map(async ([filename]) => {
 					await this.fileSystem.delete(vscode.Uri.joinPath(cacheDir, filename));
 					this.logService.trace(`[GitHubOrgChatResourcesService] Deleted cache file: ${filename}`);
-				}
+				});
+				await Promise.all(deletePromises);
 			}
 		} catch {
 			// Directory might not exist
