@@ -5,3 +5,6 @@
 ## 2024-03-08 - Fast String Truncation
 **Learning:** Checking string byte length with `new TextEncoder().encode(text).length` is extremely slow because it allocates massive memory buffers. Node.js's `Buffer.byteLength(text, 'utf8')` is >3.5x faster. Also, truncating a large string to a byte limit is faster by first slicing the string `text.slice(0, maxIndexableFileSize)` (as 1 char >= 1 byte in utf8) before doing the exact byte-wise truncation with `Buffer.from(slicedString, 'utf8')`.
 **Action:** Use `Buffer.byteLength(text, 'utf8')` and string slicing before buffer conversion to avoid memory allocation bottlenecks on large strings.
+## 2026-05-06 - Concurrent Promise resolution instead of sequential awaits
+**Learning:** Sequential await calls inside a `for...of` loop can introduce significant latency, especially when awaiting I/O or network requests. In this case, fetching endpoint models took ~250ms sequentially, but only ~50ms concurrently.
+**Action:** Always identify independent asynchronous operations within loops and convert them to execute concurrently using `Promise.all` with `.map` arrays to minimize total wait time.
