@@ -11,3 +11,8 @@
 **Vulnerability:** Weak, non-cryptographic nonce generation using Math.random() in a Webview CSP.
 **Learning:** Math.random() shouldn't be used to secure applications as it is predictable. Webviews CSP must be robust to mitigate XSS correctly.
 **Prevention:** Use cryptographically secure methods like crypto.randomUUID() or crypto.getRandomValues() (provided globally in VS Code via base utils) when generating nonces or random security identifiers.
+
+## 2026-05-06 - Process ID Command Injection Risk
+**Vulnerability:** The `getParentPid` function in `copilotCLISessionTracker.ts` interpolated the `pid` parameter directly into a PowerShell command string without explicit validation. If `pid` originated from an untrusted source (like an HTTP request), it could lead to command injection, even if typed as a `number`.
+**Learning:** Process IDs (PIDs) derived from potentially untrusted sources must be validated using `Number.isSafeInteger(pid) && pid > 0` before being used in system command strings, even if the variable is typed as a number.
+**Prevention:** Always explicitly validate variables used in string interpolation for shell execution, checking for expected type, range, and format.
