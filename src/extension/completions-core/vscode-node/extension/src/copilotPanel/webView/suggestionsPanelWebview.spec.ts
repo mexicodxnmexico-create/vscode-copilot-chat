@@ -113,6 +113,21 @@ describe('suggestionsPanelWebview', () => {
         expect(pre?.tabIndex).toBe(0);
     });
 
+    it('renders empty state when no solutions found after loading', async () => {
+        const message = {
+		command: 'solutionsUpdated',
+		solutions: [],
+		percentage: 100,
+        };
+
+        window.postMessage(message, '*');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const solutions = container.innerHTML;
+        expect(solutions).toContain('No suggestions found');
+        expect(solutions).toContain('role="status"');
+    });
+
     it('does not render malicious citation URL', async () => {
         const message = {
 		command: 'solutionsUpdated',
