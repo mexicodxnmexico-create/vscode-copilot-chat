@@ -6,6 +6,15 @@
 import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit';
 import DOMPurify from 'dompurify';
 
+// SECURITY: Proactively prevent reverse tabnabbing by enforcing rel="noopener noreferrer"
+// on all links that open in a new tab. This adds defense-in-depth even if the input HTML
+// lacks the rel attribute, protecting against malicious suggestions from the LLM.
+DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+	if ('target' in node && node.getAttribute('target') === '_blank') {
+		node.setAttribute('rel', 'noopener noreferrer');
+	}
+});
+
 const solutionsContainer = document.getElementById('solutionsContainer');
 const vscode = acquireVsCodeApi();
 let currentFocusIndex: number = 0;
