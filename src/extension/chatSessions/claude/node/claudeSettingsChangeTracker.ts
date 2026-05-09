@@ -89,12 +89,19 @@ export class ClaudeSettingsChangeTracker {
 	private async _getAllPaths(): Promise<URI[]> {
 		const syncPaths = this._pathResolvers.flatMap(resolver => resolver());
 
-		// Enumerate all directories
+		// Enumerate all directories concurrently in batches to improve performance
 		const directoryFiles: URI[] = [];
-		for (const config of this._directoryResolvers) {
-			const dirs = config.resolver();
-			for (const dir of dirs) {
-				const files = await this._enumerateDirectory(dir, config.extension);
+		const allDirs = this._directoryResolvers.flatMap(config =>
+			config.resolver().map(dir => ({ dir, extension: config.extension }))
+		);
+
+		const batchSize = 20; // Bound concurrency for I/O operations
+		for (let i = 0; i < allDirs.length; i += batchSize) {
+			const batch = allDirs.slice(i, i + batchSize);
+			const results = await Promise.all(
+				batch.map(({ dir, extension }) => this._enumerateDirectory(dir, extension))
+			);
+			for (const files of results) {
 				directoryFiles.push(...files);
 			}
 		}
@@ -111,16 +118,21 @@ export class ClaudeSettingsChangeTracker {
 
 		const allPaths = await this._getAllPaths();
 
-		for (const uri of allPaths) {
-			try {
-				const stat = await this.fileSystemService.stat(uri);
-				this._snapshot.set(uri.toString(), stat.mtime);
-				this.logService.trace(`[ClaudeSettingsChangeTracker] Snapshot: ${uri.fsPath} mtime=${stat.mtime}`);
-			} catch {
-				// File doesn't exist yet - record as 0 so we detect if it's created
-				this._snapshot.set(uri.toString(), 0);
-				this.logService.trace(`[ClaudeSettingsChangeTracker] Snapshot: ${uri.fsPath} (does not exist)`);
-			}
+		// Process snapshot stats concurrently in batches to improve performance
+		const batchSize = 20; // Standard concurrency limit for I/O operations
+		for (let i = 0; i < allPaths.length; i += batchSize) {
+			const batch = allPaths.slice(i, i + batchSize);
+			await Promise.all(batch.map(async (uri) => {
+				try {
+					const stat = await this.fileSystemService.stat(uri);
+					this._snapshot.set(uri.toString(), stat.mtime);
+					this.logService.trace(`[ClaudeSettingsChangeTracker] Snapshot: ${uri.fsPath} mtime=${stat.mtime}`);
+				} catch {
+					// File doesn't exist yet - record as 0 so we detect if it's created
+					this._snapshot.set(uri.toString(), 0);
+					this.logService.trace(`[ClaudeSettingsChangeTracker] Snapshot: ${uri.fsPath} (does not exist)`);
+				}
+			}));
 		}
 	}
 
