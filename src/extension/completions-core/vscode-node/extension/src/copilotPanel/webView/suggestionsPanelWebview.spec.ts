@@ -93,6 +93,21 @@ describe('suggestionsPanelWebview', () => {
         expect(solutions).toContain('<span style="vertical-align: text-bottom"><strong><span aria-hidden="true">⚠</span> Warning:</strong></span>');
     });
 
+    it('shows empty state when no suggestions are available and percentage is 100', async () => {
+        const message = {
+		command: 'solutionsUpdated',
+		solutions: [],
+		percentage: 100,
+        };
+
+        window.postMessage(message, '*');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const solutions = container.innerHTML;
+        expect(solutions).toContain('No suggestions found.');
+        expect(solutions).toContain('Try modifying your prompt or selecting a different code snippet to get suggestions.');
+    });
+
     it('adds tabindex to pre elements', async () => {
         const message = {
 		command: 'solutionsUpdated',
