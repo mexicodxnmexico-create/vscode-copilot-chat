@@ -143,6 +143,77 @@ describe('suggestionsPanelWebview', () => {
         expect(solutions).not.toContain('javascript:alert(1)');
     });
 
+    it('renders empty state when no solutions are found', async () => {
+        const message = {
+		command: 'solutionsUpdated',
+		solutions: [],
+		percentage: 100,
+        };
+
+        // Dispatch message
+        window.postMessage(message, '*');
+
+        // Wait for any potential async updates
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        // Let's inspect the container
+        const solutions = container.innerHTML;
+
+        expect(solutions).toContain('No suggestions found. Try modifying your code or context.');
+        expect(solutions).toContain('role="status"');
+    });
+
+    it('renders empty state when no solutions are found', async () => {
+        const message = {
+		command: 'solutionsUpdated',
+		solutions: [],
+		percentage: 100,
+        };
+
+        // Dispatch message
+        window.postMessage(message, '*');
+
+        // Wait for any potential async updates
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        // Let's inspect the container
+        const solutions = container.innerHTML;
+
+        expect(solutions).toContain('No suggestions found. Try modifying your code or context.');
+        expect(solutions).toContain('role="status"');
+    });
+
+    it('clears empty state when new solutions are being loaded', async () => {
+        const message = {
+		command: 'solutionsUpdated',
+		solutions: [],
+		percentage: 50,
+        };
+
+        window.postMessage(message, '*');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const solutions = container.innerHTML;
+        expect(solutions).not.toContain('No suggestions found');
+        expect(solutions).toBe('');
+    });
+
+    it('renders empty state when no solutions are found', async () => {
+        const message = {
+		command: 'solutionsUpdated',
+		solutions: [],
+		percentage: 100,
+        };
+
+        window.postMessage(message, '*');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const solutions = container.innerHTML;
+
+        expect(solutions).toContain('No suggestions found. Try modifying your code or context.');
+        expect(solutions).toContain('role="status"');
+    });
+
     it('sanitizes attribute injection attempts', async () => {
         const message = {
 		command: 'solutionsUpdated',
