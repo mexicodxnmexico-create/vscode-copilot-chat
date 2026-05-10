@@ -51,8 +51,15 @@ function handleSolutionUpdate(message: Message) {
 	updateLoadingContainer(message);
 
 	if (solutionsContainer) {
-		solutionsContainer.innerHTML = message.solutions
-			.map((solution, index) => {
+		if (message.solutions.length === 0) {
+			if (message.percentage >= 100) {
+				solutionsContainer.innerHTML = `<div class="emptyState" role="status">No suggestions found. Try modifying your code or context.</div>`;
+			} else {
+				solutionsContainer.innerHTML = '';
+			}
+		} else {
+			solutionsContainer.innerHTML = message.solutions
+				.map((solution, index) => {
 				const citationUrl = solution.citation?.url ?? '';
 				const safeUrl = getSafeUrl(citationUrl) ?? '#';
 				const renderedCitation = solution.citation
@@ -70,13 +77,14 @@ function handleSolutionUpdate(message: Message) {
 				${DOMPurify.sanitize(renderedCitation, { ADD_ATTR: ['target', 'aria-label'] })}
 				<vscode-button role="button" class="acceptButton" id="acceptButton${index}" appearance="secondary" data-solution-index="${index}" aria-label="Accept suggestion ${index + 1}. Click to insert this suggestion into your code" title="Click to insert this suggestion into your code">Accept suggestion ${index + 1
 					}</vscode-button>`;
-			})
-			.join('');
+				})
+				.join('');
 
-		solutionsContainer.querySelectorAll('pre').forEach((pre) => {
-			pre.tabIndex = 0;
-			pre.title = 'Use arrow keys to scroll';
-		});
+			solutionsContainer.querySelectorAll('pre').forEach((pre) => {
+				pre.tabIndex = 0;
+				pre.title = 'Use arrow keys to scroll';
+			});
+		}
 	}
 }
 
@@ -122,7 +130,9 @@ function updateLoadingContainer(message: Message) {
 			loadingLabelElement.textContent = `${message.solutions.length} Suggestions`;
 		}
 		progressBar.style.display = 'none';
-		solutionsContainer?.setAttribute('aria-busy', 'false');
+		if (solutionsContainer) {
+			solutionsContainer.setAttribute('aria-busy', 'false');
+		}
 	} else {
 		if (loadingLabelElement && loadingLabelElement.textContent !== 'Loading suggestions:\u00A0') {
 			loadingLabelElement.textContent = 'Loading suggestions:\u00A0';
