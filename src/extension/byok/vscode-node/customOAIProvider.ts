@@ -93,16 +93,34 @@ export abstract class AbstractCustomOAIBYOKModelProvider extends AbstractOpenAIC
 
 		const customOAIModelConfigsByApiKey: Map<string, Array<CustomOAIModelConfig & { requiresAPIKey?: boolean }>> = new Map();
 		const customOAIModelProviderConfig = this._configurationService.getConfig<IStringDictionary<_CustomOAIModelConfig>>(configKey);
-		for (const [modelId, modelConfig] of Object.entries(customOAIModelProviderConfig)) {
-			const apiKey = await this._byokStorageService.getAPIKey(providerName, modelId) ?? '';
+
+		// Bolt: Replaced sequential awaits in for loops with batched concurrent Promise.all for faster I/O processing
+		const batchSize = 20;
+		const modelEntries = Object.entries(customOAIModelProviderConfig);
+		const apiKeys: (string | undefined)[] = [];
+
+		for (let i = 0; i < modelEntries.length; i += batchSize) {
+			const batch = modelEntries.slice(i, i + batchSize);
+			const batchKeys = await Promise.all(batch.map(([modelId]) => this._byokStorageService.getAPIKey(providerName, modelId)));
+			apiKeys.push(...batchKeys);
+		}
+
+		modelEntries.forEach(([modelId, modelConfig], index) => {
+			const apiKey = apiKeys[index] ?? '';
 			const customOAIModelConfigs = customOAIModelConfigsByApiKey.get(apiKey) ?? [];
 			customOAIModelConfigs.push({ ...modelConfig, id: modelId, requiresAPIKey: undefined });
 			customOAIModelConfigsByApiKey.set(apiKey, customOAIModelConfigs);
-		}
+		});
+
 		if (customOAIModelConfigsByApiKey.size > 0) {
-			for (const [apiKey, customOAIModelConfigs] of customOAIModelConfigsByApiKey.entries()) {
-				await this.configureDefaultGroupIfExists(providerGroupName, { models: customOAIModelConfigs, apiKey: apiKey || undefined });
+			const entries = Array.from(customOAIModelConfigsByApiKey.entries());
+			for (let i = 0; i < entries.length; i += batchSize) {
+				const batch = entries.slice(i, i + batchSize);
+				await Promise.all(batch.map(([apiKey, customOAIModelConfigs]) =>
+					this.configureDefaultGroupIfExists(providerGroupName, { models: customOAIModelConfigs, apiKey: apiKey || undefined })
+				));
 			}
+
 			// Mark migration as completed instead of deleting the config
 			await this._extensionContext.globalState.update(migrationKey, true);
 		}
