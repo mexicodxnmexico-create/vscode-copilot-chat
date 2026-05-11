@@ -170,7 +170,8 @@ export class SimulationFileSystemAdaptor implements IFileSystemService {
 					type: FileType.File,
 					ctime: this._time,
 					mtime: this._time,
-					size: new TextEncoder().encode(doc.getText()).byteLength
+					// ⚡ Bolt: Use Buffer.byteLength to avoid allocating a full array just to check string size
+					size: Buffer.byteLength(doc.getText(), 'utf8')
 				};
 			}
 			return await this._delegate.stat(this._workspace.mapLocation(uri));
@@ -183,7 +184,8 @@ export class SimulationFileSystemAdaptor implements IFileSystemService {
 		const containsDoc = this._workspaceService.textDocuments.some(d => d.uri.toString() === uri.toString());
 		if (containsDoc) {
 			const doc = await this._workspaceService.openTextDocument(uri);
-			return new TextEncoder().encode(doc.getText());
+			// ⚡ Bolt: Use Buffer.from over new TextEncoder().encode for faster allocations
+			return Buffer.from(doc.getText(), 'utf8');
 		}
 		return await this._delegate.readFile(this._workspace.mapLocation(uri));
 	}
