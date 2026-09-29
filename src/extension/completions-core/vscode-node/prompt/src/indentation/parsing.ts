@@ -20,6 +20,29 @@ import {
 import { clearLabelsIf, Rebuilder, rebuildTree, visitTree } from './manipulation';
 
 /**
+ * Compute the indentation level of a line, accounting for tab stops.
+ */
+function computeIndentLevel(line: string, tabSize: number): number {
+	let indent = 0;
+	let i = 0;
+	const len = line.length;
+
+	while (i < len) {
+		const chCode = line.charCodeAt(i);
+		if (chCode === 32 /* Space */) {
+			indent++;
+		} else if (chCode === 9 /* Tab */) {
+			indent = indent - (indent % tabSize) + tabSize;
+		} else {
+			break;
+		}
+		i++;
+	}
+
+	return indent;
+}
+
+/**
  * Perform a raw indentation-tree parse of a string. This is completely
  * language-agnostic and the returned tree is unlabeled.
  *
@@ -35,10 +58,9 @@ import { clearLabelsIf, Rebuilder, rebuildTree, visitTree } from './manipulation
  *     Then e1.subs = [e2], and E.subs = [ e1, blank, e3 ].
  *
  */
-export function parseRaw(source: string): IndentationTree<never> {
+export function parseRaw(source: string, tabSize: number = 4): IndentationTree<never> {
 	const rawLines = source.split('\n');
-	// TODO: How to handle mix of tabs and spaces?
-	const indentations = rawLines.map(line => line.match(/^\s*/)![0].length);
+	const indentations = rawLines.map(line => computeIndentLevel(line, tabSize));
 	const lines = rawLines.map(line => line.trimLeft());
 	function parseNode(line: number): [LineNode<never>, number] {
 		const [subs, nextLine] = parseSubs(line + 1, indentations[line]);
@@ -319,8 +341,8 @@ export function registerLanguageSpecificParser(
 	LANGUAGE_SPECIFIC_PARSERS[language] = parser;
 }
 
-export function parseTree(source: string, languageId?: string): IndentationTree<string> {
-	const raw = parseRaw(source);
+export function parseTree(source: string, languageId?: string, tabSize: number = 4): IndentationTree<string> {
+	const raw = parseRaw(source, tabSize);
 	const languageSpecificParser = LANGUAGE_SPECIFIC_PARSERS[languageId ?? ''];
 	if (languageSpecificParser) {
 		return languageSpecificParser(raw);
